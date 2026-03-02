@@ -1,0 +1,6 @@
+﻿services:
+  qwestrapi:
+    image: qwestrapi
+    build:
+      context: .
+      dockerfile: QwestrAPI/Dockerfile
