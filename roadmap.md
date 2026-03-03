@@ -19,9 +19,9 @@
 
 - [X] **0.1** Создать Solution, все 24 проекта (6 модулей × 4 слоя), Shared-проекты · 3 ч
 - [X] **0.2** Настроить Shared.Kernel: Entity, AggregateRoot, Result, IAuditableEntity · 2 ч
-- [ ] **0.3** Настроить Shared.Infrastructure: ICurrentUserService, глобальный exception handler, EF-конвенции · 3 ч
-- [ ] **0.4** GameOnboard.Api — хост: подключить все модули (пустые AddXxxModule/MapXxxModule), Swagger, JWT-заглушка · 3 ч
-- [ ] **0.5** Docker Compose: PostgreSQL + API-хост, создание schema для каждого модуля · 3 ч
+- [X] **0.3** Настроить Shared.Infrastructure: ICurrentUserService, глобальный exception handler, EF-конвенции · 3 ч
+- [X] **0.4** GameOnboard.Api — хост: подключить все модули (пустые AddXxxModule/MapXxxModule), Swagger, JWT-заглушка · 3 ч
+- [X] **0.5** Docker Compose: PostgreSQL + API-хост, создание schema для каждого модуля · 3 ч
 - [ ] **0.6** Blazor Server — отдельный проект: подключить UI-библиотеку (MudBlazor), layout, навигация, пустые страницы-заглушки · 4 ч
 - [ ] **0.7** CI-минимум: .editorconfig, Directory.Build.props, README · 2 ч
 

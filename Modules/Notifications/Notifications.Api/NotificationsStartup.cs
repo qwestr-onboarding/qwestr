@@ -11,7 +11,7 @@ public static class NotificationsStartup
 {
     public static IServiceCollection AddNotificationsModule(this IServiceCollection services, IConfiguration config)
     {
-        services.AddDbContext<NotificationsDbContext>(o => o.UseNpgsql(config.GetConnectionString("Notifications")));
+        services.AddDbContext<NotificationsDbContext>(o => o.UseNpgsql(config.GetConnectionString("Notifications")).UseSnakeCaseNamingConvention());
         
         return services;
     }

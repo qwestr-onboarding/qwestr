@@ -1,6 +1,42 @@
 ﻿services:
-  qwestrapi:
-    image: qwestrapi
+  qwestr-api-dev:
+    image: qwestrapi-dev
     build:
       context: .
-      dockerfile: QwestrAPI/Dockerfile
+      dockerfile: QwestrAPI/Dockerfile-dev
+    restart: always
+    depends_on:
+      - qwestr-db
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
+      - ASPNETCORE_URLS=http://+:8080
+      - Jwt__Issuer=QwestrAPI
+      - Jwt__Audience=QwestrClient
+      - Jwt__Secret=super-secret-key-super-secret-key-super-secret-key-super-secret-key
+    ports:
+      - "8080:8080"
+    networks:
+      - qwestr-network
+    volumes:
+      - ./publish/apiServer:/app/publish
+
+  qwestr-db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: qwestr
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - qwestr-network
+
+networks:
+  qwestr-network:
+    driver: bridge
+
+volumes:
+  dbdata:

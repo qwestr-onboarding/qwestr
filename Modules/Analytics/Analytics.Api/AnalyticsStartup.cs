@@ -11,7 +11,7 @@ public static class AnalyticsStartup
 {
     public static IServiceCollection AddAnalyticsModule(this IServiceCollection services, IConfiguration config)
     {
-        services.AddDbContext<AnalyticsDbContext>(o => o.UseNpgsql(config.GetConnectionString("Analytics")));
+        services.AddDbContext<AnalyticsDbContext>(o => o.UseNpgsql(config.GetConnectionString("Analytics")).UseSnakeCaseNamingConvention());
         
         return services;
     }

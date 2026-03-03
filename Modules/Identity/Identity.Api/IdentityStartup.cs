@@ -11,7 +11,7 @@ public static class IdentityStartup
 {
     public static IServiceCollection AddIdentityModule(this IServiceCollection services, IConfiguration config)
     {
-        services.AddDbContext<IdentityDbContext>(o => o.UseNpgsql(config.GetConnectionString("Identity")));
+        services.AddDbContext<IdentityDbContext>(o => o.UseNpgsql(config.GetConnectionString("Identity")).UseSnakeCaseNamingConvention());
         
         return services;
     }

@@ -11,7 +11,7 @@ public static class OnboardingStartup
 {
     public static IServiceCollection AddOnboardingModule(this IServiceCollection services, IConfiguration config)
     {
-        services.AddDbContext<OnboardingDbContext>(o => o.UseNpgsql(config.GetConnectionString("Onboarding")));
+        services.AddDbContext<OnboardingDbContext>(o => o.UseNpgsql(config.GetConnectionString("Onboarding")).UseSnakeCaseNamingConvention());
         // services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(OnboardingStartup).Assembly));
         return services;
     }

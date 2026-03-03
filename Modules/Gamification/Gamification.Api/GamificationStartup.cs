@@ -11,7 +11,7 @@ public static class GamificationStartup
 {
     public static IServiceCollection AddGamificationModule(this IServiceCollection services, IConfiguration config)
     {
-        services.AddDbContext<GamificationDbContext>(o => o.UseNpgsql(config.GetConnectionString("Gamification")));
+        services.AddDbContext<GamificationDbContext>(o => o.UseNpgsql(config.GetConnectionString("Gamification")).UseSnakeCaseNamingConvention());
         
         return services;
     }

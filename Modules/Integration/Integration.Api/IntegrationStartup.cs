@@ -11,7 +11,7 @@ public static class IntegrationStartup
 {
     public static IServiceCollection AddIntegrationModule(this IServiceCollection services, IConfiguration config)
     {
-        services.AddDbContext<IntegrationDbContext>(o => o.UseNpgsql(config.GetConnectionString("Integration")));
+        services.AddDbContext<IntegrationDbContext>(o => o.UseNpgsql(config.GetConnectionString("Integration")).UseSnakeCaseNamingConvention());
         
         return services;
     }
