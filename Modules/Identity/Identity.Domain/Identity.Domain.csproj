@@ -8,11 +8,16 @@
 
     <ItemGroup>
       <Folder Include="Entities\" />
+      <Folder Include="Enums\" />
       <Folder Include="Interfaces\" />
     </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="Serilog" Version="4.3.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\Shared\Shared.Kernel\Shared.Kernel.csproj" />
     </ItemGroup>
 
 </Project>
