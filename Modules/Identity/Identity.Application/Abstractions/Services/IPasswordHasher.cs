@@ -1,4 +1,4 @@
-namespace Identity.Application.Abstractions.Services;
+namespace Qwestr.Modules.Identity.Application.Abstractions.Services;
 
 public interface IPasswordHasher
 {

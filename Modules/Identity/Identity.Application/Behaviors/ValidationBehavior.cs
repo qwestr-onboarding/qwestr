@@ -2,7 +2,7 @@ using FluentValidation;
 using MediatR;
 using ValidationException = System.ComponentModel.DataAnnotations.ValidationException;
 
-namespace Identity.Application.Behaviors;
+namespace Qwestr.Modules.Identity.Application.Behaviors;
 
 public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>

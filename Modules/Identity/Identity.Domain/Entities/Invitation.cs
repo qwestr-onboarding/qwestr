@@ -1,9 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Identity.Domain.Enums;
-using Shared.Kernel.Entities;
+using Qwestr.Modules.Identity.Domain.Enums;
+using Qwestr.Shared.Kernel.Entities;
 
-namespace Identity.Domain.Entities;
+namespace Qwestr.Modules.Identity.Domain.Entities;
 
 /// <summary>
 /// Приглашение в компанию и на регистрацию

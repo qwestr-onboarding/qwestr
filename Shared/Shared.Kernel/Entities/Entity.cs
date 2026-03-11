@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Shared.Kernel.Entities;
+namespace Qwestr.Shared.Kernel.Entities;
 
 public abstract class Entity<TId>
 {

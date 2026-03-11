@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace Identity.Application.Commands.RegisterTenant;
+namespace Qwestr.Modules.Identity.Application.Commands.RegisterTenant;
 
 public class RegisterTenantCommandValidator : AbstractValidator<RegisterTenantCommand>
 {

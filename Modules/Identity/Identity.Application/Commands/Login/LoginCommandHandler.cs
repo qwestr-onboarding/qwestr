@@ -1,12 +1,11 @@
-using Identity.Application.Abstractions.Repositories;
-using Identity.Application.Abstractions.Services;
-using Identity.Application.DTOs;
-using Identity.Domain.Entities;
 using MediatR;
-using Shared.Kernel.Entities;
-using DomainRefreshToken = Identity.Domain.Entities.RefreshToken;
+using Qwestr.Modules.Identity.Application.Abstractions.Repositories;
+using Qwestr.Modules.Identity.Application.Abstractions.Services;
+using Qwestr.Modules.Identity.Application.DTOs;
+using Qwestr.Shared.Kernel.Entities;
+using DomainRefreshToken = Qwestr.Modules.Identity.Domain.Entities.RefreshToken;
 
-namespace Identity.Application.Commands.Login;
+namespace Qwestr.Modules.Identity.Application.Commands.Login;
 
 public class LoginCommandHandler : IRequestHandler<LoginCommand, ActionResult<TokenResponse>>
 {

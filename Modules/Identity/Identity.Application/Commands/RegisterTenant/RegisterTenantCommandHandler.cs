@@ -1,14 +1,14 @@
-using Identity.Application.Abstractions.Repositories;
-using Identity.Application.Abstractions.Services;
-using Identity.Application.DTOs;
-using Identity.Domain.Entities;
-using Identity.Domain.Enums;
-using Identity.Domain.Events;
 using MediatR;
-using Shared.Kernel.Entities;
-using DomainRefreshToken = Identity.Domain.Entities.RefreshToken;
+using Qwestr.Modules.Identity.Application.Abstractions.Repositories;
+using Qwestr.Modules.Identity.Application.Abstractions.Services;
+using Qwestr.Modules.Identity.Application.DTOs;
+using Qwestr.Modules.Identity.Domain.Entities;
+using Qwestr.Modules.Identity.Domain.Enums;
+using Qwestr.Modules.Identity.Domain.Events;
+using Qwestr.Shared.Kernel.Entities;
+using DomainRefreshToken = Qwestr.Modules.Identity.Domain.Entities.RefreshToken;
 
-namespace Identity.Application.Commands.RegisterTenant;
+namespace Qwestr.Modules.Identity.Application.Commands.RegisterTenant;
 
 public class RegisterTenantCommandHandler : IRequestHandler<RegisterTenantCommand, ActionResult<TenantRegisteredResponse>>
 {

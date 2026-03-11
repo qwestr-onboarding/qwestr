@@ -6,6 +6,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		docker-compose.yml = docker-compose.yml
 		roadmap.md = roadmap.md
+		CLAUDE.md = CLAUDE.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Onboarding", "Onboarding", "{07A328A4-DF6D-48CD-8D9C-DA8DA07A4761}"
@@ -15,6 +16,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{4A9EEDDB-594D-49C7-8AB3-5C91CB03465B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Identity", "Identity", "{5582D810-E57F-45A7-93CF-A0F2E28A29D7}"
+	ProjectSection(SolutionItems) = preProject
+		Modules\Identity\IdentityPlan.md = Modules\Identity\IdentityPlan.md
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Identity.Api", "Modules\Identity\Identity.Api\Identity.Api.csproj", "{4E688D2B-0219-4F9A-ADF4-F93635800CE8}"
 EndProject

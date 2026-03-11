@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Shared.Infrastructure;
+using Qwestr.Shared.Infrastructure;
 
-namespace Notifications.Infrastructure;
+namespace Qwestr.Modules.Notifications.Infrastructure;
 
 public class NotificationsDbContext : DbContext
 {

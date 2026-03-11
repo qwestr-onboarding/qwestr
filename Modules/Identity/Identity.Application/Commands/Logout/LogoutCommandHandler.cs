@@ -1,8 +1,8 @@
-using Identity.Application.Abstractions.Repositories;
 using MediatR;
-using Shared.Kernel.Entities;
+using Qwestr.Modules.Identity.Application.Abstractions.Repositories;
+using Qwestr.Shared.Kernel.Entities;
 
-namespace Identity.Application.Commands.Logout;
+namespace Qwestr.Modules.Identity.Application.Commands.Logout;
 
 public class LogoutCommandHandler : IRequestHandler<LogoutCommand, ActionResult>
 {

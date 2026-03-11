@@ -4,6 +4,8 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <RootNamespace>Qwestr.Modules.Analytics.Application</RootNamespace>
+        <AssemblyName>Qwestr.Modules.Analytics.Application</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>

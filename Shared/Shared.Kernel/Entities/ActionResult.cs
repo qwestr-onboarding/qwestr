@@ -1,4 +1,4 @@
-﻿namespace Shared.Kernel.Entities;
+﻿namespace Qwestr.Shared.Kernel.Entities;
 
 public class ActionResult
 {

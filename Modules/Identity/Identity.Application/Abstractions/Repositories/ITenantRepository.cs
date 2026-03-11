@@ -1,6 +1,6 @@
-using Identity.Domain.Entities;
+using Qwestr.Modules.Identity.Domain.Entities;
 
-namespace Identity.Application.Abstractions.Repositories;
+namespace Qwestr.Modules.Identity.Application.Abstractions.Repositories;
 
 public interface ITenantRepository
 {

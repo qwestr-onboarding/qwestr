@@ -1,8 +1,8 @@
-using Identity.Application.Abstractions.Repositories;
-using Identity.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Qwestr.Modules.Identity.Application.Abstractions.Repositories;
+using Qwestr.Modules.Identity.Domain.Entities;
 
-namespace Identity.Infrastructure.Persistence.Repositories;
+namespace Qwestr.Modules.Identity.Infrastructure.Persistence.Repositories;
 
 public class TenantRepository : ITenantRepository
 {

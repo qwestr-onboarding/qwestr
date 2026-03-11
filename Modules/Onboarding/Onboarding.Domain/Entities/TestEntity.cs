@@ -1,4 +1,4 @@
-﻿namespace Onboarding.Domain.Entities;
+﻿namespace Qwestr.Modules.Onboarding.Domain.Entities;
 
 public class TestEntity
 {

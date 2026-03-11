@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Shared.Infrastructure;
+using Qwestr.Shared.Infrastructure;
 
-namespace Analytics.Infrastructure;
+namespace Qwestr.Modules.Analytics.Infrastructure;
 
 public class AnalyticsDbContext : DbContext
 {

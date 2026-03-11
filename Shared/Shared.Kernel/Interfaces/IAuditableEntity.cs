@@ -1,4 +1,4 @@
-﻿namespace Shared.Kernel.Interfaces;
+﻿namespace Qwestr.Shared.Kernel.Interfaces;
 
 public interface IAuditableEntity
 {

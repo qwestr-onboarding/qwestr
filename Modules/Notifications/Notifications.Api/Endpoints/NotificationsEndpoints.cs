@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 
-namespace Notifications.Api.Endpoints;
+namespace Qwestr.Modules.Notifications.Api.Endpoints;
 
 public static class NotificationsEndpoints
 {

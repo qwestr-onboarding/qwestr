@@ -1,6 +1,6 @@
 ﻿using MediatR;
 
-namespace Shared.Kernel.Entities;
+namespace Qwestr.Shared.Kernel.Entities;
 
 public abstract class AggregateRoot<TId> : Entity<TId>
 {

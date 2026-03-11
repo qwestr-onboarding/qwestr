@@ -1,16 +1,16 @@
 using System.Reflection;
 using System.Text;
-using Analytics.Api;
-using Gamification.Api;
-using Identity.Api;
-using Integration.Api;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Notifications.Api;
-using Onboarding.Api;
+using Qwestr.Modules.Analytics.Api;
+using Qwestr.Modules.Gamification.Api;
+using Qwestr.Modules.Identity.Api;
+using Qwestr.Modules.Integration.Api;
+using Qwestr.Modules.Notifications.Api;
+using Qwestr.Modules.Onboarding.Api;
+using Qwestr.Shared.Infrastructure;
 using Serilog;
-using Shared.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -1,19 +1,20 @@
 using FluentValidation;
-using Identity.Api.Endpoints;
-using Identity.Application.Abstractions.Repositories;
-using Identity.Application.Abstractions.Services;
-using Identity.Application.Behaviors;
-using Identity.Application.Commands.Login;
 using Identity.Infrastructure;
-using Identity.Infrastructure.Persistence.Repositories;
-using Identity.Infrastructure.Services;
 using MediatR;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Qwestr.Modules.Identity.Api.Endpoints;
+using Qwestr.Modules.Identity.Application.Abstractions.Repositories;
+using Qwestr.Modules.Identity.Application.Abstractions.Services;
+using Qwestr.Modules.Identity.Application.Behaviors;
+using Qwestr.Modules.Identity.Application.Commands.Login;
+using Qwestr.Modules.Identity.Infrastructure;
+using Qwestr.Modules.Identity.Infrastructure.Persistence.Repositories;
+using Qwestr.Modules.Identity.Infrastructure.Services;
 
-namespace Identity.Api;
+namespace Qwestr.Modules.Identity.Api;
 
 public static class IdentityStartup
 {

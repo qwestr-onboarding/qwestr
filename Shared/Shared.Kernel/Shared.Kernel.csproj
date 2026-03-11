@@ -4,6 +4,8 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <RootNamespace>Qwestr.Shared.Kernel</RootNamespace>
+        <AssemblyName>Qwestr.Shared.Kernel</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>

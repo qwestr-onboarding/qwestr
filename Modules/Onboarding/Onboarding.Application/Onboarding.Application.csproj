@@ -4,6 +4,8 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <RootNamespace>Qwestr.Modules.Onboarding.Application</RootNamespace>
+        <AssemblyName>Qwestr.Modules.Onboarding.Application</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>

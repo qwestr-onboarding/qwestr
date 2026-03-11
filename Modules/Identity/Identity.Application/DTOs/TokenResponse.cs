@@ -1,4 +1,4 @@
-namespace Identity.Application.DTOs;
+namespace Qwestr.Modules.Identity.Application.DTOs;
 
 public record TokenResponse(
     string AccessToken,

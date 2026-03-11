@@ -1,4 +1,4 @@
-﻿namespace Shared.Infrastructure.Exceptions;
+﻿namespace Qwestr.Shared.Infrastructure.Exceptions;
 
 public sealed class NotFoundException : Exception
 {

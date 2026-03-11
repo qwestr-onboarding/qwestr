@@ -1,7 +1,7 @@
 using System.Security.Claims;
-using Identity.Domain.Entities;
+using Qwestr.Modules.Identity.Domain.Entities;
 
-namespace Identity.Application.Abstractions.Services;
+namespace Qwestr.Modules.Identity.Application.Abstractions.Services;
 
 public interface ITokenService
 {

@@ -1,4 +1,4 @@
-namespace Identity.Domain.Enums;
+namespace Qwestr.Modules.Identity.Domain.Enums;
 
 public enum TenantPlan
 {

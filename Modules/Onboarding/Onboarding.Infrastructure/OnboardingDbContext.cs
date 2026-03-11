@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Shared.Infrastructure;
+using Qwestr.Shared.Infrastructure;
 
-namespace Onboarding.Infrastructure;
+namespace Qwestr.Modules.Onboarding.Infrastructure;
 
 public class OnboardingDbContext : DbContext
 {

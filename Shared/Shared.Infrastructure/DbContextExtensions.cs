@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Shared.Kernel.Interfaces;
+using Qwestr.Shared.Kernel.Interfaces;
 
-namespace Shared.Infrastructure;
+namespace Qwestr.Shared.Infrastructure;
 
 public static class DbContextExtensions
 {

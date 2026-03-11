@@ -4,6 +4,8 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <RootNamespace>Qwestr.Modules.Notifications.Api</RootNamespace>
+        <AssemblyName>Qwestr.Modules.Notifications.Api</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>

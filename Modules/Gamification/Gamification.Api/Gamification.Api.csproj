@@ -4,6 +4,8 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <RootNamespace>Qwestr.Modules.Gamification.Api</RootNamespace>
+        <AssemblyName>Qwestr.Modules.Gamification.Api</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>

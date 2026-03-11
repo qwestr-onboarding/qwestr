@@ -1,8 +1,8 @@
-using Identity.Application.DTOs;
 using MediatR;
-using Shared.Kernel.Entities;
+using Qwestr.Modules.Identity.Application.DTOs;
+using Qwestr.Shared.Kernel.Entities;
 
-namespace Identity.Application.Commands.RegisterTenant;
+namespace Qwestr.Modules.Identity.Application.Commands.RegisterTenant;
 
 public record RegisterTenantCommand(
     string Name,

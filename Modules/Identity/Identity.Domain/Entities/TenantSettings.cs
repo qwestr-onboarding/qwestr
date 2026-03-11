@@ -1,9 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Shared.Kernel.Entities;
-using Shared.Kernel.Interfaces;
+using Qwestr.Shared.Kernel.Entities;
+using Qwestr.Shared.Kernel.Interfaces;
 
-namespace Identity.Domain.Entities;
+namespace Qwestr.Modules.Identity.Domain.Entities;
 
 /// <summary>
 /// Настройки компании

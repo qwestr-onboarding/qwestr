@@ -1,6 +1,6 @@
-using Identity.Application.Abstractions.Services;
+using Qwestr.Modules.Identity.Application.Abstractions.Services;
 
-namespace Identity.Infrastructure.Services;
+namespace Qwestr.Modules.Identity.Infrastructure.Services;
 
 public class BcryptPasswordHasher : IPasswordHasher
 {

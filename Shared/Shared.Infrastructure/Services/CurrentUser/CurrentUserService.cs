@@ -1,7 +1,7 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 
-namespace Shared.Infrastructure.Services.CurrentUser;
+namespace Qwestr.Shared.Infrastructure.Services.CurrentUser;
 
 public class CurrentUserService : ICurrentUserService
 {

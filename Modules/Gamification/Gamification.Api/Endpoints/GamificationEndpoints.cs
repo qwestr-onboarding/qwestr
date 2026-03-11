@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 
-namespace Gamification.Api.Endpoints;
+namespace Qwestr.Modules.Gamification.Api.Endpoints;
 
 public static class GamificationEndpoints
 {

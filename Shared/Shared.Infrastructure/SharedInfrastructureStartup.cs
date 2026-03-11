@@ -1,10 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi.Models;
-using Shared.Infrastructure.Exceptions;
-using Shared.Infrastructure.Services.CurrentUser;
+using Qwestr.Shared.Infrastructure.Exceptions;
+using Qwestr.Shared.Infrastructure.Services.CurrentUser;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace Shared.Infrastructure;
+namespace Qwestr.Shared.Infrastructure;
 
 public static class SharedInfrastructureStartup
 {

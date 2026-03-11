@@ -2,12 +2,12 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using Identity.Application.Abstractions.Services;
-using Identity.Domain.Entities;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Qwestr.Modules.Identity.Application.Abstractions.Services;
+using Qwestr.Modules.Identity.Domain.Entities;
 
-namespace Identity.Infrastructure.Services;
+namespace Qwestr.Modules.Identity.Infrastructure.Services;
 
 public class JwtTokenService : ITokenService
 {

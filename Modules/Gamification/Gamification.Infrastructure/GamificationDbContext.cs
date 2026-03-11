@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Shared.Infrastructure;
+using Qwestr.Shared.Infrastructure;
 
-namespace Gamification.Infrastructure;
+namespace Qwestr.Modules.Gamification.Infrastructure;
 
 public class GamificationDbContext : DbContext
 {

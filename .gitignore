@@ -418,3 +418,4 @@ FodyWeavers.xsd
 *.msm
 *.msp
 /CLAUDE.md
+/.claude/settings.local.json

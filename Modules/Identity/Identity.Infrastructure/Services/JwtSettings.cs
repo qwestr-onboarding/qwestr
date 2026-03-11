@@ -1,4 +1,4 @@
-namespace Identity.Infrastructure.Services;
+namespace Qwestr.Modules.Identity.Infrastructure.Services;
 
 public class JwtSettings
 {

@@ -1,11 +1,11 @@
-﻿using Gamification.Api.Endpoints;
-using Gamification.Infrastructure;
-using Microsoft.AspNetCore.Routing;
+﻿using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Qwestr.Modules.Gamification.Api.Endpoints;
+using Qwestr.Modules.Gamification.Infrastructure;
 
-namespace Gamification.Api;
+namespace Qwestr.Modules.Gamification.Api;
 
 public static class GamificationStartup
 {

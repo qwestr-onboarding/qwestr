@@ -1,7 +1,7 @@
-using Identity.Application.DTOs;
 using MediatR;
-using Shared.Kernel.Entities;
+using Qwestr.Modules.Identity.Application.DTOs;
+using Qwestr.Shared.Kernel.Entities;
 
-namespace Identity.Application.Commands.RefreshToken;
+namespace Qwestr.Modules.Identity.Application.Commands.RefreshToken;
 
 public record RefreshTokenCommand(string RefreshToken) : IRequest<ActionResult<TokenResponse>>;

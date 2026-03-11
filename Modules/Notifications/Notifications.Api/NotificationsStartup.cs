@@ -2,10 +2,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Notifications.Api.Endpoints;
-using Notifications.Infrastructure;
+using Qwestr.Modules.Notifications.Api.Endpoints;
+using Qwestr.Modules.Notifications.Infrastructure;
 
-namespace Notifications.Api;
+namespace Qwestr.Modules.Notifications.Api;
 
 public static class NotificationsStartup
 {

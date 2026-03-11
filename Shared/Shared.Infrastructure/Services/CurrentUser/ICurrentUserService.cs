@@ -1,4 +1,4 @@
-﻿namespace Shared.Infrastructure.Services.CurrentUser;
+﻿namespace Qwestr.Shared.Infrastructure.Services.CurrentUser;
 
 public interface ICurrentUserService
 {

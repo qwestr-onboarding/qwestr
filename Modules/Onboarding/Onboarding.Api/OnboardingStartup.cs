@@ -2,10 +2,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Onboarding.Api.Endpoints;
-using Onboarding.Infrastructure;
+using Qwestr.Modules.Onboarding.Api.Endpoints;
+using Qwestr.Modules.Onboarding.Infrastructure;
 
-namespace Onboarding.Api;
+namespace Qwestr.Modules.Onboarding.Api;
 
 public static class OnboardingStartup
 {

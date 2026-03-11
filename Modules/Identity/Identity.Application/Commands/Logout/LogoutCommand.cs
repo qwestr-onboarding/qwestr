@@ -1,6 +1,6 @@
 using MediatR;
-using Shared.Kernel.Entities;
+using Qwestr.Shared.Kernel.Entities;
 
-namespace Identity.Application.Commands.Logout;
+namespace Qwestr.Modules.Identity.Application.Commands.Logout;
 
 public record LogoutCommand(string RefreshToken) : IRequest<ActionResult>;

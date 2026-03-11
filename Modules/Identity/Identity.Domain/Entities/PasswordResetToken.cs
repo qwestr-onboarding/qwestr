@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Shared.Kernel.Entities;
+using Qwestr.Shared.Kernel.Entities;
 
-namespace Identity.Domain.Entities;
+namespace Qwestr.Modules.Identity.Domain.Entities;
 
 /// <summary>
 /// Токен сброса пароля

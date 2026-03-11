@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 
-namespace Onboarding.Api.Endpoints;
+namespace Qwestr.Modules.Onboarding.Api.Endpoints;
 
 public static class OnboardingEndpoints
 {

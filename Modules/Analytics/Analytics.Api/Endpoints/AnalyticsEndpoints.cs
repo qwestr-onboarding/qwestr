@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 
-namespace Analytics.Api.Endpoints;
+namespace Qwestr.Modules.Analytics.Api.Endpoints;
 
 public static class AnalyticsEndpoints
 {

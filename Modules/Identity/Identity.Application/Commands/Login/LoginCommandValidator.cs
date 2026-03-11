@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace Identity.Application.Commands.Login;
+namespace Qwestr.Modules.Identity.Application.Commands.Login;
 
 public class LoginCommandValidator : AbstractValidator<LoginCommand>
 {

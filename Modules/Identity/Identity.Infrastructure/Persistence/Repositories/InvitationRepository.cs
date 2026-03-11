@@ -1,9 +1,9 @@
-using Identity.Application.Abstractions.Repositories;
-using Identity.Domain.Entities;
-using Identity.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Qwestr.Modules.Identity.Application.Abstractions.Repositories;
+using Qwestr.Modules.Identity.Domain.Entities;
+using Qwestr.Modules.Identity.Domain.Enums;
 
-namespace Identity.Infrastructure.Persistence.Repositories;
+namespace Qwestr.Modules.Identity.Infrastructure.Persistence.Repositories;
 
 public class InvitationRepository : IInvitationRepository
 {

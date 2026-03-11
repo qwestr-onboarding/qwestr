@@ -1,9 +1,9 @@
 using System.Reflection;
-using Identity.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using Shared.Infrastructure;
+using Qwestr.Modules.Identity.Domain.Entities;
+using Qwestr.Shared.Infrastructure;
 
-namespace Identity.Infrastructure;
+namespace Qwestr.Modules.Identity.Infrastructure;
 
 public class IdentityDbContext : DbContext
 {

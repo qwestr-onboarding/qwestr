@@ -1,11 +1,11 @@
-﻿using Integration.Api.Endpoints;
-using Integration.Infrastructure;
-using Microsoft.AspNetCore.Routing;
+﻿using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Qwestr.Modules.Integration.Api.Endpoints;
+using Qwestr.Modules.Integration.Infrastructure;
 
-namespace Integration.Api;
+namespace Qwestr.Modules.Integration.Api;
 
 public static class IntegrationStartup
 {

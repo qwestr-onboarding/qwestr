@@ -1,8 +1,8 @@
-using Identity.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Qwestr.Modules.Identity.Domain.Entities;
 
-namespace Identity.Infrastructure.Persistence.Configurations;
+namespace Qwestr.Modules.Identity.Infrastructure.Persistence.Configurations;
 
 public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
 {

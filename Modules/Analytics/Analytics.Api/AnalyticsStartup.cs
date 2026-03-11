@@ -1,11 +1,11 @@
-﻿using Analytics.Api.Endpoints;
-using Analytics.Infrastructure;
-using Microsoft.AspNetCore.Routing;
+﻿using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Qwestr.Modules.Analytics.Api.Endpoints;
+using Qwestr.Modules.Analytics.Infrastructure;
 
-namespace Analytics.Api;
+namespace Qwestr.Modules.Analytics.Api;
 
 public static class AnalyticsStartup
 {

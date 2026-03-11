@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Shared.Infrastructure;
+using Qwestr.Shared.Infrastructure;
 
-namespace Integration.Infrastructure;
+namespace Qwestr.Modules.Integration.Infrastructure;
 
 public class IntegrationDbContext : DbContext
 {

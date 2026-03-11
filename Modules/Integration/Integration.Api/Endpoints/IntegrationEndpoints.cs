@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 
-namespace Integration.Api.Endpoints;
+namespace Qwestr.Modules.Integration.Api.Endpoints;
 
 public static class IntegrationEndpoints
 {
