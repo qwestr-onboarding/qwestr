@@ -11,7 +11,7 @@ public static partial class IdentityEndpoints
         identity.MapAuthEndpoints();
         identity.MapUsersEndpoints();
         identity.MapInvitationsEndpoints();
-        identity.MapTenantSettingsEndpoints();
+        identity.MapTenantEndpoints();
         return app;
     }
 }

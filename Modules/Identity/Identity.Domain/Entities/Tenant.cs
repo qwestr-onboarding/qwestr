@@ -41,6 +41,13 @@ public sealed class Tenant : AggregateRoot<Guid>, IAuditableEntity
         };
     }
 
+    public void UpdateInfo(string name, string? subdomain)
+    {
+        Name = name;
+        Subdomain = subdomain;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void Deactivate()
     {
         IsActive = false;

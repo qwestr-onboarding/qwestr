@@ -27,6 +27,9 @@ public class TenantRepository : ITenantRepository
     public async Task<bool> ExistsBySubdomainAsync(string subdomain, CancellationToken ct = default)
         => await _context.Tenants.AnyAsync(t => t.Subdomain == subdomain, ct);
 
+    public async Task<bool> ExistsBySubdomainAsync(string subdomain, Guid excludeTenantId, CancellationToken ct = default)
+        => await _context.Tenants.AnyAsync(t => t.Subdomain == subdomain && t.Id != excludeTenantId, ct);
+
     public async Task AddAsync(Tenant tenant, CancellationToken ct = default)
         => await _context.Tenants.AddAsync(tenant, ct);
 

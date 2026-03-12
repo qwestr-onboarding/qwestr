@@ -55,6 +55,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             {
                 context.Response.StatusCode = 401;
                 return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                var purpose = context.Principal?.FindFirst("purpose")?.Value;
+                if (purpose == "2fa_verification")
+                {
+                    context.Fail("2FA verification tokens cannot be used for authentication.");
+                }
+                return Task.CompletedTask;
             }
         };
     });

@@ -8,6 +8,7 @@ public interface ITenantRepository
     Task<Tenant?> GetWithSettingsAsync(Guid id, CancellationToken ct = default);
     Task<Tenant?> GetBySubdomainAsync(string subdomain, CancellationToken ct = default);
     Task<bool> ExistsBySubdomainAsync(string subdomain, CancellationToken ct = default);
+    Task<bool> ExistsBySubdomainAsync(string subdomain, Guid excludeTenantId, CancellationToken ct = default);
     Task AddAsync(Tenant tenant, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

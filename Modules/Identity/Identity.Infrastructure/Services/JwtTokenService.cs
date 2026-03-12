@@ -54,7 +54,7 @@ public class JwtTokenService : ITokenService
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var expiresAt = DateTime.UtcNow.AddMinutes(5);
+        var expiresAt = DateTime.UtcNow.AddMinutes(10);
 
         var claims = new[]
         {
@@ -89,7 +89,7 @@ public class JwtTokenService : ITokenService
 
         try
         {
-            var principal = new JwtSecurityTokenHandler()
+            var principal = new JwtSecurityTokenHandler { MapInboundClaims = false }
                 .ValidateToken(token, validationParameters, out var securityToken);
 
             if (securityToken is not JwtSecurityToken jwtToken ||

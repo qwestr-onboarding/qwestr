@@ -2,28 +2,52 @@ using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Qwestr.Modules.Identity.Application.Commands.UpdateTenant;
 using Qwestr.Modules.Identity.Application.Commands.UpdateTenantSettings;
+using Qwestr.Modules.Identity.Application.Queries.GetTenant;
 using Qwestr.Modules.Identity.Application.Queries.GetTenantSettings;
 using Qwestr.Shared.Infrastructure.Services.CurrentUser;
 
 namespace Qwestr.Modules.Identity.Api.Endpoints;
 
+internal record UpdateTenantRequest(string Name, string? Subdomain);
 internal record UpdateTenantSettingsRequest(string? Timezone, string? Language, string? CompanyLogoUrl);
 
 public static partial class IdentityEndpoints
 {
-    private static IEndpointRouteBuilder MapTenantSettingsEndpoints(this IEndpointRouteBuilder identity)
+    private static IEndpointRouteBuilder MapTenantEndpoints(this IEndpointRouteBuilder identity)
     {
-        var settings = identity.MapGroup("tenant/settings").WithTags("Identity.Tenant");
+        var tenant = identity.MapGroup("tenant").WithTags("Identity.Tenant").RequireAuthorization();
 
-        settings.MapGet("/", GetTenantSettingsHandler)
+        tenant.MapGet("/", GetTenantHandler);
+        tenant.MapPut("/", UpdateTenantHandler)
+            .RequireAuthorization(p => p.RequireRole("Owner"));
+        
+        tenant.MapGet("/settings", GetTenantSettingsHandler)
             .RequireAuthorization();
-        settings.MapPut("/", UpdateTenantSettingsHandler)
+        tenant.MapPut("/settings", UpdateTenantSettingsHandler)
             .RequireAuthorization(p => p.RequireRole("Admin", "Owner"));
-
         return identity;
     }
 
+    private static async Task<IResult> GetTenantHandler(
+        ICurrentUserService currentUser, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new GetTenantQuery(currentUser.TenantId), ct);
+        return result.IsSuccess
+            ? Results.Ok(result.Value)
+            : Results.BadRequest(new { result.Error });
+    }
+
+    private static async Task<IResult> UpdateTenantHandler(
+        UpdateTenantRequest body, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new UpdateTenantCommand(currentUser.TenantId, body.Name, body.Subdomain), ct);
+        return result.IsSuccess
+            ? Results.NoContent()
+            : Results.BadRequest(new { result.Error });
+    }
+    
     private static async Task<IResult> GetTenantSettingsHandler(
         ICurrentUserService currentUser, ISender sender, CancellationToken ct)
     {
