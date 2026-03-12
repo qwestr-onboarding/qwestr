@@ -9,6 +9,9 @@ public static partial class IdentityEndpoints
     {
         var identity = app.MapGroup("/api/identity");
         identity.MapAuthEndpoints();
+        identity.MapUsersEndpoints();
+        identity.MapInvitationsEndpoints();
+        identity.MapTenantSettingsEndpoints();
         return app;
     }
 }

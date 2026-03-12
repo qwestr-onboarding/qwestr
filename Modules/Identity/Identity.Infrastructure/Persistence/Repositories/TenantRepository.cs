@@ -16,6 +16,11 @@ public class TenantRepository : ITenantRepository
     public async Task<Tenant?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await _context.Tenants.FirstOrDefaultAsync(t => t.Id == id, ct);
 
+    public async Task<Tenant?> GetWithSettingsAsync(Guid id, CancellationToken ct = default)
+        => await _context.Tenants
+            .Include(t => t.Settings)
+            .FirstOrDefaultAsync(t => t.Id == id, ct);
+
     public async Task<Tenant?> GetBySubdomainAsync(string subdomain, CancellationToken ct = default)
         => await _context.Tenants.FirstOrDefaultAsync(t => t.Subdomain == subdomain, ct);
 

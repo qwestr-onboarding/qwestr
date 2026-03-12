@@ -22,6 +22,7 @@ public sealed class PasswordResetToken : Entity<Guid>
     public DateTime CreatedAt { get; set; }
 
     public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
+    public bool IsValid => !IsUsed && !IsExpired;
 
     [ForeignKey(nameof(UserId))]
     public User User { get; set; } = null!;

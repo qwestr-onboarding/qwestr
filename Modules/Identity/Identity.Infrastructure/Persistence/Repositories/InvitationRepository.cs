@@ -14,16 +14,24 @@ public class InvitationRepository : IInvitationRepository
         _context = context;
     }
 
+    public async Task<Invitation?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => await _context.Invitations.FirstOrDefaultAsync(i => i.Id == id, ct);
+
     public async Task<Invitation?> GetByTokenAsync(string token, CancellationToken ct = default)
         => await _context.Invitations.FirstOrDefaultAsync(i => i.Token == token, ct);
 
-    public async Task<List<Invitation>> GetByTenantAsync(Guid tenantId, int page, int pageSize, CancellationToken ct = default)
+    public async Task<List<Invitation>> GetByTenantAsync(Guid tenantId, int page, int pageSize, InvitationStatus? status = null, CancellationToken ct = default)
         => await _context.Invitations
-            .Where(i => i.TenantId == tenantId)
+            .Include(i => i.InvitedByUser)
+            .Where(i => i.TenantId == tenantId && (status == null || i.Status == status))
             .OrderByDescending(i => i.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
+
+    public async Task<int> CountByTenantAsync(Guid tenantId, InvitationStatus? status = null, CancellationToken ct = default)
+        => await _context.Invitations
+            .CountAsync(i => i.TenantId == tenantId && (status == null || i.Status == status), ct);
 
     public async Task<bool> ExistsPendingAsync(Guid tenantId, string email, CancellationToken ct = default)
         => await _context.Invitations.AnyAsync(

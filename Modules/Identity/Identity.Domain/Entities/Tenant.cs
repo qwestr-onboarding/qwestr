@@ -45,4 +45,27 @@ public sealed class Tenant : AggregateRoot<Guid>, IAuditableEntity
     {
         IsActive = false;
     }
+
+    public void UpdateSettings(string? timezone, string? language, string? companyLogoUrl)
+    {
+        if (Settings is null)
+        {
+            return;
+        }
+
+        if (timezone is not null)
+        {
+            Settings.Timezone = timezone;
+        }
+
+        if (language is not null)
+        {
+            Settings.Language = language;
+        }
+
+        if (companyLogoUrl is not null)
+        {
+            Settings.CompanyLogoUrl = companyLogoUrl;
+        }
+    }
 }

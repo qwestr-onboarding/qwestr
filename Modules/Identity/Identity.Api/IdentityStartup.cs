@@ -1,5 +1,4 @@
 using FluentValidation;
-using Identity.Infrastructure;
 using MediatR;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
@@ -36,6 +35,7 @@ public static class IdentityStartup
 
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
+        services.AddSingleton<ITotpService, TotpService>();
 
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(LoginCommand).Assembly));
         services.AddValidatorsFromAssembly(typeof(LoginCommand).Assembly);

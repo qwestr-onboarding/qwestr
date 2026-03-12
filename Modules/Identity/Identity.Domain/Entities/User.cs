@@ -74,4 +74,48 @@ public sealed class User : AggregateRoot<Guid>, IAuditableEntity
             CreatedAt = DateTime.UtcNow
         };
     }
+
+    public void UpdateProfile(string firstName, string lastName)
+    {
+        FirstName = firstName;
+        LastName = lastName;
+    }
+
+    public void ChangePassword(string newPasswordHash)
+    {
+        PasswordHash = newPasswordHash;
+    }
+
+    public void Deactivate()
+    {
+        IsActive = false;
+    }
+
+    public void Activate()
+    {
+        IsActive = true;
+    }
+
+    public void ChangeRole(UserRole newRole)
+    {
+        Role = newRole;
+    }
+
+    public void RecordLogin()
+    {
+        LastLoginAt = DateTime.UtcNow;
+    }
+
+    public void ConfirmTwoFactor()
+    {
+        TwoFactorEnabled = true;
+        TwoFactorConfirmedAt = DateTime.UtcNow;
+    }
+
+    public void DisableTwoFactor()
+    {
+        TwoFactorEnabled = false;
+        TwoFactorSecret = null;
+        TwoFactorConfirmedAt = null;
+    }
 }

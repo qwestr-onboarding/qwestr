@@ -38,4 +38,20 @@ public class UserRepository : IUserRepository
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await _context.SaveChangesAsync(ct);
+
+    public async Task<List<UserBackupCode>> GetActiveBackupCodesAsync(Guid userId, CancellationToken ct = default)
+        => await _context.UserBackupCodes
+            .Where(bc => bc.UserId == userId && !bc.IsUsed)
+            .ToListAsync(ct);
+
+    public async Task AddBackupCodesAsync(IEnumerable<UserBackupCode> codes, CancellationToken ct = default)
+        => await _context.UserBackupCodes.AddRangeAsync(codes, ct);
+
+    public async Task DeleteAllBackupCodesAsync(Guid userId, CancellationToken ct = default)
+    {
+        var codes = await _context.UserBackupCodes
+            .Where(bc => bc.UserId == userId)
+            .ToListAsync(ct);
+        _context.UserBackupCodes.RemoveRange(codes);
+    }
 }

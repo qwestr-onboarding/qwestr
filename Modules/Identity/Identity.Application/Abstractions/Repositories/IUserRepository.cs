@@ -11,4 +11,8 @@ public interface IUserRepository
     Task<int> CountByTenantAsync(Guid tenantId, CancellationToken ct = default);
     Task AddAsync(User user, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
+
+    Task<List<UserBackupCode>> GetActiveBackupCodesAsync(Guid userId, CancellationToken ct = default);
+    Task AddBackupCodesAsync(IEnumerable<UserBackupCode> codes, CancellationToken ct = default);
+    Task DeleteAllBackupCodesAsync(Guid userId, CancellationToken ct = default);
 }

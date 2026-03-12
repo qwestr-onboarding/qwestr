@@ -7,6 +7,9 @@ using Qwestr.Modules.Identity.Application.Commands.Login;
 using Qwestr.Modules.Identity.Application.Commands.Logout;
 using Qwestr.Modules.Identity.Application.Commands.RefreshToken;
 using Qwestr.Modules.Identity.Application.Commands.RegisterTenant;
+using Qwestr.Modules.Identity.Application.Commands.RequestPasswordReset;
+using Qwestr.Modules.Identity.Application.Commands.ResetPassword;
+using Qwestr.Modules.Identity.Application.Commands.VerifyTwoFactor;
 using Qwestr.Modules.Identity.Infrastructure.Services;
 
 namespace Qwestr.Modules.Identity.Api.Endpoints;
@@ -14,14 +17,17 @@ namespace Qwestr.Modules.Identity.Api.Endpoints;
 public static partial class IdentityEndpoints
 {
     private const string RefreshTokenCookie = "refresh_token";
-    
+
     private static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder identity)
     {
         var auth = identity.MapGroup("auth").WithTags("Identity.Auth");
         auth.MapPost("/register", RegisterHandler).AllowAnonymous();
         auth.MapPost("/login", LoginHandler).AllowAnonymous();
+        auth.MapPost("/login/2fa", VerifyTwoFactorHandler).AllowAnonymous();
         auth.MapPost("/refresh", RefreshHandler).AllowAnonymous();
         auth.MapPost("/logout", LogoutHandler).RequireAuthorization();
+        auth.MapPost("/password/forgot", ForgotPasswordHandler).AllowAnonymous();
+        auth.MapPost("/password/reset", ResetPasswordHandler).AllowAnonymous();
         return identity;
     }
 
@@ -101,6 +107,35 @@ public static partial class IdentityEndpoints
             SameSite = SameSiteMode.Strict,
             Expires = DateTimeOffset.UtcNow.AddDays(jwtOptions.Value.RefreshTokenExpiryDays)
         });
+    }
+
+    private static async Task<IResult> VerifyTwoFactorHandler(VerifyTwoFactorCommand command, HttpContext ctx,
+        ISender sender, IOptions<JwtSettings> jwtOptions, CancellationToken ct)
+    {
+        var result = await sender.Send(command, ct);
+        if (!result.IsSuccess)
+        {
+            return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: result.Error);
+        }
+
+        var data = result.Value!;
+        SetRefreshTokenCookie(ctx, data.RefreshToken, jwtOptions);
+
+        return Results.Ok(new { data.AccessToken, data.ExpiresAt });
+    }
+
+    private static async Task<IResult> ForgotPasswordHandler(RequestPasswordResetCommand command, ISender sender, CancellationToken ct)
+    {
+        await sender.Send(command, ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> ResetPasswordHandler(ResetPasswordCommand command, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(command, ct);
+        return result.IsSuccess
+            ? Results.NoContent()
+            : Results.BadRequest(new { result.Error });
     }
 
     private static void DeleteRefreshTokenCookie(HttpContext ctx)

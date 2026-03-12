@@ -7,5 +7,7 @@ public interface ITokenService
 {
     (string Token, DateTime ExpiresAt) GenerateAccessToken(User user);
     (string Token, DateTime ExpiresAt) GenerateRefreshToken();
+    (string Token, DateTime ExpiresAt) GenerateTwoFactorToken(Guid userId);
+    Guid? GetUserIdFromTwoFactorToken(string token);
     ClaimsPrincipal? GetPrincipalFromExpiredToken(string token);
 }

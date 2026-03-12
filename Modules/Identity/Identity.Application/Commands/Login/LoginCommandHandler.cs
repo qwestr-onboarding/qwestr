@@ -50,11 +50,12 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, ActionResult<To
 
         if (user.TwoFactorEnabled)
         {
+            var (tempToken, tempExpiresAt) = _tokenService.GenerateTwoFactorToken(user.Id);
             return ActionResult<TokenResponse>.Success(
-                new TokenResponse(string.Empty, string.Empty, DateTime.UtcNow, RequiresTwoFactor: true));
+                new TokenResponse(tempToken, string.Empty, tempExpiresAt, RequiresTwoFactor: true));
         }
 
-        user.LastLoginAt = DateTime.UtcNow;
+        user.RecordLogin();
 
         var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user);
         var (refreshTokenValue, refreshExpiresAt) = _tokenService.GenerateRefreshToken();
