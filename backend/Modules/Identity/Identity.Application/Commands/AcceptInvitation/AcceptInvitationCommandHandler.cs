@@ -14,6 +14,7 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
 {
     private readonly IInvitationRepository _invitationRepository;
     private readonly IUserRepository _userRepository;
+    private readonly ITenantRepository _tenantRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenService _tokenService;
@@ -22,6 +23,7 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
     public AcceptInvitationCommandHandler(
         IInvitationRepository invitationRepository,
         IUserRepository userRepository,
+        ITenantRepository tenantRepository,
         IRefreshTokenRepository refreshTokenRepository,
         IPasswordHasher passwordHasher,
         ITokenService tokenService,
@@ -29,6 +31,7 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
     {
         _invitationRepository = invitationRepository;
         _userRepository = userRepository;
+        _tenantRepository = tenantRepository;
         _refreshTokenRepository = refreshTokenRepository;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
@@ -63,7 +66,8 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
         invitation.Accept();
         await _invitationRepository.SaveChangesAsync(ct);
 
-        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user);
+        var tenant = await _tenantRepository.GetByIdAsync(user.TenantId, ct);
+        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user, tenant?.Subdomain);
         var (refreshTokenValue, refreshExpiresAt) = _tokenService.GenerateRefreshToken();
 
         var refreshToken = DomainRefreshToken.Create(user.Id, refreshTokenValue, refreshExpiresAt);

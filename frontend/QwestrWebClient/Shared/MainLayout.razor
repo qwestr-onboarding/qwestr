@@ -1,28 +1,40 @@
 @inherits LayoutComponentBase
 
+@using Client.Infrastructure.Auth
+
+@inject SessionManager Session
+
 <MudThemeProvider Theme="QwestrTheme.Theme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout>
-    <TopBar DrawerOpen="_drawerOpen" OnMenuToggle="ToggleDrawer" />
+@if (!_initialized)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary"
+                       Style="position:fixed;top:0;left:0;right:0;z-index:9999;" />
+}
+else
+{
+    <MudLayout>
+        <TopBar DrawerOpen="_drawerOpen" OnMenuToggle="ToggleDrawer" />
 
-    <MudDrawer @bind-Open="_drawerOpen"
-               ClipMode="DrawerClipMode.Docked"
-               Variant="DrawerVariant.Mini"
-               MiniWidth="64px" Elevation="0" Class="border-r-1 mud-border-default">
-        <SideNav Open="_drawerOpen" />
-    </MudDrawer>
+        <MudDrawer @bind-Open="_drawerOpen"
+                   ClipMode="DrawerClipMode.Docked"
+                   Variant="DrawerVariant.Mini"
+                   MiniWidth="64px" Elevation="0" Class="border-r-1 mud-border-default">
+            <SideNav Open="_drawerOpen" />
+        </MudDrawer>
 
-    <MudMainContent>
-        <div class="content-wrapper">
-            @Body
-        </div>
-    </MudMainContent>
-</MudLayout>
+        <MudMainContent>
+            <div class="content-wrapper">
+                @Body
+            </div>
+        </MudMainContent>
+    </MudLayout>
 
-<BottomNav />
+    <BottomNav />
+}
 
 <div id="blazor-error-ui">
     An unhandled error has occurred.
@@ -31,7 +43,19 @@
 </div>
 
 @code {
-    private bool _drawerOpen = false;
+    private bool _drawerOpen;
+    private bool _initialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        // EnsureValidTokenAsync делает refresh если нужно,
+        // и сам редиректит на /login если сессия потеряна
+        await Session.EnsureValidTokenAsync();
+        _initialized = true;
+        StateHasChanged();
+    }
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 }

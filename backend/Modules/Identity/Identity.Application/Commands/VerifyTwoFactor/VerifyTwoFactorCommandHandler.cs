@@ -10,6 +10,7 @@ namespace Qwestr.Modules.Identity.Application.Commands.VerifyTwoFactor;
 public class VerifyTwoFactorCommandHandler : IRequestHandler<VerifyTwoFactorCommand, ActionResult<TokenResponse>>
 {
     private readonly IUserRepository _userRepository;
+    private readonly ITenantRepository _tenantRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly ITotpService _totpService;
     private readonly IPasswordHasher _passwordHasher;
@@ -17,12 +18,14 @@ public class VerifyTwoFactorCommandHandler : IRequestHandler<VerifyTwoFactorComm
 
     public VerifyTwoFactorCommandHandler(
         IUserRepository userRepository,
+        ITenantRepository tenantRepository,
         IRefreshTokenRepository refreshTokenRepository,
         ITotpService totpService,
         IPasswordHasher passwordHasher,
         ITokenService tokenService)
     {
         _userRepository = userRepository;
+        _tenantRepository = tenantRepository;
         _refreshTokenRepository = refreshTokenRepository;
         _totpService = totpService;
         _passwordHasher = passwordHasher;
@@ -34,18 +37,18 @@ public class VerifyTwoFactorCommandHandler : IRequestHandler<VerifyTwoFactorComm
         var userId = _tokenService.GetUserIdFromTwoFactorToken(request.TempToken);
         if (userId is null)
         {
-            return ActionResult<TokenResponse>.Failure("Invalid or expired temporary token.");
+            return ActionResult<TokenResponse>.Failure("Недействительный или просроченный временный токен.");
         }
 
         var user = await _userRepository.GetByIdAsync(userId.Value, ct);
         if (user is null || !user.IsActive)
         {
-            return ActionResult<TokenResponse>.Failure("User not found or inactive.");
+            return ActionResult<TokenResponse>.Failure("Пользователь не найден или неактивен.");
         }
 
         if (!user.TwoFactorEnabled || string.IsNullOrEmpty(user.TwoFactorSecret))
         {
-            return ActionResult<TokenResponse>.Failure("Two-factor authentication is not enabled for this user.");
+            return ActionResult<TokenResponse>.Failure("Для этого пользователя не включена двухфакторная аутентификация.");
         }
 
         if (request.IsBackupCode)
@@ -55,7 +58,7 @@ public class VerifyTwoFactorCommandHandler : IRequestHandler<VerifyTwoFactorComm
 
             if (matchingCode is null)
             {
-                return ActionResult<TokenResponse>.Failure("Invalid backup code.");
+                return ActionResult<TokenResponse>.Failure("Неверный резервный код.");
             }
 
             matchingCode.MarkAsUsed();
@@ -64,13 +67,14 @@ public class VerifyTwoFactorCommandHandler : IRequestHandler<VerifyTwoFactorComm
         {
             if (!_totpService.VerifyCode(user.TwoFactorSecret, request.Code))
             {
-                return ActionResult<TokenResponse>.Failure("Invalid verification code.");
+                return ActionResult<TokenResponse>.Failure("Неверный проверочный код.");
             }
         }
 
         user.RecordLogin();
 
-        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user);
+        var tenant = await _tenantRepository.GetByIdAsync(user.TenantId, ct);
+        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user, tenant?.Subdomain);
         var (refreshTokenValue, refreshExpiresAt) = _tokenService.GenerateRefreshToken();
 
         var refreshToken = DomainRefreshToken.Create(user.Id, refreshTokenValue, refreshExpiresAt);

@@ -20,6 +20,8 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
+        <ProjectReference Include="..\..\backend\Shared\Shared.Contracts\Shared.Contracts.csproj" />
+        <ProjectReference Include="..\..\backend\Shared\Shared.Kernel\Shared.Kernel.csproj" />
     </ItemGroup>
 
 </Project>

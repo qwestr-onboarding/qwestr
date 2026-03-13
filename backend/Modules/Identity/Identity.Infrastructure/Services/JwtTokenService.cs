@@ -18,20 +18,25 @@ public class JwtTokenService : ITokenService
         _settings = settings.Value;
     }
 
-    public (string Token, DateTime ExpiresAt) GenerateAccessToken(User user)
+    public (string Token, DateTime ExpiresAt) GenerateAccessToken(User user, string? subdomain = null)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expiresAt = DateTime.UtcNow.AddMinutes(_settings.AccessTokenExpiryMinutes);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim("tenant_id", user.TenantId.ToString()),
-            new Claim(ClaimTypes.Role, user.Role.ToString())
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Email, user.Email),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new("tenant_id", user.TenantId.ToString()),
+            new(ClaimTypes.Role, user.Role.ToString())
         };
+
+        if (subdomain is not null)
+        {
+            claims.Add(new Claim("tenant_subdomain", subdomain));
+        }
 
         var token = new JwtSecurityToken(
             issuer: _settings.Issuer,

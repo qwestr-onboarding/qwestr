@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Routing;
 using Qwestr.Modules.Identity.Application.Commands.UpdateTenant;
 using Qwestr.Modules.Identity.Application.Commands.UpdateTenantSettings;
 using Qwestr.Modules.Identity.Application.Queries.GetTenant;
+using Qwestr.Modules.Identity.Application.Queries.GetTenantBySubdomain;
 using Qwestr.Modules.Identity.Application.Queries.GetTenantSettings;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Tenant.Requests;
 using Qwestr.Shared.Contracts.ApiDto.Shared.Responses;
@@ -18,6 +19,7 @@ public static partial class IdentityEndpoints
     {
         var tenant = identity.MapGroup("tenant").WithTags("Identity.Tenant").RequireAuthorization();
 
+        tenant.MapGet("/lookup/{subdomain}", LookupTenantBySubdomainHandler).AllowAnonymous();
         tenant.MapGet("/", GetTenantHandler);
         tenant.MapPut("/", UpdateTenantHandler)
             .RequireAuthorization(p => p.RequireRole("Owner"));
@@ -27,6 +29,15 @@ public static partial class IdentityEndpoints
         tenant.MapPut("/settings", UpdateTenantSettingsHandler)
             .RequireAuthorization(p => p.RequireRole("Admin", "Owner"));
         return identity;
+    }
+
+    private static async Task<IResult> LookupTenantBySubdomainHandler(
+        string subdomain, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new GetTenantBySubdomainQuery(subdomain), ct);
+        return result.IsSuccess
+            ? Results.Ok(result.Value)
+            : Results.NotFound(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> GetTenantHandler(

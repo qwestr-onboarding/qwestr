@@ -10,7 +10,7 @@ public static class QwestrTheme
         {
             Primary = "#6C3FC5",
             PrimaryContrastText = "#FFFFFF",
-            Secondary = "#FF6B35",
+            Secondary = "#686868",
             SecondaryContrastText = "#FFFFFF",
             Background = "#F9FAFE",
             Surface = "#FFFFFF",

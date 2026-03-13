@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using Client.Infrastructure.Api.Models;
 
 namespace Client.Infrastructure.Api;
@@ -62,7 +63,7 @@ public class QwestrApiClient
             var data = await response.Content.ReadFromJsonAsync<T>(ct);
             return ApiResult<T>.Success(data!);
         }
-        var error = await response.Content.ReadAsStringAsync(ct);
+        var error = await ReadErrorAsync(response, ct);
         return ApiResult<T>.Failure(response.StatusCode, error);
     }
 
@@ -70,7 +71,24 @@ public class QwestrApiClient
     {
         if (response.IsSuccessStatusCode)
             return ApiResult.Success();
-        var error = await response.Content.ReadAsStringAsync(ct);
+        var error = await ReadErrorAsync(response, ct);
         return ApiResult.Failure(response.StatusCode, error);
+    }
+
+    private static async Task<string> ReadErrorAsync(HttpResponseMessage response, CancellationToken ct)
+    {
+        var body = await response.Content.ReadAsStringAsync(ct);
+        try
+        {
+            var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("title", out var title) &&
+                title.ValueKind == JsonValueKind.String)
+                return title.GetString()!;
+            if (doc.RootElement.TryGetProperty("error", out var error) &&
+                error.ValueKind == JsonValueKind.String)
+                return error.GetString()!;
+        }
+        catch (JsonException) { }
+        return body;
     }
 }

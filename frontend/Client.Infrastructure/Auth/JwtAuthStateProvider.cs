@@ -24,7 +24,7 @@ public class JwtAuthStateProvider(TokenStorageService tokenStorage) : Authentica
     public void NotifyAuthStateChanged()
         => NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
 
-    private static IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
+    public IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
     {
         var parts = jwt.Split('.');
         if (parts.Length < 2) return [];

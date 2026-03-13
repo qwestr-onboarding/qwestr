@@ -34,18 +34,18 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, ActionResult<To
         var tenant = await _tenantRepository.GetBySubdomainAsync(request.Subdomain, ct);
         if (tenant is null || !tenant.IsActive)
         {
-            return ActionResult<TokenResponse>.Failure("Invalid credentials.");
+            return ActionResult<TokenResponse>.Failure("Неверные данные для входа.");
         }
 
         var user = await _userRepository.GetByEmailAsync(tenant.Id, request.Email, ct);
         if (user is null || !user.IsActive)
         {
-            return ActionResult<TokenResponse>.Failure("Invalid credentials.");
+            return ActionResult<TokenResponse>.Failure("Неверные данные для входа.");
         }
 
         if (!_passwordHasher.Verify(request.Password, user.PasswordHash))
         {
-            return ActionResult<TokenResponse>.Failure("Invalid credentials.");
+            return ActionResult<TokenResponse>.Failure("Неверные данные для входа.");
         }
 
         if (user.TwoFactorEnabled)
@@ -57,7 +57,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, ActionResult<To
 
         user.RecordLogin();
 
-        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user);
+        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user, tenant.Subdomain);
         var (refreshTokenValue, refreshExpiresAt) = _tokenService.GenerateRefreshToken();
 
         var refreshToken = DomainRefreshToken.Create(user.Id, refreshTokenValue, refreshExpiresAt);

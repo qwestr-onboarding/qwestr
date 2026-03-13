@@ -1,4 +1,6 @@
-﻿namespace Client.Infrastructure.Auth;
+﻿using System.Text.Json;
+
+namespace Client.Infrastructure.Auth;
 
 public class TokenStorageService
 {
@@ -16,6 +18,6 @@ public class TokenStorageService
         AccessToken = null;
         ExpiresAt = null;
     }
-
+    
     public bool IsExpired => ExpiresAt.HasValue && ExpiresAt.Value <= DateTime.UtcNow;
 }

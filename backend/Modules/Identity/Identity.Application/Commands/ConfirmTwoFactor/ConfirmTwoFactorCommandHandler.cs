@@ -34,22 +34,22 @@ public class ConfirmTwoFactorCommandHandler : IRequestHandler<ConfirmTwoFactorCo
 
         if (user is null)
         {
-            return ActionResult<BackupCodesResponse>.Failure("User not found.");
+            return ActionResult<BackupCodesResponse>.Failure("Пользователь не найден.");
         }
 
         if (user.TwoFactorEnabled)
         {
-            return ActionResult<BackupCodesResponse>.Failure("Two-factor authentication is already enabled.");
+            return ActionResult<BackupCodesResponse>.Failure("Двухфакторная аутентификация уже включена.");
         }
 
         if (string.IsNullOrEmpty(user.TwoFactorSecret))
         {
-            return ActionResult<BackupCodesResponse>.Failure("Two-factor setup has not been initiated. Call setup first.");
+            return ActionResult<BackupCodesResponse>.Failure("Двухфакторная настройка не была запущена. Сначала выполните настройку.");
         }
 
         if (!_totpService.VerifyCode(user.TwoFactorSecret, request.Code))
         {
-            return ActionResult<BackupCodesResponse>.Failure("Invalid verification code.");
+            return ActionResult<BackupCodesResponse>.Failure("Неверный проверочный код.");
         }
 
         user.ConfirmTwoFactor();

@@ -116,7 +116,7 @@ public static partial class IdentityEndpoints
         });
     }
 
-    private static async Task<IResult> VerifyTwoFactorHandler(VerifyTwoRequest dto, HttpContext ctx,
+    private static async Task<IResult> VerifyTwoFactorHandler(VerifyTwoFactorRequest dto, HttpContext ctx,
         ISender sender, IOptions<JwtSettings> jwtOptions, CancellationToken ct)
     {
         var command = new VerifyTwoFactorCommand(dto.TempToken, dto.Code, dto.IsBackupCode);

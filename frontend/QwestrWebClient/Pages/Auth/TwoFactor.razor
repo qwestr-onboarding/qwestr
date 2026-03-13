@@ -1,0 +1,128 @@
+@page "/login/2fa"
+@layout AuthLayout
+
+@using Client.Infrastructure.Auth
+@using Qwestr.Shared.Contracts.ApiDto.Identity.Auth.Requests
+
+@inject BffAuthClient BffAuth
+@inject TokenStorageService TokenStorage
+@inject JwtAuthStateProvider AuthStateProvider
+@inject SessionManager Session
+@inject NavigationManager Nav
+
+<PageTitle>Двухфакторная аутентификация — Qwestr</PageTitle>
+
+<MudPaper Outlined="true" Style="width:100%;max-width:400px;padding:40px 36px;border-radius:16px;" Elevation="0">
+    <MudStack Spacing="4">
+        <MudStack AlignItems="AlignItems.Center" Spacing="1">
+            <MudText Typo="Typo.h5" Align="Align.Center" Style="font-weight:700; letter-spacing:-0.5px;">
+                Qwestr
+            </MudText>
+            <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+                Введите код из приложения-аутентификатора
+            </MudText>
+        </MudStack>
+
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" ShowCloseIcon="true"
+                      CloseIconClicked="() => _error = null">
+                @_error
+            </MudAlert>
+        }
+
+        <MudTextField @bind-Value="_code"
+                      Label="Код подтверждения"
+                      Variant="Variant.Outlined"
+                      FullWidth="true"
+                      MaxLength="@(_isBackupCode ? 24 : 6)"
+                      Disabled="_loading"
+                      Placeholder="@(_isBackupCode ? "Резервный код" : "000000")"
+                      @onkeydown="OnKeyDown" Immediate="true" />
+
+        <MudCheckBox @bind-Value="_isBackupCode" Label="Использовать резервный код" />
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   FullWidth="true"
+                   Size="Size.Large"
+                   OnClick="Submit"
+                   Disabled="_loading">
+            @if (_loading)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Проверка...</MudText>
+            }
+            else
+            {
+                <MudText>Подтвердить</MudText>
+            }
+        </MudButton>
+
+        <MudLink Href="/login" Typo="Typo.body2" Align="Align.Center">
+            Вернуться ко входу
+        </MudLink>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [SupplyParameterFromQuery(Name = "tempToken")]
+    public string? TempToken { get; set; }
+
+    private string _code = "";
+    private bool _isBackupCode;
+    private string? _error;
+    private bool _loading;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (await Session.TryRestoreSessionAsync())
+        {
+            Nav.NavigateTo("/dashboard");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(TempToken))
+            Nav.NavigateTo("/login");
+    }
+
+    private async Task Submit()
+    {
+        _error = null;
+
+        if (string.IsNullOrWhiteSpace(_code))
+        {
+            _error = "Введите код подтверждения.";
+            return;
+        }
+
+        _loading = true;
+        try
+        {
+            var result = await BffAuth.VerifyTwoFactorAsync(
+                new VerifyTwoFactorRequest(TempToken!, _code.Trim(), _isBackupCode));
+
+            if (!result.IsSuccess)
+            {
+                _error = result.Error ?? "Неверный код. Попробуйте ещё раз.";
+                return;
+            }
+
+            var data = result.Data!;
+            TokenStorage.SetToken(data.AccessToken!, data.ExpiresAt);
+            AuthStateProvider.NotifyAuthStateChanged();
+            Nav.NavigateTo("/dashboard");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Submit();
+    }
+}

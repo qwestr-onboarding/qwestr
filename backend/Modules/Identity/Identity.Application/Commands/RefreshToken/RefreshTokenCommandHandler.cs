@@ -11,15 +11,18 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
 {
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IUserRepository _userRepository;
+    private readonly ITenantRepository _tenantRepository;
     private readonly ITokenService _tokenService;
 
     public RefreshTokenCommandHandler(
         IRefreshTokenRepository refreshTokenRepository,
         IUserRepository userRepository,
+        ITenantRepository tenantRepository,
         ITokenService tokenService)
     {
         _refreshTokenRepository = refreshTokenRepository;
         _userRepository = userRepository;
+        _tenantRepository = tenantRepository;
         _tokenService = tokenService;
     }
 
@@ -51,7 +54,8 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
             return ActionResult<TokenResponse>.Failure("User not found or inactive.");
         }
 
-        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user);
+        var tenant = await _tenantRepository.GetByIdAsync(user.TenantId, ct);
+        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user, tenant?.Subdomain);
         var (newRefreshTokenValue, refreshExpiresAt) = _tokenService.GenerateRefreshToken();
 
         existingToken.Revoke(newRefreshTokenValue);

@@ -1,6 +1,244 @@
 @page "/login"
 @layout AuthLayout
 
+@using Client.Infrastructure.Api.Endpoints
+@using Client.Infrastructure.Auth
+@using Client.Infrastructure.Services
+@using Qwestr.Shared.Contracts.ApiDto.Identity.Auth.Requests
+
+@inject BffAuthClient BffAuth
+@inject TenantApi TenantApi
+@inject TokenStorageService TokenStorage
+@inject JwtAuthStateProvider AuthStateProvider
+@inject TenantResolver TenantResolver
+@inject SessionManager Session
+@inject NavigationManager Nav
+
 <PageTitle>Вход — Qwestr</PageTitle>
 
-<MudText Typo="Typo.h4" Align="Align.Center">Login</MudText>
+@if (_checking)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else if (_noSubdomain)
+{
+    <MudPaper Outlined="true" Style="width:100%;max-width:400px;padding:40px 36px;border-radius:16px;" Elevation="0">
+        <MudStack Spacing="4" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h5" Align="Align.Center" Style="font-weight:700;">
+                Введите адрес организации
+            </MudText>
+            <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+                Войдите через уникальный поддомен вашей организации.
+            </MudText>
+
+            @if (_subdomainNotFound)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    Организация не найдена. Проверьте адрес или зарегистрируйте новую компанию.
+                </MudAlert>
+            }
+
+            <MudTextField @bind-Value="_subdomainInput"
+                          Label="Поддомен организации"
+                          Adornment="Adornment.End"
+                          AdornmentText="@("." +TenantResolver.BaseDomain)"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          @onkeydown="OnSubdomainKeyDown" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       OnClick="GoToSubdomain">
+                Перейти
+            </MudButton>
+
+            <MudDivider Class="w-100" />
+
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Ваша организация не зарегистрирована?
+                <MudLink Href="/register">Зарегистрировать бесплатно</MudLink>
+            </MudText>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Outlined="true" Style="width:100%;max-width:400px;padding:40px 36px;border-radius:16px;" Elevation="0">
+        <MudStack Spacing="4">
+            <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                <MudText Typo="Typo.h5" Align="Align.Center" Style="font-weight:700; letter-spacing:-0.5px;">
+                    Qwestr
+                </MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+                    Вход в <strong>@_subdomain</strong>
+                </MudText>
+            </MudStack>
+
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" ShowCloseIcon="true"
+                          CloseIconClicked="() => _error = null">
+                    @_error
+                </MudAlert>
+            }
+
+            <MudTextField @bind-Value="_email"
+                          Label="Эл. почта"
+                          InputType="InputType.Email"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Disabled="_loading"
+                          @onkeydown="OnFieldKeyDown" Immediate="true" />
+
+            <MudTextField @bind-Value="_password"
+                          Label="Пароль"
+                          InputType="@_passwordInputType"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Disabled="_loading"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@_passwordToggleIcon"
+                          OnAdornmentClick="TogglePasswordVisibility"
+                          @onkeydown="OnFieldKeyDown" Immediate="true" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       OnClick="Submit" Disabled="_loading">
+                @if (_loading)
+                {
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                    <MudText Class="ms-2">Войти</MudText>
+                }
+                else
+                {
+                    <MudText>Войти</MudText>
+                }
+            </MudButton>
+
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudLink Href="/forgot-password" Typo="Typo.body2">Забыли пароль?</MudLink>
+                <MudLink Href="/register" Typo="Typo.body2">Регистрация компании</MudLink>
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+}
+
+@code {
+    private string? _subdomain;
+    private bool _noSubdomain;
+    private bool _subdomainNotFound;
+    private bool _checking = true;
+
+    private string _email = "";
+    private string _password = "";
+    private string? _error;
+    private bool _loading;
+
+    private string _subdomainInput = "";
+
+    private InputType _passwordInputType = InputType.Password;
+    private string _passwordToggleIcon = Icons.Material.Outlined.VisibilityOff;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _subdomain = TenantResolver.GetSubdomain();
+
+        if (_subdomain is null)
+        {
+            _noSubdomain = true;
+            _checking = false;
+            return;
+        }
+
+        var result = await TenantApi.LookupBySubdomainAsync(_subdomain);
+        if (!result.IsSuccess)
+        {
+            _subdomainNotFound = true;
+            _noSubdomain = true;
+        }
+
+        _checking = false;
+    }
+
+    private async Task Submit()
+    {
+        _error = null;
+
+        if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_password))
+        {
+            _error = "Введите email и пароль.";
+            return;
+        }
+
+        _loading = true;
+        try
+        {
+            var result = await BffAuth.LoginAsync(new LoginRequest(_email, _password, _subdomain!));
+
+            if (!result.IsSuccess)
+            {
+                _error = result.Error ?? "Не удалось войти. Попробуйте ещё раз.";
+                return;
+            }
+
+            var data = result.Data!;
+
+            if (data.RequiresTwoFactor)
+            {
+                Nav.NavigateTo($"/login/2fa?tempToken={Uri.EscapeDataString(data.AccessToken)}");
+                return;
+            }
+
+            TokenStorage.SetToken(data.AccessToken, data.ExpiresAt);
+            AuthStateProvider.NotifyAuthStateChanged();
+            Nav.NavigateTo("/dashboard");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        if (_passwordInputType == InputType.Password)
+        {
+            _passwordInputType = InputType.Text;
+            _passwordToggleIcon = Icons.Material.Outlined.Visibility;
+        }
+        else
+        {
+            _passwordInputType = InputType.Password;
+            _passwordToggleIcon = Icons.Material.Outlined.VisibilityOff;
+        }
+    }
+
+    private async Task OnFieldKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Submit();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        if (await Session.TryRestoreSessionAsync())
+        {
+            Nav.NavigateTo("/dashboard");
+        }
+    }
+
+    private void GoToSubdomain()
+    {
+        if (string.IsNullOrWhiteSpace(_subdomainInput)) return;
+        Nav.NavigateTo($"https://{_subdomainInput.Trim()}.{TenantResolver.BaseDomain}/login");
+    }
+
+    private void OnSubdomainKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") GoToSubdomain();
+    }
+}

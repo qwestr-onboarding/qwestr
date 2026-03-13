@@ -52,7 +52,7 @@ public class RegisterTenantCommandHandler : IRequestHandler<RegisterTenantComman
         await _userRepository.AddAsync(owner, ct);
         await _tenantRepository.SaveChangesAsync(ct);
 
-        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(owner);
+        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(owner, tenant.Subdomain);
         var (refreshTokenValue, refreshExpiresAt) = _tokenService.GenerateRefreshToken();
 
         var refreshToken = DomainRefreshToken.Create(owner.Id, refreshTokenValue, refreshExpiresAt);
