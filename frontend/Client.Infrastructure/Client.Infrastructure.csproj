@@ -13,6 +13,7 @@
     <ItemGroup>
         <Folder Include="Http\" />
         <Folder Include="Mapping\" />
+        <Folder Include="Models\" />
         <Folder Include="Services\" />
         <Folder Include="State\" />
     </ItemGroup>

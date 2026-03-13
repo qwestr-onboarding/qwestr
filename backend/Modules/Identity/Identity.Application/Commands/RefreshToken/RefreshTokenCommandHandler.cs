@@ -1,7 +1,7 @@
 using MediatR;
 using Qwestr.Modules.Identity.Application.Abstractions.Repositories;
 using Qwestr.Modules.Identity.Application.Abstractions.Services;
-using Qwestr.Modules.Identity.Application.DTOs;
+using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses;
 using Qwestr.Shared.Kernel.Entities;
 using DomainRefreshToken = Qwestr.Modules.Identity.Domain.Entities.RefreshToken;
 

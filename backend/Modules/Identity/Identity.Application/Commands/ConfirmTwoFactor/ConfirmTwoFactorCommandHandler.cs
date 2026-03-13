@@ -2,9 +2,9 @@ using System.Security.Cryptography;
 using MediatR;
 using Qwestr.Modules.Identity.Application.Abstractions.Repositories;
 using Qwestr.Modules.Identity.Application.Abstractions.Services;
-using Qwestr.Modules.Identity.Application.DTOs;
 using Qwestr.Modules.Identity.Domain.Entities;
 using Qwestr.Modules.Identity.Domain.Events;
+using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses;
 using Qwestr.Shared.Kernel.Entities;
 
 namespace Qwestr.Modules.Identity.Application.Commands.ConfirmTwoFactor;

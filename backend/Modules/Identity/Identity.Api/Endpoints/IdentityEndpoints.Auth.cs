@@ -11,6 +11,9 @@ using Qwestr.Modules.Identity.Application.Commands.RequestPasswordReset;
 using Qwestr.Modules.Identity.Application.Commands.ResetPassword;
 using Qwestr.Modules.Identity.Application.Commands.VerifyTwoFactor;
 using Qwestr.Modules.Identity.Infrastructure.Services;
+using Qwestr.Shared.Contracts.ApiDto.Identity.Auth.Requests;
+using Qwestr.Shared.Contracts.ApiDto.Identity.Auth.Responses;
+using Qwestr.Shared.Contracts.ApiDto.Shared.Responses;
 
 namespace Qwestr.Modules.Identity.Api.Endpoints;
 
@@ -62,12 +65,13 @@ public static partial class IdentityEndpoints
         var data = result.Value!;
         SetRefreshTokenCookie(ctx, data.RefreshToken, jwtOptions);
 
-        return Results.Ok(new { data.AccessToken, data.ExpiresAt });
+        return Results.Ok(new RefreshResponse(data.AccessToken, data.ExpiresAt));
     }
 
-    private static async Task<IResult> LoginHandler(LoginCommand command, HttpContext ctx, 
+    private static async Task<IResult> LoginHandler(LoginRequest dto, HttpContext ctx, 
         ISender sender, IOptions<JwtSettings> jwtOptions, CancellationToken ct)
     {
+        var command = new LoginCommand(dto.Email, dto.Password, dto.Subdomain);
         var result = await sender.Send(command, ct);
         if (!result.IsSuccess)
         {
@@ -80,22 +84,25 @@ public static partial class IdentityEndpoints
             SetRefreshTokenCookie(ctx, data.RefreshToken, jwtOptions);
         }
 
-        return Results.Ok(new { data.AccessToken, data.ExpiresAt, data.RequiresTwoFactor });
+        return Results.Ok(new LoginResponse(data.AccessToken, data.ExpiresAt, data.RequiresTwoFactor));
     }
 
-    private static async Task<IResult> RegisterHandler(RegisterTenantCommand command, HttpContext ctx, 
+    private static async Task<IResult> RegisterHandler(RegisterTenantRequest dto, HttpContext ctx, 
         ISender sender, IOptions<JwtSettings> jwtOptions, CancellationToken ct)
     {
+        var command = new RegisterTenantCommand(dto.Name, dto.Subdomain, dto.OwnerEmail, dto.OwnerPassword,
+            dto.OwnerFirstName, dto.OwnerLastName);
         var result = await sender.Send(command, ct);
         if (!result.IsSuccess)
         {
-            return Results.BadRequest(new { result.Error });
+            return Results.BadRequest(new ErrorResponse(result.Error));
         }
 
         var data = result.Value!;
         SetRefreshTokenCookie(ctx, data.RefreshToken, jwtOptions);
 
-        return Results.Created($"/api/identity/tenant/{data.TenantId}", new { data.TenantId, data.AccessToken, data.ExpiresAt });
+        return Results.Created($"/api/identity/tenant/{data.TenantId}", 
+            new RegisterResponse(data.TenantId, data.AccessToken, data.ExpiresAt));
     }
 
     private static void SetRefreshTokenCookie(HttpContext ctx, string token, IOptions<JwtSettings> jwtOptions)
@@ -109,9 +116,10 @@ public static partial class IdentityEndpoints
         });
     }
 
-    private static async Task<IResult> VerifyTwoFactorHandler(VerifyTwoFactorCommand command, HttpContext ctx,
+    private static async Task<IResult> VerifyTwoFactorHandler(VerifyTwoRequest dto, HttpContext ctx,
         ISender sender, IOptions<JwtSettings> jwtOptions, CancellationToken ct)
     {
+        var command = new VerifyTwoFactorCommand(dto.TempToken, dto.Code, dto.IsBackupCode);
         var result = await sender.Send(command, ct);
         if (!result.IsSuccess)
         {
@@ -121,21 +129,23 @@ public static partial class IdentityEndpoints
         var data = result.Value!;
         SetRefreshTokenCookie(ctx, data.RefreshToken, jwtOptions);
 
-        return Results.Ok(new { data.AccessToken, data.ExpiresAt });
+        return Results.Ok(new VerifyTwoFactorResponse(data.AccessToken, data.ExpiresAt));
     }
 
-    private static async Task<IResult> ForgotPasswordHandler(RequestPasswordResetCommand command, ISender sender, CancellationToken ct)
+    private static async Task<IResult> ForgotPasswordHandler(RequestPasswordResetRequest dto, ISender sender, CancellationToken ct)
     {
+        var command = new RequestPasswordResetCommand(dto.Email, dto.Subdomain);
         await sender.Send(command, ct);
         return Results.NoContent();
     }
 
-    private static async Task<IResult> ResetPasswordHandler(ResetPasswordCommand command, ISender sender, CancellationToken ct)
+    private static async Task<IResult> ResetPasswordHandler(ResetPasswordRequest dto, ISender sender, CancellationToken ct)
     {
+        var command = new ResetPasswordCommand(dto.Token, dto.NewPassword);
         var result = await sender.Send(command, ct);
         return result.IsSuccess
             ? Results.NoContent()
-            : Results.BadRequest(new { result.Error });
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static void DeleteRefreshTokenCookie(HttpContext ctx)

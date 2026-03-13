@@ -1,9 +1,0 @@
-namespace Qwestr.Modules.Identity.Domain.Enums;
-
-public enum UserRole
-{
-    Employee = 0,
-    Manager = 1,
-    Admin = 2,
-    Owner = 3
-}

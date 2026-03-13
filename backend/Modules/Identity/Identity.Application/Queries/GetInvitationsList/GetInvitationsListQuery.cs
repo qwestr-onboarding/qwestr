@@ -1,7 +1,7 @@
 using MediatR;
-using Qwestr.Modules.Identity.Application.DTOs;
-using Qwestr.Modules.Identity.Domain.Enums;
+using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses;
 using Qwestr.Shared.Kernel.Entities;
+using Qwestr.Shared.Kernel.Enums.Identity;
 
 namespace Qwestr.Modules.Identity.Application.Queries.GetInvitationsList;
 

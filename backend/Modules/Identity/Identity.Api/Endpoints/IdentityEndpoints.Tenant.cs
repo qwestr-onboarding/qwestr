@@ -6,12 +6,12 @@ using Qwestr.Modules.Identity.Application.Commands.UpdateTenant;
 using Qwestr.Modules.Identity.Application.Commands.UpdateTenantSettings;
 using Qwestr.Modules.Identity.Application.Queries.GetTenant;
 using Qwestr.Modules.Identity.Application.Queries.GetTenantSettings;
+using Qwestr.Shared.Contracts.ApiDto.Identity.Tenant.Requests;
+using Qwestr.Shared.Contracts.ApiDto.Identity.Tenant.Responses;
+using Qwestr.Shared.Contracts.ApiDto.Shared.Responses;
 using Qwestr.Shared.Infrastructure.Services.CurrentUser;
 
 namespace Qwestr.Modules.Identity.Api.Endpoints;
-
-internal record UpdateTenantRequest(string Name, string? Subdomain);
-internal record UpdateTenantSettingsRequest(string? Timezone, string? Language, string? CompanyLogoUrl);
 
 public static partial class IdentityEndpoints
 {
@@ -35,8 +35,9 @@ public static partial class IdentityEndpoints
     {
         var result = await sender.Send(new GetTenantQuery(currentUser.TenantId), ct);
         return result.IsSuccess
-            ? Results.Ok(result.Value)
-            : Results.BadRequest(new { result.Error });
+            ? Results.Ok(new TenantInfoResponse(result.Value!.Id, result.Value.Name, result.Value.Subdomain,
+                result.Value.Plan, result.Value.IsActive, result.Value.CreatedAt))
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> UpdateTenantHandler(
@@ -45,7 +46,7 @@ public static partial class IdentityEndpoints
         var result = await sender.Send(new UpdateTenantCommand(currentUser.TenantId, body.Name, body.Subdomain), ct);
         return result.IsSuccess
             ? Results.NoContent()
-            : Results.BadRequest(new { result.Error });
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
     
     private static async Task<IResult> GetTenantSettingsHandler(
@@ -53,8 +54,9 @@ public static partial class IdentityEndpoints
     {
         var result = await sender.Send(new GetTenantSettingsQuery(currentUser.TenantId), ct);
         return result.IsSuccess
-            ? Results.Ok(result.Value)
-            : Results.BadRequest(new { result.Error });
+            ? Results.Ok(new TenantSettingsResponse(result.Value!.CompanyName, result.Value.CompanyLogoUrl, 
+                result.Value.Timezone, result.Value.Language))
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> UpdateTenantSettingsHandler(
@@ -64,6 +66,6 @@ public static partial class IdentityEndpoints
             new UpdateTenantSettingsCommand(currentUser.TenantId, body.Timezone, body.Language, body.CompanyLogoUrl), ct);
         return result.IsSuccess
             ? Results.NoContent()
-            : Results.BadRequest(new { result.Error });
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 }

@@ -1,7 +1,7 @@
 using MediatR;
 using Qwestr.Modules.Identity.Application.Abstractions.Repositories;
-using Qwestr.Modules.Identity.Domain.Enums;
 using Qwestr.Shared.Kernel.Entities;
+using Qwestr.Shared.Kernel.Enums.Identity;
 
 namespace Qwestr.Modules.Identity.Application.Commands.ChangeUserRole;
 

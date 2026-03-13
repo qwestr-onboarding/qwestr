@@ -1,3 +1,4 @@
+using Mapster;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -14,16 +15,12 @@ using Qwestr.Modules.Identity.Application.Commands.UpdateProfile;
 using Qwestr.Modules.Identity.Application.Queries.GetCurrentUser;
 using Qwestr.Modules.Identity.Application.Queries.GetUserById;
 using Qwestr.Modules.Identity.Application.Queries.GetUsersList;
-using Qwestr.Modules.Identity.Domain.Enums;
+using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Requests;
+using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses;
+using Qwestr.Shared.Contracts.ApiDto.Shared.Responses;
 using Qwestr.Shared.Infrastructure.Services.CurrentUser;
 
 namespace Qwestr.Modules.Identity.Api.Endpoints;
-
-internal record UpdateProfileRequest(string FirstName, string LastName);
-internal record ChangePasswordRequest(string CurrentPassword, string NewPassword);
-internal record ConfirmTwoFactorRequest(string Code);
-internal record DisableTwoFactorRequest(string Code);
-internal record ChangeUserRoleRequest(UserRole NewRole);
 
 public static partial class IdentityEndpoints
 {
@@ -57,8 +54,8 @@ public static partial class IdentityEndpoints
     {
         var result = await sender.Send(new GetCurrentUserQuery(currentUser.UserId), ct);
         return result.IsSuccess
-            ? Results.Ok(result.Value)
-            : Results.BadRequest(new { result.Error });
+            ? Results.Ok(result.Value.Adapt<UserProfileResponse>())
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> UpdateProfileHandler(
@@ -67,7 +64,7 @@ public static partial class IdentityEndpoints
         var result = await sender.Send(new UpdateProfileCommand(currentUser.UserId, body.FirstName, body.LastName), ct);
         return result.IsSuccess
             ? Results.NoContent()
-            : Results.BadRequest(new { result.Error });
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> ChangePasswordHandler(
@@ -77,7 +74,7 @@ public static partial class IdentityEndpoints
             new ChangePasswordCommand(currentUser.UserId, body.CurrentPassword, body.NewPassword), ct);
         return result.IsSuccess
             ? Results.NoContent()
-            : Results.BadRequest(new { result.Error });
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> SetupTwoFactorHandler(
@@ -85,8 +82,8 @@ public static partial class IdentityEndpoints
     {
         var result = await sender.Send(new SetupTwoFactorCommand(currentUser.UserId), ct);
         return result.IsSuccess
-            ? Results.Ok(result.Value)
-            : Results.BadRequest(new { result.Error });
+            ? Results.Ok(result.Value.Adapt<TwoFactorSetupResponse>())
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> ConfirmTwoFactorHandler(
@@ -94,8 +91,8 @@ public static partial class IdentityEndpoints
     {
         var result = await sender.Send(new ConfirmTwoFactorCommand(currentUser.UserId, body.Code), ct);
         return result.IsSuccess
-            ? Results.Ok(result.Value)
-            : Results.BadRequest(new { result.Error });
+            ? Results.Ok(result.Value.Adapt<BackupCodesResponse>())
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> DisableTwoFactorHandler(
@@ -104,7 +101,7 @@ public static partial class IdentityEndpoints
         var result = await sender.Send(new DisableTwoFactorCommand(currentUser.UserId, body.Code), ct);
         return result.IsSuccess
             ? Results.NoContent()
-            : Results.BadRequest(new { result.Error });
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> GetUsersListHandler(
@@ -112,8 +109,8 @@ public static partial class IdentityEndpoints
     {
         var result = await sender.Send(new GetUsersListQuery(currentUser.TenantId, page, pageSize), ct);
         return result.IsSuccess
-            ? Results.Ok(result.Value)
-            : Results.BadRequest(new { result.Error });
+            ? Results.Ok(new PagedListResponse<UserListItemResponse>(result.Value!))
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> GetUserByIdHandler(
@@ -121,8 +118,8 @@ public static partial class IdentityEndpoints
     {
         var result = await sender.Send(new GetUserByIdQuery(currentUser.TenantId, id), ct);
         return result.IsSuccess
-            ? Results.Ok(result.Value)
-            : Results.NotFound(new { result.Error });
+            ? Results.Ok(result.Value.Adapt<UserProfileResponse>())
+            : Results.NotFound(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> DeactivateUserHandler(
@@ -131,7 +128,7 @@ public static partial class IdentityEndpoints
         var result = await sender.Send(new DeactivateUserCommand(currentUser.TenantId, id), ct);
         return result.IsSuccess
             ? Results.NoContent()
-            : Results.BadRequest(new { result.Error });
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> ActivateUserHandler(
@@ -140,7 +137,7 @@ public static partial class IdentityEndpoints
         var result = await sender.Send(new ActivateUserCommand(currentUser.TenantId, id), ct);
         return result.IsSuccess
             ? Results.NoContent()
-            : Results.BadRequest(new { result.Error });
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> ChangeUserRoleHandler(
@@ -150,6 +147,6 @@ public static partial class IdentityEndpoints
             new ChangeUserRoleCommand(currentUser.TenantId, currentUser.UserId, id, body.NewRole), ct);
         return result.IsSuccess
             ? Results.NoContent()
-            : Results.BadRequest(new { result.Error });
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 }

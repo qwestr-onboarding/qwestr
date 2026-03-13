@@ -9,6 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <Folder Include="ApiDto\Shared\Requests\" />
       <Folder Include="Interfaces\" />
       <Folder Include="Services\" />
     </ItemGroup>
@@ -16,6 +17,10 @@
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
       <PackageReference Include="Serilog" Version="4.3.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Shared.Kernel\Shared.Kernel.csproj" />
     </ItemGroup>
 
 </Project>

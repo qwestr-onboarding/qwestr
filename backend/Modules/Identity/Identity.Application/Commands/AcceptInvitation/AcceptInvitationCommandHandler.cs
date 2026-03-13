@@ -1,10 +1,11 @@
 using MediatR;
 using Qwestr.Modules.Identity.Application.Abstractions.Repositories;
 using Qwestr.Modules.Identity.Application.Abstractions.Services;
-using Qwestr.Modules.Identity.Application.DTOs;
 using Qwestr.Modules.Identity.Domain.Entities;
 using Qwestr.Modules.Identity.Domain.Events;
+using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses;
 using Qwestr.Shared.Kernel.Entities;
+using Qwestr.Shared.Kernel.Enums.Identity;
 using DomainRefreshToken = Qwestr.Modules.Identity.Domain.Entities.RefreshToken;
 
 namespace Qwestr.Modules.Identity.Application.Commands.AcceptInvitation;
@@ -38,7 +39,7 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
     {
         var invitation = await _invitationRepository.GetByTokenAsync(request.Token, ct);
 
-        if (invitation is null || invitation.Status != Domain.Enums.InvitationStatus.Pending)
+        if (invitation is null || invitation.Status != InvitationStatus.Pending)
         {
             return ActionResult<TokenResponse>.Failure("Invitation is invalid or has already been used.");
         }

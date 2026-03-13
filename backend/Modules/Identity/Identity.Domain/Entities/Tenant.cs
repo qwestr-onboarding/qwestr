@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
-using Qwestr.Modules.Identity.Domain.Enums;
 using Qwestr.Shared.Kernel.Entities;
+using Qwestr.Shared.Kernel.Enums.Identity;
 using Qwestr.Shared.Kernel.Interfaces;
 
 namespace Qwestr.Modules.Identity.Domain.Entities;

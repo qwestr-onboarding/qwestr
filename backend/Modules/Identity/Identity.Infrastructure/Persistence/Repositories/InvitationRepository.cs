@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Qwestr.Modules.Identity.Application.Abstractions.Repositories;
 using Qwestr.Modules.Identity.Domain.Entities;
-using Qwestr.Modules.Identity.Domain.Enums;
+using Qwestr.Shared.Kernel.Enums.Identity;
 
 namespace Qwestr.Modules.Identity.Infrastructure.Persistence.Repositories;
 
