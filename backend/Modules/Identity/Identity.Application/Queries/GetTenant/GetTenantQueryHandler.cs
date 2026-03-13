@@ -1,7 +1,6 @@
 using MediatR;
 using Qwestr.Modules.Identity.Application.Abstractions.Repositories;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Tenant.Responses;
-using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses;
 using Qwestr.Shared.Kernel.Entities;
 
 namespace Qwestr.Modules.Identity.Application.Queries.GetTenant;

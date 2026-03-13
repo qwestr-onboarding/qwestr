@@ -53,8 +53,9 @@ public static partial class IdentityEndpoints
         ICurrentUserService currentUser, ISender sender, CancellationToken ct)
     {
         var result = await sender.Send(new GetCurrentUserQuery(currentUser.UserId), ct);
+        var response = result.Value;
         return result.IsSuccess
-            ? Results.Ok(result.Value.Adapt<UserProfileResponse>())
+            ? Results.Ok(response)
             : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
@@ -81,8 +82,9 @@ public static partial class IdentityEndpoints
         ICurrentUserService currentUser, ISender sender, CancellationToken ct)
     {
         var result = await sender.Send(new SetupTwoFactorCommand(currentUser.UserId), ct);
+        var response = result.Value;
         return result.IsSuccess
-            ? Results.Ok(result.Value.Adapt<TwoFactorSetupResponse>())
+            ? Results.Ok(response)
             : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
@@ -90,8 +92,9 @@ public static partial class IdentityEndpoints
         ConfirmTwoFactorRequest body, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
     {
         var result = await sender.Send(new ConfirmTwoFactorCommand(currentUser.UserId, body.Code), ct);
+        var response = result.Value;
         return result.IsSuccess
-            ? Results.Ok(result.Value.Adapt<BackupCodesResponse>())
+            ? Results.Ok(response)
             : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
@@ -108,8 +111,9 @@ public static partial class IdentityEndpoints
         int page, int pageSize, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
     {
         var result = await sender.Send(new GetUsersListQuery(currentUser.TenantId, page, pageSize), ct);
+        var response = new PagedListResponse<UserListItemResponse>(result.Value!);
         return result.IsSuccess
-            ? Results.Ok(new PagedListResponse<UserListItemResponse>(result.Value!))
+            ? Results.Ok(response)
             : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
@@ -117,8 +121,9 @@ public static partial class IdentityEndpoints
         Guid id, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
     {
         var result = await sender.Send(new GetUserByIdQuery(currentUser.TenantId, id), ct);
+        var response = result.Value;
         return result.IsSuccess
-            ? Results.Ok(result.Value.Adapt<UserProfileResponse>())
+            ? Results.Ok(response)
             : Results.NotFound(new ErrorResponse(result.Error));
     }
 

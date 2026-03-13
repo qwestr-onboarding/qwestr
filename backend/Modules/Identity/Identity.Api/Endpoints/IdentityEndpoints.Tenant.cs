@@ -7,7 +7,6 @@ using Qwestr.Modules.Identity.Application.Commands.UpdateTenantSettings;
 using Qwestr.Modules.Identity.Application.Queries.GetTenant;
 using Qwestr.Modules.Identity.Application.Queries.GetTenantSettings;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Tenant.Requests;
-using Qwestr.Shared.Contracts.ApiDto.Identity.Tenant.Responses;
 using Qwestr.Shared.Contracts.ApiDto.Shared.Responses;
 using Qwestr.Shared.Infrastructure.Services.CurrentUser;
 
@@ -34,9 +33,9 @@ public static partial class IdentityEndpoints
         ICurrentUserService currentUser, ISender sender, CancellationToken ct)
     {
         var result = await sender.Send(new GetTenantQuery(currentUser.TenantId), ct);
+        var response = result.Value;
         return result.IsSuccess
-            ? Results.Ok(new TenantInfoResponse(result.Value!.Id, result.Value.Name, result.Value.Subdomain,
-                result.Value.Plan, result.Value.IsActive, result.Value.CreatedAt))
+            ? Results.Ok(response)
             : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
@@ -53,9 +52,9 @@ public static partial class IdentityEndpoints
         ICurrentUserService currentUser, ISender sender, CancellationToken ct)
     {
         var result = await sender.Send(new GetTenantSettingsQuery(currentUser.TenantId), ct);
+        var response = result.Value;
         return result.IsSuccess
-            ? Results.Ok(new TenantSettingsResponse(result.Value!.CompanyName, result.Value.CompanyLogoUrl, 
-                result.Value.Timezone, result.Value.Language))
+            ? Results.Ok(response)
             : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
