@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="Http\" />
+        <Folder Include="Mapping\" />
+        <Folder Include="Services\" />
+        <Folder Include="State\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Client.Core\Client.Core.csproj" />
+    </ItemGroup>
+
+</Project>

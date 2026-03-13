@@ -1,0 +1,6 @@
+﻿services:
+  qwestrwebclient:
+    image: qwestrwebclient
+    build:
+      context: .
+      dockerfile: QwestrWebClient/Dockerfile

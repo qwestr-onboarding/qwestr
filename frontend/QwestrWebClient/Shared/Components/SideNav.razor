@@ -1,0 +1,31 @@
+<div>
+<MudNavMenu Rounded="true" Margin="Margin.Dense" Class="pa-1">
+    <MudNavLink Href="/dashboard" Icon="@QwestrIcons.Navigation.Home" IconColor="Color.Inherit" Match="NavLinkMatch.All">
+        @if (Open)
+        {
+            <MudText>Главная</MudText>
+        }
+    </MudNavLink>
+    <MudNavLink Href="/tests" Icon="@QwestrIcons.Navigation.Tests" IconColor="Color.Inherit" >
+        @if (Open)
+        {
+            <MudText>Тесты</MudText>
+        }
+    </MudNavLink>
+    <MudNavLink Href="/games" Icon="@QwestrIcons.Navigation.Games" IconColor="Color.Inherit" >
+        @if (Open)
+        {
+            <MudText>Игры</MudText>
+        }
+    </MudNavLink>
+    <MudNavLink Href="/knowledge" Icon="@QwestrIcons.Navigation.Knowledge" IconColor="Color.Inherit" >
+        @if (Open)
+        {
+            <MudText>База знаний</MudText>
+        }
+    </MudNavLink>
+</MudNavMenu>
+</div>
+@code {
+    [Parameter] public bool Open { get; set; }
+}

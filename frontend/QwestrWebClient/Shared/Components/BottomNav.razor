@@ -1,0 +1,61 @@
+@inject NavigationManager Nav
+
+<MudHidden Breakpoint="Breakpoint.MdAndUp">
+    <MudPaper Square="true" Class="border-t-1 mud-border-default fixed z-100" Style="bottom: 0; left: 0; right: 0">
+        <MudStack Row="true" Justify="Justify.SpaceEvenly" AlignItems="AlignItems.Center" Style="height: 72px; padding: 0 8px;">
+            <MudButton Variant="Variant.Text" Href="/dashboard" Style="@GetNavStyle("/dashboard")">
+                <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                    <MudIcon Icon="@QwestrIcons.Navigation.Home" Color="Color.Inherit" Size="Size.Small" />
+                    <MudText Typo="Typo.caption">Главная</MudText>
+                </MudStack>
+            </MudButton>
+            <MudButton Variant="Variant.Text" Href="/tests" Style="@GetNavStyle("/tests")">
+                <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                    <MudIcon Icon="@QwestrIcons.Navigation.Tests" Color="Color.Inherit" Size="Size.Small" />
+                    <MudText Typo="Typo.caption">Тесты</MudText>
+                </MudStack>
+            </MudButton>
+            <MudButton Variant="Variant.Text" Href="/games" Style="@GetNavStyle("/games")">
+                <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                    <MudIcon Icon="@QwestrIcons.Navigation.Games" Color="Color.Inherit" Size="Size.Small" />
+                    <MudText Typo="Typo.caption">Игры</MudText>
+                </MudStack>
+            </MudButton>
+            <MudButton Variant="Variant.Text" Href="/knowledge" Style="@GetNavStyle("/knowledge")">
+                <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                    <MudIcon Icon="@QwestrIcons.Navigation.Knowledge" Color="Color.Inherit" Size="Size.Small" />
+                    <MudText Typo="Typo.caption" Style="text-wrap-mode: nowrap;">База знаний</MudText>
+                </MudStack>
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+</MudHidden>
+
+@code {
+    private string _currentUri = "";
+
+    protected override void OnInitialized()
+    {
+        _currentUri = Nav.Uri;
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _currentUri = e.Location;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string GetNavStyle(string href)
+    {
+        return "flex: 1; min-width: 0; " +
+               (_currentUri.Contains(href, StringComparison.OrdinalIgnoreCase)
+                   ? "color: #6C3FC5"
+                   : "color: #9e9e9e");
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

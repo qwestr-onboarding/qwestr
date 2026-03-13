@@ -1,0 +1,57 @@
+<div>
+<MudAppBar Fixed="true" Elevation="0" Class="border-b-1 mud-border-default">
+    <MudHidden Breakpoint="Breakpoint.SmAndDown">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Color="Color.Inherit"
+                       Edge="Edge.Start"
+                       OnClick="OnMenuToggle" Style="border-radius: 12px" />
+    </MudHidden>
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="ml-1">
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.h6" Class="brand-name" Style="font-weight: 600;  line-height: 1.1;" >Qwestr</MudText>
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <MudText Typo="Typo.caption" Style="color: #9e9e9e; line-height: 1.1">Платформа адаптации сотрудников</MudText>
+            </MudHidden>
+        </MudStack>
+    </MudStack>
+
+    <MudSpacer />
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <PointsBadge Points="1250"/>
+        <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Variant="Variant.Outlined">
+            <ActivatorContent>
+                <MudAvatar Color="Color.Primary" Style="cursor: pointer; font-size: 1rem">JD</MudAvatar>
+            </ActivatorContent>
+            <ChildContent>
+                <MudStack Spacing="1" Style="padding: 2px 6px">
+                    <MudMenuItem Href="/profile" Class="border-rounded">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@QwestrIcons.Navigation.Profile" Size="Size.Small"/>
+                            <MudText>Профиль</MudText>
+                        </MudStack>
+                    </MudMenuItem>
+                    <MudMenuItem Href="/settings" Class="border-rounded">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@QwestrIcons.Navigation.Settings" Size="Size.Small"/>
+                            <MudText>Настройки</MudText>
+                        </MudStack>
+                    </MudMenuItem>
+                    <MudDivider/>
+                    <MudMenuItem Class="border-rounded">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@QwestrIcons.Navigation.Logout" Size="Size.Small"/>
+                            <MudText>Выход</MudText>
+                        </MudStack>
+                    </MudMenuItem>
+                </MudStack>
+            </ChildContent>
+        </MudMenu>
+    </MudStack>
+</MudAppBar>
+</div>
+@code {
+    [Parameter] public bool DrawerOpen { get; set; }
+    [Parameter] public EventCallback OnMenuToggle { get; set; }
+}

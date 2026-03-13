@@ -1,0 +1,6 @@
+@media (max-width: 960px) {
+    ::deep .mud-appbar {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+}
