@@ -1,0 +1,21 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="QwestrTheme.Theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<RouteGuard Mode="RouteGuardMode.PublicOnly">
+    <MudLayout>
+        <PublicHeader/>
+
+        <MudMainContent>
+            <div class="content-wrapper">
+                @Body
+            </div>
+        </MudMainContent>
+
+        <PublicFooter/>
+    </MudLayout>
+</RouteGuard>
+

@@ -1,3 +1,7 @@
+@inject BffAuthClient BffAuth
+@inject SessionManager Session
+@inject NavigationManager Nav
+
 <div>
 <MudAppBar Fixed="true" Elevation="0" Class="border-b-1 mud-border-default">
     <MudHidden Breakpoint="Breakpoint.SmAndDown">
@@ -39,10 +43,10 @@
                         </MudStack>
                     </MudMenuItem>
                     <MudDivider/>
-                    <MudMenuItem Class="border-rounded">
+                    <MudMenuItem Class="border-rounded" OnClick="Logout" Disabled="_loggingOut">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                             <MudIcon Icon="@QwestrIcons.Navigation.Logout" Size="Size.Small"/>
-                            <MudText>Выход</MudText>
+                            <MudText>@(_loggingOut ? "Выход..." : "Выход")</MudText>
                         </MudStack>
                     </MudMenuItem>
                 </MudStack>
@@ -51,7 +55,25 @@
     </MudStack>
 </MudAppBar>
 </div>
+
 @code {
     [Parameter] public bool DrawerOpen { get; set; }
     [Parameter] public EventCallback OnMenuToggle { get; set; }
+
+    private bool _loggingOut;
+
+    private async Task Logout()
+    {
+        _loggingOut = true;
+        try
+        {
+            await BffAuth.LogoutAsync();
+            Session.ClearSession();
+            Nav.NavigateTo("/login");
+        }
+        finally
+        {
+            _loggingOut = false;
+        }
+    }
 }

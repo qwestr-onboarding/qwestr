@@ -1,0 +1,99 @@
+@using Client.Infrastructure.Auth
+@using Client.Infrastructure.Services
+
+@inject SessionManager Session
+@inject TenantResolver TenantResolver
+@inject NavigationManager Nav
+
+@if (Mode == RouteGuardMode.PublicOnly || _resolved)
+{
+    @ChildContent
+}
+else
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary"
+                       Style="position:fixed;top:0;left:0;right:0;z-index:9999;" />
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RouteGuardMode Mode { get; set; }
+
+    private bool _resolved;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var onTenant = TenantResolver.IsTenantDomain;
+        var currentSubdomain = TenantResolver.GetSubdomain();
+        var authorized = false;
+        if (Mode is RouteGuardMode.TenantOnly or RouteGuardMode.GuestOnMain or RouteGuardMode.GuestOnTenant)
+        {
+            authorized = await Session.TryRestoreSessionAsync();
+        }
+        var tokenSubdomain = Session.GetClaimFromToken("tenant_subdomain");
+        switch (Mode)
+        {
+            case RouteGuardMode.Public:
+                break;
+                
+            case RouteGuardMode.PublicOnly:
+                if (onTenant)
+                {
+                    Nav.NavigateTo($"https://{TenantResolver.BaseDomain}/", forceLoad: true);
+                    return;
+                }
+                break;
+
+            case RouteGuardMode.TenantOnly:
+                if (!onTenant)
+                {
+                    Nav.NavigateTo($"https://{TenantResolver.BaseDomain}/login", forceLoad: true);
+                    return;
+                }
+                if (!authorized)
+                {
+                    Nav.NavigateTo("/login");
+                    return;
+                }
+                if (!string.Equals(tokenSubdomain, currentSubdomain, StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrWhiteSpace(tokenSubdomain))
+                {
+                    Nav.NavigateTo($"https://{tokenSubdomain}.{TenantResolver.BaseDomain}/dashboard", forceLoad: true);
+                    return;
+                }
+                break;
+
+            case RouteGuardMode.GuestOnTenant:
+                if (!onTenant)
+                {
+                    Nav.NavigateTo($"https://{TenantResolver.BaseDomain}/login", forceLoad: true);
+                    return;
+                }
+                if (authorized)
+                {
+                    Nav.NavigateTo("/dashboard");
+                    return;
+                }
+                break;
+
+            case RouteGuardMode.GuestOnMain:
+                if (onTenant)
+                {
+                    Nav.NavigateTo("/login");
+                    return;
+                }
+                if (authorized)
+                {
+                    if (tokenSubdomain is not null)
+                        Nav.NavigateTo($"https://{tokenSubdomain}.{TenantResolver.BaseDomain}/dashboard", forceLoad: true);
+                    return;
+                }
+                break;
+        }
+
+        _resolved = true;
+        StateHasChanged();
+    }
+}

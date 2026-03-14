@@ -1,11 +1,19 @@
 window.bffAuth = {
-    post: async function (url, body) {
-        const response = await fetch(url, {
+    post: async function (url, body, accessToken = null) {
+        let req = {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: body ? JSON.stringify(body) : '{}'
-        });
+            headers: {},
+            credentials: 'include'
+        };
+        if (body) {
+            req.headers['Content-Type'] = 'application/json';
+            req.body = JSON.stringify(body);
+        }
+        if (accessToken) {
+            req.headers['Authorization'] = 'Bearer ' + accessToken;
+        }
+        const response = await fetch(url, req);
+
         const text = await response.text();
         let data = null;
         try { data = JSON.parse(text); } catch {}

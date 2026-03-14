@@ -2,20 +2,12 @@
 
 @using Client.Infrastructure.Auth
 
-@inject SessionManager Session
-
 <MudThemeProvider Theme="QwestrTheme.Theme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-@if (!_initialized)
-{
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary"
-                       Style="position:fixed;top:0;left:0;right:0;z-index:9999;" />
-}
-else
-{
+<RouteGuard Mode="RouteGuardMode.TenantOnly">
     <MudLayout>
         <TopBar DrawerOpen="_drawerOpen" OnMenuToggle="ToggleDrawer" />
 
@@ -34,7 +26,7 @@ else
     </MudLayout>
 
     <BottomNav />
-}
+</RouteGuard>
 
 <div id="blazor-error-ui">
     An unhandled error has occurred.
@@ -44,18 +36,6 @@ else
 
 @code {
     private bool _drawerOpen;
-    private bool _initialized;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender) return;
-
-        // EnsureValidTokenAsync делает refresh если нужно,
-        // и сам редиректит на /login если сессия потеряна
-        await Session.EnsureValidTokenAsync();
-        _initialized = true;
-        StateHasChanged();
-    }
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 }

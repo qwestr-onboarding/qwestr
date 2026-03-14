@@ -1,3 +1,6 @@
+using System.Net.Http.Headers;
+using Client.Infrastructure.Auth;
+
 namespace QwestrWebClient.Endpoints;
 
 public static class BffAuthEndpoints
@@ -29,7 +32,7 @@ public static class BffAuthEndpoints
         group.MapPost("/logout",
             (HttpContext ctx, IHttpClientFactory f) =>
                 ProxyAsync(ctx, f, "/api/identity/auth/logout",
-                    forwardCookies: true, setCookies: true));
+                    forwardCookies: true, setCookies: true, forwardAuth: true));
 
         group.MapPost("/password/forgot",
             (HttpContext ctx, IHttpClientFactory f) =>
@@ -51,7 +54,7 @@ public static class BffAuthEndpoints
 
     private static async Task ProxyAsync(
         HttpContext ctx, IHttpClientFactory factory,
-        string backendPath, bool forwardCookies, bool setCookies)
+        string backendPath, bool forwardCookies, bool setCookies, bool forwardAuth = false)
     {
         using var client = factory.CreateClient("Backend");
 
@@ -66,8 +69,14 @@ public static class BffAuthEndpoints
             request.Content.Headers.TryAddWithoutValidation("Content-Type", "application/json");
         }
 
-        if (forwardCookies) ForwardCookies(ctx, request);
-
+        if (forwardCookies)
+        {
+            ForwardCookies(ctx, request);
+        }
+        if (forwardAuth)
+        {
+            ForwardAuth(ctx, request);
+        }
         var response = await client.SendAsync(request);
 
         if (setCookies)
@@ -76,6 +85,15 @@ public static class BffAuthEndpoints
             await ProxyResponse(response, ctx);
     }
 
+    private static void ForwardAuth(HttpContext ctx, HttpRequestMessage request)
+    {
+        var authHeader = ctx.Request.Headers.Authorization.ToString();
+        if (!string.IsNullOrEmpty(authHeader))
+        {
+            request.Headers.TryAddWithoutValidation("Authorization", authHeader);
+        }
+    }
+    
     private static void ForwardCookies(HttpContext ctx, HttpRequestMessage request)
     {
         var cookieHeader = ctx.Request.Headers.Cookie.ToString();
@@ -87,8 +105,12 @@ public static class BffAuthEndpoints
         HttpResponseMessage backendResponse, HttpContext ctx)
     {
         if (backendResponse.Headers.TryGetValues("Set-Cookie", out var cookies))
+        {
             foreach (var cookie in cookies)
+            {
                 ctx.Response.Headers.Append("Set-Cookie", cookie);
+            }
+        }
 
         await WriteResponse(backendResponse, ctx);
     }
@@ -99,6 +121,10 @@ public static class BffAuthEndpoints
     private static async Task WriteResponse(HttpResponseMessage backendResponse, HttpContext ctx)
     {
         ctx.Response.StatusCode = (int)backendResponse.StatusCode;
+        if (backendResponse.StatusCode == System.Net.HttpStatusCode.NoContent)
+        {
+            return;
+        }
         ctx.Response.ContentType = "application/json";
         var body = await backendResponse.Content.ReadAsByteArrayAsync();
         await ctx.Response.Body.WriteAsync(body);

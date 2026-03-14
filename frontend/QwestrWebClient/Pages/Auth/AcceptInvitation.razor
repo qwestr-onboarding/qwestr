@@ -1,0 +1,180 @@
+@page "/invitations/accept"
+@layout AuthLayout
+
+@using Client.Infrastructure.Auth
+@using Qwestr.Shared.Contracts.ApiDto.Identity.Invitations.Requests
+
+@inject BffAuthClient BffAuth
+@inject TokenStorageService TokenStorage
+@inject JwtAuthStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
+<PageTitle>Принять приглашение — Qwestr</PageTitle>
+
+<RouteGuard Mode="RouteGuardMode.GuestOnTenant">
+    <MudPaper Outlined="true" Style="width:100%;max-width:440px;padding:40px 36px;border-radius:16px;" Elevation="0">
+        <MudStack Spacing="4">
+            <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                <MudText Typo="Typo.h5" Align="Align.Center" Style="font-weight:700; letter-spacing:-0.5px;">
+                    Qwestr
+                </MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+                    Вас пригласили в команду. Создайте пароль для входа.
+                </MudText>
+            </MudStack>
+
+            @if (_tokenMissing)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">
+                    Ссылка недействительна или истекла. Попросите нового приглашения.
+                </MudAlert>
+            }
+            else
+            {
+                @if (_error is not null)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true" ShowCloseIcon="true"
+                              CloseIconClicked="() => _error = null">
+                        @_error
+                    </MudAlert>
+                }
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudTextField @bind-Value="_firstName"
+                                      Label="Имя"
+                                      Variant="Variant.Outlined"
+                                      FullWidth="true"
+                                      Disabled="_loading" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudTextField @bind-Value="_lastName"
+                                      Label="Фамилия"
+                                      Variant="Variant.Outlined"
+                                      FullWidth="true"
+                                      Disabled="_loading" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudTextField @bind-Value="_password"
+                              Label="Пароль"
+                              InputType="@_passwordInputType"
+                              Variant="Variant.Outlined"
+                              FullWidth="true"
+                              Disabled="_loading"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@_passwordToggleIcon"
+                              OnAdornmentClick="TogglePasswordVisibility" />
+
+                <MudTextField @bind-Value="_confirmPassword"
+                              Label="Подтверждение пароля"
+                              InputType="@_passwordInputType"
+                              Variant="Variant.Outlined"
+                              FullWidth="true"
+                              Disabled="_loading"
+                              Error="@_passwordMismatch"
+                              ErrorText="Пароли не совпадают" />
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Size="Size.Large"
+                           OnClick="Submit"
+                           Disabled="_loading">
+                    @if (_loading)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                        <MudText Class="ms-2">Сохранение...</MudText>
+                    }
+                    else
+                    {
+                        <MudText>Принять приглашение</MudText>
+                    }
+                </MudButton>
+            }
+        </MudStack>
+    </MudPaper>
+</RouteGuard>
+
+@code {
+    [SupplyParameterFromQuery(Name = "token")]
+    public string? Token { get; set; }
+
+    private string _firstName = "";
+    private string _lastName = "";
+    private string _password = "";
+    private string _confirmPassword = "";
+
+    private string? _error;
+    private bool _passwordMismatch;
+    private bool _loading;
+    private bool _tokenMissing;
+
+    private InputType _passwordInputType = InputType.Password;
+    private string _passwordToggleIcon = Icons.Material.Outlined.VisibilityOff;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender) return;
+        if (string.IsNullOrEmpty(Token))
+        {
+            _tokenMissing = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Submit()
+    {
+        _error = null;
+        _passwordMismatch = false;
+
+        if (string.IsNullOrWhiteSpace(_firstName) || string.IsNullOrWhiteSpace(_lastName) ||
+            string.IsNullOrWhiteSpace(_password))
+        {
+            _error = "Заполните все обязательные поля.";
+            return;
+        }
+
+        if (_password != _confirmPassword)
+        {
+            _passwordMismatch = true;
+            return;
+        }
+
+        _loading = true;
+        try
+        {
+            var result = await BffAuth.AcceptInvitationAsync(
+                new AcceptInvitationRequest(Token!, _password, _firstName, _lastName));
+
+            if (!result.IsSuccess)
+            {
+                _error = result.Error ?? "Не удалось принять приглашение. Попробуйте ещё раз.";
+                return;
+            }
+
+            var data = result.Data!;
+            TokenStorage.SetToken(data.AccessToken, data.ExpiresAt);
+            AuthStateProvider.NotifyAuthStateChanged();
+            Nav.NavigateTo("/dashboard");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        if (_passwordInputType == InputType.Password)
+        {
+            _passwordInputType = InputType.Text;
+            _passwordToggleIcon = Icons.Material.Outlined.Visibility;
+        }
+        else
+        {
+            _passwordInputType = InputType.Password;
+            _passwordToggleIcon = Icons.Material.Outlined.VisibilityOff;
+        }
+    }
+}

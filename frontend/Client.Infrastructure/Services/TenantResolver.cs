@@ -7,7 +7,10 @@ public class TenantResolver
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     public readonly string BaseDomain;
-
+    
+    public bool IsTenantDomain => GetSubdomain() != null;
+    public bool IsMainDomain => GetSubdomain() == null;
+    
     public TenantResolver(IHttpContextAccessor httpContextAccessor, IConfiguration configuration)
     {
         _httpContextAccessor = httpContextAccessor;

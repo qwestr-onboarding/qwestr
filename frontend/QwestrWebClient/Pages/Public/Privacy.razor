@@ -1,0 +1,43 @@
+@page "/privacy"
+@layout PublicLayout
+
+<PageTitle>Политика конфиденциальности — Qwestr</PageTitle>
+
+<section style="padding:80px 24px;">
+    <div style="max-width:720px;margin:0 auto;">
+        <MudText Typo="Typo.h3" Style="font-weight:800;letter-spacing:-0.5px;margin-bottom:8px;">
+            Политика конфиденциальности
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Style="margin-bottom:40px;">
+            Последнее обновление: @_updatedDate
+        </MudText>
+
+        <MudStack Spacing="6">
+            <div>
+                <MudText Typo="Typo.h6" Style="font-weight:700;margin-bottom:12px;">1. Сбор данных</MudText>
+                <MudText Typo="Typo.body1" Style="line-height:1.8;">
+                    Мы собираем данные, которые вы предоставляете при регистрации и использовании сервиса:
+                    имя, email, информацию о компании и данные об активности в платформе.
+                </MudText>
+            </div>
+            <div>
+                <MudText Typo="Typo.h6" Style="font-weight:700;margin-bottom:12px;">2. Использование данных</MudText>
+                <MudText Typo="Typo.body1" Style="line-height:1.8;">
+                    Данные используются исключительно для предоставления услуг платформы, улучшения сервиса
+                    и связи с пользователями по вопросам их учётных записей.
+                </MudText>
+            </div>
+            <div>
+                <MudText Typo="Typo.h6" Style="font-weight:700;margin-bottom:12px;">3. Хранение данных</MudText>
+                <MudText Typo="Typo.body1" Style="line-height:1.8;">
+                    Данные хранятся на защищённых серверах в соответствии с требованиями законодательства
+                    о персональных данных. Мы не передаём ваши данные третьим лицам без вашего согласия.
+                </MudText>
+            </div>
+        </MudStack>
+    </div>
+</section>
+
+@code {
+    private string _updatedDate = "1 января 2025 г.";
+}

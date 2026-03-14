@@ -41,7 +41,7 @@ else if (_noSubdomain)
             <MudTextField @bind-Value="_subdomainInput"
                           Label="Поддомен организации"
                           Adornment="Adornment.End"
-                          AdornmentText="@("." +TenantResolver.BaseDomain)"
+                          AdornmentText="@("." + TenantResolver.BaseDomain)"
                           Variant="Variant.Outlined"
                           FullWidth="true"
                           @onkeydown="OnSubdomainKeyDown" />
@@ -110,7 +110,7 @@ else
                        OnClick="Submit" Disabled="_loading">
                 @if (_loading)
                 {
-                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
                     <MudText Class="ms-2">Войти</MudText>
                 }
                 else
@@ -120,9 +120,14 @@ else
             </MudButton>
 
             <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                <MudLink Href="/forgot-password" Typo="Typo.body2">Забыли пароль?</MudLink>
-                <MudLink Href="/register" Typo="Typo.body2">Регистрация компании</MudLink>
+                <MudLink OnClick="GoToForgotPassword" Href="/forgot-password" Typo="Typo.body2">Забыли пароль?</MudLink>
+                <MudLink OnClick="GoToRegister" Typo="Typo.body2">Регистрация компании</MudLink>
             </MudStack>
+
+            <MudLink Typo="Typo.body2" Align="Align.Center" Color="Color.Default"
+                     OnClick="GoToMainDomain" Style="cursor:pointer;">
+                ← На главную страницу
+            </MudLink>
         </MudStack>
     </MudPaper>
 }
@@ -139,7 +144,6 @@ else
     private bool _loading;
 
     private string _subdomainInput = "";
-
     private InputType _passwordInputType = InputType.Password;
     private string _passwordToggleIcon = Icons.Material.Outlined.VisibilityOff;
 
@@ -162,6 +166,24 @@ else
         }
 
         _checking = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (!await Session.TryRestoreSessionAsync()) return;
+
+        if (TenantResolver.IsTenantDomain)
+        {
+            Nav.NavigateTo("/dashboard");
+        }
+        else
+        {
+            var subdomain = Session.GetClaimFromToken("tenant_subdomain");
+            if (subdomain is not null)
+                Nav.NavigateTo($"https://{subdomain}.{TenantResolver.BaseDomain}/dashboard", forceLoad: true);
+        }
     }
 
     private async Task Submit()
@@ -222,23 +244,29 @@ else
         if (e.Key == "Enter") await Submit();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender) return;
-        if (await Session.TryRestoreSessionAsync())
-        {
-            Nav.NavigateTo("/dashboard");
-        }
-    }
-
     private void GoToSubdomain()
     {
         if (string.IsNullOrWhiteSpace(_subdomainInput)) return;
         Nav.NavigateTo($"https://{_subdomainInput.Trim()}.{TenantResolver.BaseDomain}/login");
     }
 
+    private void GoToMainDomain()
+    {
+        Nav.NavigateTo($"https://{TenantResolver.BaseDomain}/", forceLoad: true);
+    }
+
     private void OnSubdomainKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter") GoToSubdomain();
+    }
+
+    private void GoToRegister()
+    {
+        Nav.NavigateTo($"https://{TenantResolver.BaseDomain}/register", forceLoad: true);
+    }
+
+    private void GoToForgotPassword()
+    {
+        Nav.NavigateTo("/forgot-password");
     }
 }

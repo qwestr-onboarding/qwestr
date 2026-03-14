@@ -1,0 +1,43 @@
+@page "/terms"
+@layout PublicLayout
+
+<PageTitle>Условия использования — Qwestr</PageTitle>
+
+<section style="padding:80px 24px;">
+    <div style="max-width:720px;margin:0 auto;">
+        <MudText Typo="Typo.h3" Style="font-weight:800;letter-spacing:-0.5px;margin-bottom:8px;">
+            Условия использования
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Style="margin-bottom:40px;">
+            Последнее обновление: @_updatedDate
+        </MudText>
+
+        <MudStack Spacing="6">
+            <div>
+                <MudText Typo="Typo.h6" Style="font-weight:700;margin-bottom:12px;">1. Принятие условий</MudText>
+                <MudText Typo="Typo.body1" Style="line-height:1.8;">
+                    Используя платформу Qwestr, вы соглашаетесь с настоящими условиями. Если вы не согласны
+                    с условиями, пожалуйста, не используйте сервис.
+                </MudText>
+            </div>
+            <div>
+                <MudText Typo="Typo.h6" Style="font-weight:700;margin-bottom:12px;">2. Описание сервиса</MudText>
+                <MudText Typo="Typo.body1" Style="line-height:1.8;">
+                    Qwestr предоставляет платформу для управления онбордингом сотрудников, включая инструменты
+                    для создания сценариев адаптации, геймификации и аналитики.
+                </MudText>
+            </div>
+            <div>
+                <MudText Typo="Typo.h6" Style="font-weight:700;margin-bottom:12px;">3. Ответственность пользователя</MudText>
+                <MudText Typo="Typo.body1" Style="line-height:1.8;">
+                    Вы несёте ответственность за сохранность учётных данных и за все действия, совершённые
+                    под вашей учётной записью. Не передавайте данные для входа третьим лицам.
+                </MudText>
+            </div>
+        </MudStack>
+    </div>
+</section>
+
+@code {
+    private string _updatedDate = "1 января 2025 г.";
+}

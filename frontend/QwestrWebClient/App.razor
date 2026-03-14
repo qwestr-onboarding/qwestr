@@ -1,3 +1,8 @@
+@code {
+    private static readonly string CacheVersion = typeof(App).Assembly
+    .GetName().Version?.ToString() ?? DateTime.UtcNow.Ticks.ToString();
+}
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -11,9 +16,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
-    <link rel="stylesheet" href="app.css?v=@Guid.NewGuid()"/>
-    <link rel="stylesheet" href="css/borders.css?v=@Guid.NewGuid()"/>
-    <link rel="stylesheet" href="QwestrWebClient.styles.css?v=@(Guid.NewGuid())"/>
+    <link rel="stylesheet" href="app.css?v=@CacheVersion"/>
+    <link rel="stylesheet" href="css/borders.css?v=@CacheVersion"/>
+    <link rel="stylesheet" href="QwestrWebClient.styles.css?v=@CacheVersion"/>
     <link href="_content/MudBlazor/MudBlazor.min.css?v=@(MudBlazor.Metadata.Version)" rel="stylesheet" />
     <HeadOutlet @rendermode="InteractiveServer"/>
 </head>
@@ -22,7 +27,7 @@
 
 <script src="_framework/blazor.web.js"></script>
 <script src="_content/MudBlazor/MudBlazor.min.js?v=@(MudBlazor.Metadata.Version)"></script>
-<script src="js/bff-auth.js"></script>
+<script src="js/bff-auth.js?v=@CacheVersion"></script>
 
 </body>
 </html>

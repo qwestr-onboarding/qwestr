@@ -15,8 +15,6 @@
 
     <ItemGroup>
       <AdditionalFiles Include="Shared\MainLayout.razor" />
-      <AdditionalFiles Include="Pages\Error.razor" />
-      <AdditionalFiles Include="Pages\Home.razor" />
     </ItemGroup>
 
     <ItemGroup>

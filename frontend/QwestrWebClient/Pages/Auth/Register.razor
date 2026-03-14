@@ -8,113 +8,114 @@
 
 @inject BffAuthClient BffAuth
 @inject TenantResolver TenantResolver
-@inject SessionManager Session
 @inject NavigationManager Nav
 
 <PageTitle>Регистрация компании — Qwestr</PageTitle>
 
-<MudPaper Outlined="true" Style="width:100%;max-width:500px;padding:40px 40px;border-radius:16px;" Elevation="0">
-    <MudStack Spacing="4">
-        <MudStack AlignItems="AlignItems.Center" Spacing="1">
-            <MudText Typo="Typo.h5" Align="Align.Center" Style="font-weight:700; letter-spacing:-0.5px;">
-                Qwestr
-            </MudText>
+<RouteGuard Mode="RouteGuardMode.GuestOnMain">
+    <MudPaper Outlined="true" Style="width:100%;max-width:500px;padding:40px 40px;border-radius:16px;" Elevation="0">
+        <MudStack Spacing="4">
+            <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                <MudText Typo="Typo.h5" Align="Align.Center" Style="font-weight:700; letter-spacing:-0.5px;">
+                    Qwestr
+                </MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+                    Создайте аккаунт компании
+                </MudText>
+            </MudStack>
+
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" ShowCloseIcon="true"
+                          CloseIconClicked="() => _error = null">
+                    @_error
+                </MudAlert>
+            }
+
+            <MudTextField @bind-Value="_companyName"
+                          Label="Название компании"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Disabled="_loading" />
+
+            <MudTextField @bind-Value="_subdomain"
+                          Label="Поддомен"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Disabled="_loading"
+                          HelperText="@(_subdomain.Length > 0 ? $"{_subdomain}.{TenantResolver.BaseDomain}" : $"например: company.{TenantResolver.BaseDomain}")"
+                          HelperTextOnFocus="false"
+                          Error="@(_subdomainError is not null)"
+                          ErrorText="@_subdomainError"
+                          OnBlur="ValidateSubdomain" />
+
+            <MudTextField @bind-Value="_email"
+                          Label="Email владельца"
+                          InputType="InputType.Email"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Disabled="_loading" />
+
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_firstName"
+                                  Label="Имя"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true"
+                                  Disabled="_loading" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_lastName"
+                                  Label="Фамилия"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true"
+                                  Disabled="_loading" />
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField @bind-Value="_password"
+                          Label="Пароль"
+                          InputType="@_passwordInputType"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Disabled="_loading"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@_passwordToggleIcon"
+                          OnAdornmentClick="TogglePasswordVisibility" />
+
+            <MudTextField @bind-Value="_confirmPassword"
+                          Label="Подтверждение пароля"
+                          InputType="@_passwordInputType"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Disabled="_loading"
+                          Error="@(_passwordMismatch)"
+                          ErrorText="Пароли не совпадают" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       OnClick="Submit"
+                       Disabled="_loading">
+                @if (_loading)
+                {
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                    <MudText Class="ms-2">Создание...</MudText>
+                }
+                else
+                {
+                    <MudText>Создать компанию</MudText>
+                }
+            </MudButton>
+
             <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
-                Создайте аккаунт компании
+                Уже есть аккаунт?
+                <MudLink Href="/login">Войти</MudLink>
             </MudText>
         </MudStack>
-
-        @if (_error is not null)
-        {
-            <MudAlert Severity="Severity.Error" Dense="true" ShowCloseIcon="true"
-                      CloseIconClicked="() => _error = null">
-                @_error
-            </MudAlert>
-        }
-
-        <MudTextField @bind-Value="_companyName"
-                      Label="Название компании"
-                      Variant="Variant.Outlined"
-                      FullWidth="true"
-                      Disabled="_loading" />
-
-        <MudTextField @bind-Value="_subdomain"
-                      Label="Поддомен"
-                      Variant="Variant.Outlined"
-                      FullWidth="true"
-                      Disabled="_loading"
-                      HelperText="@(_subdomain.Length > 0 ? $"{_subdomain}.{TenantResolver.BaseDomain}" : $"например: company.{TenantResolver.BaseDomain}")"
-                      HelperTextOnFocus="false"
-                      Error="@(_subdomainError is not null)"
-                      ErrorText="@_subdomainError"
-                      OnBlur="ValidateSubdomain" />
-
-        <MudTextField @bind-Value="_email"
-                      Label="Email владельца"
-                      InputType="InputType.Email"
-                      Variant="Variant.Outlined"
-                      FullWidth="true"
-                      Disabled="_loading" />
-
-        <MudGrid Spacing="2">
-            <MudItem xs="6">
-                <MudTextField @bind-Value="_firstName"
-                              Label="Имя"
-                              Variant="Variant.Outlined"
-                              FullWidth="true"
-                              Disabled="_loading" />
-            </MudItem>
-            <MudItem xs="6">
-                <MudTextField @bind-Value="_lastName"
-                              Label="Фамилия"
-                              Variant="Variant.Outlined"
-                              FullWidth="true"
-                              Disabled="_loading" />
-            </MudItem>
-        </MudGrid>
-
-        <MudTextField @bind-Value="_password"
-                      Label="Пароль"
-                      InputType="@_passwordInputType"
-                      Variant="Variant.Outlined"
-                      FullWidth="true"
-                      Disabled="_loading"
-                      Adornment="Adornment.End"
-                      AdornmentIcon="@_passwordToggleIcon"
-                      OnAdornmentClick="TogglePasswordVisibility" />
-
-        <MudTextField @bind-Value="_confirmPassword"
-                      Label="Подтверждение пароля"
-                      InputType="@_passwordInputType"
-                      Variant="Variant.Outlined"
-                      FullWidth="true"
-                      Disabled="_loading"
-                      Error="@(_passwordMismatch)"
-                      ErrorText="Пароли не совпадают" />
-
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   FullWidth="true"
-                   Size="Size.Large"
-                   OnClick="Submit"
-                   Disabled="_loading">
-            @if (_loading)
-            {
-                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
-                <MudText Class="ms-2">Создание...</MudText>
-            }
-            else
-            {
-                <MudText>Создать компанию</MudText>
-            }
-        </MudButton>
-
-        <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
-            Уже есть аккаунт?
-            <MudLink Href="/login">Войти</MudLink>
-        </MudText>
-    </MudStack>
-</MudPaper>
+    </MudPaper>
+</RouteGuard>
 
 @code {
     private string _companyName = "";
@@ -132,13 +133,6 @@
 
     private InputType _passwordInputType = InputType.Password;
     private string _passwordToggleIcon = Icons.Material.Outlined.VisibilityOff;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender) return;
-        if (await Session.TryRestoreSessionAsync())
-            Nav.NavigateTo("/dashboard");
-    }
 
     private static readonly Regex SubdomainRegex =
         new(@"^[a-z0-9]([a-z0-9\-]{1,61}[a-z0-9])?$", RegexOptions.Compiled);

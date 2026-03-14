@@ -1,0 +1,89 @@
+@page "/pricing"
+@layout PublicLayout
+
+<PageTitle>Тарифы — Qwestr</PageTitle>
+
+<section style="padding:80px 24px;">
+    <div style="max-width:1000px;margin:0 auto;">
+        <MudStack Spacing="2" AlignItems="AlignItems.Center" Style="margin-bottom:56px;">
+            <MudText Typo="Typo.h3" Style="font-weight:800;letter-spacing:-0.5px;text-align:center;">
+                Простые и прозрачные тарифы
+            </MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center">
+                Начните бесплатно, масштабируйтесь по мере роста команды
+            </MudText>
+        </MudStack>
+
+        <MudGrid Spacing="4" Justify="Justify.Center">
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Outlined="true" Style="padding:40px 32px;border-radius:16px;height:100%;" Elevation="0">
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.overline" Color="Color.Secondary">Старт</MudText>
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.h3" Style="font-weight:800;">Бесплатно</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">навсегда</MudText>
+                        </MudStack>
+                        <MudDivider />
+                        <MudStack Spacing="2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Outlined.Check" Color="Color.Success" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">До 10 сотрудников</MudText>
+                            </MudStack>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Outlined.Check" Color="Color.Success" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">3 сценария онбординга</MudText>
+                            </MudStack>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Outlined.Check" Color="Color.Success" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">Базовая геймификация</MudText>
+                            </MudStack>
+                        </MudStack>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                                   Href="/register" Style="border-radius:8px;margin-top:auto;">
+                            Начать бесплатно
+                        </MudButton>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Style="padding:40px 32px;border-radius:16px;height:100%;background:#7c3aed;" Elevation="2">
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.overline" Style="color:rgba(255,255,255,0.7);">Бизнес</MudText>
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.h3" Style="font-weight:800;color:#fff;">990 ₽</MudText>
+                            <MudText Typo="Typo.body2" Style="color:rgba(255,255,255,0.7);">в месяц за сотрудника</MudText>
+                        </MudStack>
+                        <MudDivider Style="border-color:rgba(255,255,255,0.2);" />
+                        <MudStack Spacing="2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Outlined.Check" Style="color:#a78bfa;" Size="Size.Small" />
+                                <MudText Typo="Typo.body2" Style="color:#fff;">Неограниченно сотрудников</MudText>
+                            </MudStack>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Outlined.Check" Style="color:#a78bfa;" Size="Size.Small" />
+                                <MudText Typo="Typo.body2" Style="color:#fff;">Неограниченно сценариев</MudText>
+                            </MudStack>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Outlined.Check" Style="color:#a78bfa;" Size="Size.Small" />
+                                <MudText Typo="Typo.body2" Style="color:#fff;">Полная геймификация</MudText>
+                            </MudStack>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Outlined.Check" Style="color:#a78bfa;" Size="Size.Small" />
+                                <MudText Typo="Typo.body2" Style="color:#fff;">Аналитика HR</MudText>
+                            </MudStack>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Outlined.Check" Style="color:#a78bfa;" Size="Size.Small" />
+                                <MudText Typo="Typo.body2" Style="color:#fff;">Приоритетная поддержка</MudText>
+                            </MudStack>
+                        </MudStack>
+                        <MudButton Variant="Variant.Filled" FullWidth="true" Href="/register"
+                                   Style="border-radius:8px;margin-top:auto;background:#fff;color:#7c3aed;font-weight:600;">
+                            Попробовать 14 дней бесплатно
+                        </MudButton>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </div>
+</section>

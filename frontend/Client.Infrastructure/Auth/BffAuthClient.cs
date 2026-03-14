@@ -8,7 +8,7 @@ using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses;
 
 namespace Client.Infrastructure.Auth;
 
-public class BffAuthClient(IJSRuntime Js)
+public class BffAuthClient(IJSRuntime Js, TokenStorageService TokenStorage)
 {
     private static readonly JsonSerializerOptions JsonOpts =
         new() { PropertyNameCaseInsensitive = true };
@@ -42,7 +42,7 @@ public class BffAuthClient(IJSRuntime Js)
 
     public async Task<BffResponse> LogoutAsync(CancellationToken ct = default)
     {
-        var js = await Invoke("bffAuth.post", ct, "/bff/auth/logout", null);
+        var js = await Js.InvokeAsync<JsonElement>("bffAuth.post", ct, "/bff/auth/logout", null, TokenStorage.AccessToken);
         return ParseNoData(js);
     }
 

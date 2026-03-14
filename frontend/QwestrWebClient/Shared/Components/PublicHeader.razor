@@ -1,0 +1,69 @@
+@using Client.Infrastructure.Services
+
+@inject TenantResolver TenantResolver
+@inject NavigationManager Nav
+
+<header style="position:fixed;top:0;left:0;right:0;z-index:1000;background:#fff;border-bottom:1px solid #e0e0e0;">
+    <div style="max-width:1200px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;">
+
+        <MudLink Href="/" Typo="Typo.h6" Color="Color.Default" Underline="Underline.None"
+                 Style="font-weight:800;letter-spacing:-0.5px;color:#1a1a2e;">
+            Qwestr
+        </MudLink>
+
+        <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="false">
+            <nav style="display:flex;align-items:center;gap:8px;">
+                <MudLink Href="/pricing" Typo="Typo.body2" Color="Color.Default" Underline="Underline.None"
+                         Class="px-3 py-1">
+                    Тарифы
+                </MudLink>
+                <MudLink Href="/about" Typo="Typo.body2" Color="Color.Default" Underline="Underline.None"
+                         Class="px-3 py-1">
+                    О нас
+                </MudLink>
+                <MudDivider Vertical="true" Style="height:20px;margin:0 8px;" />
+                <MudLink Href="/login" Typo="Typo.body2" Color="Color.Default" Underline="Underline.None"
+                         Class="px-3 py-1">
+                    Войти
+                </MudLink>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           Size="Size.Small" Href="/register"
+                           Style="border-radius:8px;">
+                    Попробовать бесплатно
+                </MudButton>
+            </nav>
+        </MudHidden>
+
+        <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
+            <MudIconButton Icon="@Icons.Material.Outlined.Menu"
+                           OnClick="ToggleMenu"
+                           Edge="Edge.End" />
+        </MudHidden>
+    </div>
+
+    @if (_menuOpen)
+    {
+        <div style="background:#fff;border-top:1px solid #e0e0e0;padding:16px 24px;">
+            <MudStack Spacing="2">
+                <MudLink Href="/pricing" Typo="Typo.body1" Color="Color.Default" Underline="Underline.None">
+                    Тарифы
+                </MudLink>
+                <MudLink Href="/about" Typo="Typo.body1" Color="Color.Default" Underline="Underline.None">
+                    О нас
+                </MudLink>
+                <MudDivider />
+                <MudLink Href="/login" Typo="Typo.body1" Color="Color.Default" Underline="Underline.None">
+                    Войти
+                </MudLink>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Href="/register">
+                    Попробовать бесплатно
+                </MudButton>
+            </MudStack>
+        </div>
+    }
+</header>
+
+@code {
+    private bool _menuOpen;
+    private void ToggleMenu() => _menuOpen = !_menuOpen;
+}

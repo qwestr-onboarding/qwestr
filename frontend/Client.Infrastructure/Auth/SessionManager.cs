@@ -116,6 +116,26 @@ public class SessionManager
     }
 
     /// <summary>
+    /// Сбрасывает текущую сессию (токен + состояние аутентификации).
+    /// </summary>
+    public void ClearSession()
+    {
+        _tokenStorage.Clear();
+        _authState.NotifyAuthStateChanged();
+    }
+
+    /// <summary>
+    /// Читает claim из текущего access token.
+    /// </summary>
+    public string? GetClaimFromToken(string claimType)
+    {
+        var token = _tokenStorage.AccessToken;
+        if (string.IsNullOrEmpty(token)) return null;
+        return _authState.ParseClaimsFromJwt(token)
+            .FirstOrDefault(c => c.Type == claimType)?.Value;
+    }
+
+    /// <summary>
     /// Перегрузка для API-вызовов без тела ответа.
     /// </summary>
     public async Task<ApiResult> ExecuteWithAuthAsync(
