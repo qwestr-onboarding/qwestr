@@ -2,11 +2,16 @@
 @layout AuthLayout
 
 @using Client.Infrastructure.Auth
+@using Client.Infrastructure.Api.Endpoints
+@using Client.Infrastructure.Services
 @using Qwestr.Shared.Contracts.ApiDto.Identity.Invitations.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Identity.Invitations.Responses
 
 @inject BffAuthClient BffAuth
+@inject InvitationsApi InvitationsApi
 @inject TokenStorageService TokenStorage
 @inject JwtAuthStateProvider AuthStateProvider
+@inject TenantResolver TenantResolver
 @inject NavigationManager Nav
 
 <PageTitle>Принять приглашение — Qwestr</PageTitle>
@@ -14,23 +19,54 @@
 <RouteGuard Mode="RouteGuardMode.GuestOnTenant">
     <MudPaper Outlined="true" Style="width:100%;max-width:440px;padding:40px 36px;border-radius:16px;" Elevation="0">
         <MudStack Spacing="4">
-            <MudStack AlignItems="AlignItems.Center" Spacing="1">
-                <MudText Typo="Typo.h5" Align="Align.Center" Style="font-weight:700; letter-spacing:-0.5px;">
-                    Qwestr
-                </MudText>
-                <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
-                    Вас пригласили в команду. Создайте пароль для входа.
-                </MudText>
-            </MudStack>
 
-            @if (_tokenMissing)
+            @if (_validating)
             {
+                <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Проверка приглашения...</MudText>
+                </MudStack>
+            }
+            else if (_invalidLink)
+            {
+                <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                    <MudText Typo="Typo.h5" Align="Align.Center" Style="font-weight:700;letter-spacing:-0.5px;">
+                        Qwestr
+                    </MudText>
+                </MudStack>
                 <MudAlert Severity="Severity.Error" Dense="true">
-                    Ссылка недействительна или истекла. Попросите нового приглашения.
+                    Ссылка недействительна. Попросите новое приглашение у администратора.
+                </MudAlert>
+            }
+            else if (_expired)
+            {
+                <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                    <MudText Typo="Typo.h5" Align="Align.Center" Style="font-weight:700;letter-spacing:-0.5px;">
+                        Qwestr
+                    </MudText>
+                </MudStack>
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    Срок действия приглашения истёк. Попросите новое приглашение у администратора.
                 </MudAlert>
             }
             else
             {
+                <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                    <MudText Typo="Typo.h5" Align="Align.Center" Style="font-weight:700;letter-spacing:-0.5px;">
+                        Qwestr
+                    </MudText>
+                    <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+                        Вас пригласили в <strong>@_preview!.CompanyName</strong>. Создайте пароль для входа.
+                    </MudText>
+                </MudStack>
+
+                <MudPaper Outlined="true" Style="border-radius:8px;padding:12px 16px;" Elevation="0">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Email</MudText>
+                        <MudText Typo="Typo.body2">@_preview!.Email</MudText>
+                    </MudStack>
+                </MudPaper>
+
                 @if (_error is not null)
                 {
                     <MudAlert Severity="Severity.Error" Dense="true" ShowCloseIcon="true"
@@ -92,6 +128,7 @@
                     }
                 </MudButton>
             }
+
         </MudStack>
     </MudPaper>
 </RouteGuard>
@@ -99,6 +136,11 @@
 @code {
     [SupplyParameterFromQuery(Name = "token")]
     public string? Token { get; set; }
+
+    private InvitationPreviewResponse? _preview;
+    private bool _validating = true;
+    private bool _invalidLink;
+    private bool _expired;
 
     private string _firstName = "";
     private string _lastName = "";
@@ -108,19 +150,41 @@
     private string? _error;
     private bool _passwordMismatch;
     private bool _loading;
-    private bool _tokenMissing;
 
     private InputType _passwordInputType = InputType.Password;
     private string _passwordToggleIcon = Icons.Material.Outlined.VisibilityOff;
 
-    protected override void OnAfterRender(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
+
         if (string.IsNullOrEmpty(Token))
         {
-            _tokenMissing = true;
+            _validating = false;
+            _invalidLink = true;
             StateHasChanged();
+            return;
         }
+
+        var subdomain = TenantResolver.GetSubdomain()!;
+        var result = await InvitationsApi.ValidateAsync(Token, subdomain);
+
+        _validating = false;
+
+        if (result.IsSuccess)
+        {
+            _preview = result.Data;
+        }
+        else if (result.Error == "Invitation has expired.")
+        {
+            _expired = true;
+        }
+        else
+        {
+            _invalidLink = true;
+        }
+
+        StateHasChanged();
     }
 
     private async Task Submit()

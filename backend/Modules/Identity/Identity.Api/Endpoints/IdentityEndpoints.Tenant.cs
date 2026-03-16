@@ -2,12 +2,15 @@ using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Qwestr.Modules.Identity.Application.Commands.DeleteCompanyLogo;
 using Qwestr.Modules.Identity.Application.Commands.UpdateTenant;
 using Qwestr.Modules.Identity.Application.Commands.UpdateTenantSettings;
+using Qwestr.Modules.Identity.Application.Commands.UploadCompanyLogo;
 using Qwestr.Modules.Identity.Application.Queries.GetTenant;
 using Qwestr.Modules.Identity.Application.Queries.GetTenantBySubdomain;
 using Qwestr.Modules.Identity.Application.Queries.GetTenantSettings;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Tenant.Requests;
+using Qwestr.Shared.Contracts.ApiDto.Identity.Tenant.Responses;
 using Qwestr.Shared.Contracts.ApiDto.Shared.Responses;
 using Qwestr.Shared.Infrastructure.Services.CurrentUser;
 
@@ -28,6 +31,13 @@ public static partial class IdentityEndpoints
             .RequireAuthorization();
         tenant.MapPut("/settings", UpdateTenantSettingsHandler)
             .RequireAuthorization(p => p.RequireRole("Admin", "Owner"));
+
+        tenant.MapPost("/logo", UploadCompanyLogoHandler)
+            .RequireAuthorization(p => p.RequireRole("Owner"))
+            .DisableAntiforgery();
+        tenant.MapDelete("/logo", DeleteCompanyLogoHandler)
+            .RequireAuthorization(p => p.RequireRole("Owner"));
+
         return identity;
     }
 
@@ -73,7 +83,27 @@ public static partial class IdentityEndpoints
         UpdateTenantSettingsRequest body, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
     {
         var result = await sender.Send(
-            new UpdateTenantSettingsCommand(currentUser.TenantId, body.Timezone, body.Language, body.CompanyLogoUrl), ct);
+            new UpdateTenantSettingsCommand(currentUser.TenantId, body.Timezone, body.Language), ct);
+        return result.IsSuccess
+            ? Results.NoContent()
+            : Results.BadRequest(new ErrorResponse(result.Error));
+    }
+
+    private static async Task<IResult> UploadCompanyLogoHandler(
+        IFormFile file, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
+    {
+        await using var stream = file.OpenReadStream();
+        var command = new UploadCompanyLogoCommand(currentUser.TenantId, stream, file.Length, file.ContentType);
+        var result = await sender.Send(command, ct);
+        return result.IsSuccess
+            ? Results.Ok(new UploadLogoResponse(result.Value!))
+            : Results.BadRequest(new ErrorResponse(result.Error));
+    }
+
+    private static async Task<IResult> DeleteCompanyLogoHandler(
+        ICurrentUserService currentUser, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new DeleteCompanyLogoCommand(currentUser.TenantId), ct);
         return result.IsSuccess
             ? Results.NoContent()
             : Results.BadRequest(new ErrorResponse(result.Error));

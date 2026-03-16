@@ -20,6 +20,11 @@ public class InvitationRepository : IInvitationRepository
     public async Task<Invitation?> GetByTokenAsync(string token, CancellationToken ct = default)
         => await _context.Invitations.FirstOrDefaultAsync(i => i.Token == token, ct);
 
+    public async Task<Invitation?> GetByTokenWithTenantAsync(string token, CancellationToken ct = default)
+        => await _context.Invitations
+            .Include(i => i.Tenant)
+            .FirstOrDefaultAsync(i => i.Token == token, ct);
+
     public async Task<List<Invitation>> GetByTenantAsync(Guid tenantId, int page, int pageSize, InvitationStatus? status = null, CancellationToken ct = default)
         => await _context.Invitations
             .Include(i => i.InvitedByUser)

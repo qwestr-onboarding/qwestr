@@ -1,0 +1,373 @@
+@page "/tenant-settings"
+@layout MainLayout
+
+@using System.Security.Claims
+@using Client.Infrastructure.Auth
+@using Client.Infrastructure.Api.Endpoints
+@using Microsoft.AspNetCore.Components.Forms
+@using Qwestr.Shared.Contracts.ApiDto.Identity.Tenant.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Identity.Tenant.Responses
+@using Qwestr.Shared.Kernel.Enums.Identity
+
+@inject TenantApi TenantApi
+@inject SessionManager Session
+@inject BffAuthClient BffAuth
+@inject TokenStorageService TokenStorage
+@inject JwtAuthStateProvider AuthStateProvider
+@inject TenantResolver TenantResolver
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+
+<PageTitle>Настройки компании — Qwestr</PageTitle>
+
+@if (_loading)
+{
+    <MudStack AlignItems="AlignItems.Center" Class="pa-8">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    </MudStack>
+}
+else
+{
+    <MudStack Spacing="4">
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudIconButton Icon="@Icons.Material.Outlined.ArrowBack"
+                           OnClick='() => Nav.NavigateTo("/menu")' />
+            <MudText Typo="Typo.h6">Настройки компании</MudText>
+        </MudStack>
+
+        @* ── Логотип ── *@
+        @if (_isOwner)
+        {
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.subtitle1">Логотип</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                        @if (_logoUrl is not null)
+                        {
+                            <MudAvatar Style="width:72px;height:72px;">
+                                <MudImage Src="@_logoUrl"></MudImage>
+                            </MudAvatar>
+                        }
+                        else
+                        {
+                            <MudAvatar Color="Color.Primary" Rounded="true" Style="width:72px;height:72px;">
+                                <MudText Typo="Typo.h5">@(_name.Length > 0 ? _name[0].ToString().ToUpper() : "?")</MudText>
+                            </MudAvatar>
+                        }
+                        <MudStack Spacing="1">
+                            <MudFileUpload T="IBrowserFile" FilesChanged="OnLogoSelected" Accept="image/*">
+                                <ActivatorContent>
+                                    <MudButton Variant="Variant.Outlined"
+                                               StartIcon="@Icons.Material.Outlined.Upload"
+                                               Disabled="_logoUploading">
+                                        @(_logoUploading ? "Загрузка..." : "Загрузить")
+                                    </MudButton>
+                                </ActivatorContent>
+                            </MudFileUpload>
+                            @if (_logoUrl is not null)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Error"
+                                           StartIcon="@Icons.Material.Outlined.Delete"
+                                           OnClick="DeleteLogo" Disabled="_logoDeleting">
+                                    Удалить
+                                </MudButton>
+                            }
+                        </MudStack>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        }
+
+        @* ── Основная информация ── *@
+        <MudPaper Elevation="1" Class="pa-4">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.subtitle1">Основная информация</MudText>
+
+                <MudTextField @bind-Value="_name"
+                              Label="Название организации"
+                              Variant="Variant.Outlined"
+                              FullWidth="true"
+                              ReadOnly="!_isOwner" />
+
+                <MudTextField @bind-Value="_subdomain"
+                              Label="Поддомен"
+                              Variant="Variant.Outlined"
+                              FullWidth="true"
+                              ReadOnly="!_isOwner"
+                              Adornment="Adornment.End"
+                              AdornmentText="@($".{TenantResolver.BaseDomain}")" />
+
+                @if (_isOwner && _subdomain != _originalSubdomain && !string.IsNullOrWhiteSpace(_subdomain))
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">
+                        После смены поддомена все пользователи должны будут перезагрузить страницу.
+                        Ваша сессия обновится автоматически.
+                    </MudAlert>
+                }
+
+                @if (_isOwner)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="SaveTenant" Disabled="_savingTenant">
+                        @(_savingTenant ? "Сохранение..." : "Сохранить")
+                    </MudButton>
+                }
+            </MudStack>
+        </MudPaper>
+
+        @* ── Тарифный план ── *@
+        <MudPaper Elevation="1" Class="pa-4">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.subtitle1">Тарифный план</MudText>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.body2">Текущий план:</MudText>
+                    <MudChip T="string" Color="@PlanColor(_plan)" Size="Size.Small">
+                        @PlanLabel(_plan)
+                    </MudChip>
+                </MudStack>
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    Изменение тарифного плана пока недоступно. Мы работаем над этой возможностью.
+                </MudAlert>
+                <MudTooltip Text="Скоро будет доступно">
+                    <MudButton Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Outlined.Star"
+                               Disabled="true">
+                        Выбрать план
+                    </MudButton>
+                </MudTooltip>
+            </MudStack>
+        </MudPaper>
+
+        @* ── Региональные настройки ── *@
+        @if (_isAdminOrAbove)
+        {
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.subtitle1">Региональные настройки</MudText>
+
+                    <MudSelect T="string" @bind-Value="_language"
+                               Label="Язык интерфейса" Variant="Variant.Outlined" FullWidth="true">
+                        <MudSelectItem Value="@("ru")">Русский</MudSelectItem>
+                        <MudSelectItem Value="@("en")">English</MudSelectItem>
+                    </MudSelect>
+
+                    <MudSelect T="string" @bind-Value="_timezone"
+                               Label="Часовой пояс" Variant="Variant.Outlined" FullWidth="true">
+                        @foreach (var tz in Timezones)
+                        {
+                            <MudSelectItem Value="@tz.Id">@tz.Label</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="SaveSettings" Disabled="_savingSettings">
+                        @(_savingSettings ? "Сохранение..." : "Сохранить")
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        }
+
+    </MudStack>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _isOwner;
+    private bool _isAdminOrAbove;
+
+    // Основные данные
+    private string _name = "";
+    private string _subdomain = "";
+    private string _originalSubdomain = "";
+    private TenantPlan _plan = TenantPlan.Free;
+    private bool _savingTenant;
+
+    // Логотип
+    private string? _logoUrl;
+    private bool _logoUploading;
+    private bool _logoDeleting;
+
+    // Региональные настройки
+    private string _language = "ru";
+    private string _timezone = "Europe/Moscow";
+    private bool _savingSettings;
+
+    private static readonly (string Id, string Label)[] Timezones =
+    [
+        ("UTC",                  "UTC (UTC+0)"),
+        ("Europe/Kaliningrad",   "Калининград (UTC+2)"),
+        ("Europe/Moscow",        "Москва (UTC+3)"),
+        ("Europe/Samara",        "Самара (UTC+4)"),
+        ("Asia/Yekaterinburg",   "Екатеринбург (UTC+5)"),
+        ("Asia/Omsk",            "Омск (UTC+6)"),
+        ("Asia/Krasnoyarsk",     "Красноярск (UTC+7)"),
+        ("Asia/Irkutsk",         "Иркутск (UTC+8)"),
+        ("Asia/Yakutsk",         "Якутск (UTC+9)"),
+        ("Asia/Vladivostok",     "Владивосток (UTC+10)"),
+        ("Asia/Magadan",         "Магадан (UTC+11)"),
+        ("Asia/Kamchatka",       "Камчатка (UTC+12)"),
+        ("Europe/London",        "Лондон (UTC±0)"),
+        ("Europe/Berlin",        "Берлин (UTC+1)"),
+        ("America/New_York",     "Нью-Йорк (UTC-5)"),
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var roleStr = Session.GetClaimFromToken(ClaimTypes.Role);
+        var role = Enum.TryParse<UserRole>(roleStr, out var r) ? r : UserRole.Employee;
+        _isOwner = role == UserRole.Owner;
+        _isAdminOrAbove = role >= UserRole.Admin;
+
+        var tenantTask = TenantApi.GetTenantAsync();
+        var settingsTask = TenantApi.GetSettingsAsync();
+        await Task.WhenAll(tenantTask, settingsTask);
+
+        var tenant = tenantTask.Result;
+        var settings = settingsTask.Result;
+
+        if (tenant.IsSuccess && tenant.Data is not null)
+        {
+            _name = tenant.Data.Name;
+            _subdomain = tenant.Data.Subdomain ?? "";
+            _originalSubdomain = _subdomain;
+            _plan = tenant.Data.Plan;
+        }
+
+        if (settings.IsSuccess && settings.Data is not null)
+        {
+            _logoUrl = TenantApi.ResolveAssetUrl(settings.Data.CompanyLogoUrl);
+            _language = settings.Data.Language ?? "ru";
+            _timezone = settings.Data.Timezone ?? "Europe/Moscow";
+        }
+
+        _loading = false;
+    }
+
+    private async Task SaveTenant()
+    {
+        if (_subdomain != _originalSubdomain)
+        {
+            var confirmed = await DialogService.ShowMessageBox(
+                "Изменение поддомена",
+                "После сохранения все пользователи должны будут перезагрузить страницу. " +
+                "Ваша сессия обновится автоматически. Продолжить?",
+                yesText: "Да, изменить", cancelText: "Отмена");
+            if (confirmed != true) return;
+        }
+
+        _savingTenant = true;
+        try
+        {
+            var result = await TenantApi.UpdateTenantAsync(new UpdateTenantRequest(_name, _subdomain));
+            if (!result.IsSuccess)
+            {
+                Snackbar.Add(result.Error ?? "Ошибка сохранения", Severity.Error);
+                return;
+            }
+
+            if (_subdomain != _originalSubdomain)
+            {
+                var refresh = await BffAuth.RefreshAsync();
+                if (refresh.IsSuccess && refresh.Data is not null)
+                {
+                    TokenStorage.SetToken(refresh.Data.AccessToken, refresh.Data.ExpiresAt);
+                    AuthStateProvider.NotifyAuthStateChanged();
+                }
+                Nav.NavigateTo($"https://{_subdomain}.{TenantResolver.BaseDomain}/tenant-settings", forceLoad: true);
+                return;
+            }
+
+            _originalSubdomain = _subdomain;
+            Snackbar.Add("Сохранено", Severity.Success);
+        }
+        finally
+        {
+            _savingTenant = false;
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        _savingSettings = true;
+        try
+        {
+            var result = await TenantApi.UpdateSettingsAsync(new UpdateTenantSettingsRequest(_timezone, _language));
+            if (result.IsSuccess)
+                Snackbar.Add("Сохранено", Severity.Success);
+            else
+                Snackbar.Add(result.Error ?? "Ошибка сохранения", Severity.Error);
+        }
+        finally
+        {
+            _savingSettings = false;
+        }
+    }
+
+    private async Task OnLogoSelected(IBrowserFile file)
+    {
+        _logoUploading = true;
+        try
+        {
+            await using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            var result = await TenantApi.UploadLogoAsync(stream, file.Name, file.ContentType);
+            if (result.IsSuccess)
+            {
+                _logoUrl = TenantApi.ResolveAssetUrl(result.Data!.LogoUrl);
+                Snackbar.Add("Логотип обновлён", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.Error ?? "Ошибка загрузки логотипа", Severity.Error);
+            }
+        }
+        finally
+        {
+            _logoUploading = false;
+        }
+    }
+
+    private async Task DeleteLogo()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Удалить логотип", "Удалить логотип компании?",
+            yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed != true) return;
+
+        _logoDeleting = true;
+        try
+        {
+            var result = await TenantApi.DeleteLogoAsync();
+            if (result.IsSuccess)
+            {
+                _logoUrl = null;
+                Snackbar.Add("Логотип удалён", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.Error ?? "Ошибка удаления", Severity.Error);
+            }
+        }
+        finally
+        {
+            _logoDeleting = false;
+        }
+    }
+
+    private static Color PlanColor(TenantPlan plan) => plan switch
+    {
+        TenantPlan.Free  => Color.Default,
+        TenantPlan.Basic => Color.Info,
+        TenantPlan.Pro   => Color.Warning,
+        _                => Color.Default
+    };
+
+    private static string PlanLabel(TenantPlan plan) => plan switch
+    {
+        TenantPlan.Free  => "Free",
+        TenantPlan.Basic => "Basic",
+        TenantPlan.Pro   => "Pro",
+        _                => plan.ToString()
+    };
+}

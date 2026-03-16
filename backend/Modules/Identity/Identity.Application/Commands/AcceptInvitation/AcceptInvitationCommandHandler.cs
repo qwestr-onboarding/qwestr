@@ -4,6 +4,7 @@ using Qwestr.Modules.Identity.Application.Abstractions.Services;
 using Qwestr.Modules.Identity.Domain.Entities;
 using Qwestr.Modules.Identity.Domain.Events;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses;
+using Qwestr.Shared.Contracts.Identity.Events;
 using Qwestr.Shared.Kernel.Entities;
 using Qwestr.Shared.Kernel.Enums.Identity;
 using DomainRefreshToken = Qwestr.Modules.Identity.Domain.Entities.RefreshToken;
@@ -75,6 +76,8 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
         await _refreshTokenRepository.SaveChangesAsync(ct);
 
         await _publisher.Publish(new UserRegisteredEvent(user.Id, user.TenantId, user.Email, $"{user.FirstName} {user.LastName}"), ct);
+        await _publisher.Publish(new UserRegisteredIntegrationEvent(
+            user.Id, user.TenantId, user.Email, user.FirstName, user.LastName, null, user.Role), ct);
 
         return ActionResult<TokenResponse>.Success(new TokenResponse(accessToken, refreshTokenValue, expiresAt));
     }

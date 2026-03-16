@@ -41,15 +41,23 @@ else
             case RouteGuardMode.PublicOnly:
                 if (onTenant)
                 {
-                    Nav.NavigateTo($"https://{TenantResolver.BaseDomain}/", forceLoad: true);
+                    if (authorized)
+                    {
+                        Nav.NavigateTo($"https://{tokenSubdomain}.{TenantResolver.BaseDomain}/dashboard", forceLoad: true);
+                    }
+                    else
+                    {
+                        Nav.NavigateTo($"https://{currentSubdomain}.{TenantResolver.BaseDomain}/login", forceLoad: true);
+                    }
                     return;
                 }
+                
                 break;
 
             case RouteGuardMode.TenantOnly:
                 if (!onTenant)
                 {
-                    Nav.NavigateTo($"https://{TenantResolver.BaseDomain}/login", forceLoad: true);
+                    Nav.NavigateTo($"https://{TenantResolver.BaseDomain}/", forceLoad: true);
                     return;
                 }
                 if (!authorized)

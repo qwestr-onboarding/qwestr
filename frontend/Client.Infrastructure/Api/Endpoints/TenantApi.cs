@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using Client.Infrastructure.Api.Models;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Tenant.Requests;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Tenant.Responses;
@@ -23,4 +24,19 @@ public class TenantApi(QwestrApiClient api)
     public Task<ApiResult> UpdateSettingsAsync(
         UpdateTenantSettingsRequest request, CancellationToken ct = default)
         => api.PutAsync("/api/identity/tenant/settings", request, ct);
+
+    public async Task<ApiResult<UploadLogoResponse>> UploadLogoAsync(
+        Stream stream, string fileName, string contentType, CancellationToken ct = default)
+    {
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(stream);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        content.Add(fileContent, "file", fileName);
+        return await api.PostContentAsync<UploadLogoResponse>("/api/identity/tenant/logo", content, ct);
+    }
+
+    public Task<ApiResult> DeleteLogoAsync(CancellationToken ct = default)
+        => api.DeleteAsync("/api/identity/tenant/logo", ct);
+
+    public string? ResolveAssetUrl(string? path) => api.ResolveAssetUrl(path);
 }

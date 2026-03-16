@@ -1,7 +1,9 @@
-﻿using Qwestr.Shared.Kernel.Entities;
+﻿using System.Text.Json.Serialization;
+using Qwestr.Shared.Kernel.Entities;
 
 namespace Qwestr.Shared.Contracts.ApiDto.Shared.Responses;
 
+[method: JsonConstructor]
 public record PagedListResponse<T>(
     List<T> Items,
     int Page,

@@ -1,7 +1,9 @@
+@using Client.Infrastructure.Auth
 @using Client.Infrastructure.Services
 
 @inject TenantResolver TenantResolver
 @inject NavigationManager Nav
+@inject SessionManager Session
 
 <header style="position:fixed;top:0;left:0;right:0;z-index:1000;background:#fff;border-bottom:1px solid #e0e0e0;">
     <div style="max-width:1200px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;">
@@ -22,15 +24,26 @@
                     О нас
                 </MudLink>
                 <MudDivider Vertical="true" Style="height:20px;margin:0 8px;" />
-                <MudLink Href="/login" Typo="Typo.body2" Color="Color.Default" Underline="Underline.None"
-                         Class="px-3 py-1">
-                    Войти
-                </MudLink>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                           Size="Size.Small" Href="/register"
-                           Style="border-radius:8px;">
-                    Попробовать бесплатно
-                </MudButton>
+                @if (_authorized && _tenantSubdomain is not null)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               Size="Size.Small" OnClick="GoToDashboard"
+                               Style="border-radius:8px;">
+                        Перейти к организации
+                    </MudButton>
+                }
+                else
+                {
+                    <MudLink Href="/login" Typo="Typo.body2" Color="Color.Default" Underline="Underline.None"
+                             Class="px-3 py-1">
+                        Войти
+                    </MudLink>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               Size="Size.Small" Href="/register"
+                               Style="border-radius:8px;">
+                        Попробовать бесплатно
+                    </MudButton>
+                }
             </nav>
         </MudHidden>
 
@@ -52,12 +65,22 @@
                     О нас
                 </MudLink>
                 <MudDivider />
-                <MudLink Href="/login" Typo="Typo.body1" Color="Color.Default" Underline="Underline.None">
-                    Войти
-                </MudLink>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Href="/register">
-                    Попробовать бесплатно
-                </MudButton>
+                @if (_authorized && _tenantSubdomain is not null)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               FullWidth="true" OnClick="GoToDashboard">
+                        Перейти к организации
+                    </MudButton>
+                }
+                else
+                {
+                    <MudLink Href="/login" Typo="Typo.body1" Color="Color.Default" Underline="Underline.None">
+                        Войти
+                    </MudLink>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Href="/register">
+                        Попробовать бесплатно
+                    </MudButton>
+                }
             </MudStack>
         </div>
     }
@@ -65,5 +88,20 @@
 
 @code {
     private bool _menuOpen;
+    private bool _authorized;
+    private string? _tenantSubdomain;
+
     private void ToggleMenu() => _menuOpen = !_menuOpen;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _authorized = await Session.TryRestoreSessionAsync();
+        if (_authorized)
+            _tenantSubdomain = Session.GetClaimFromToken("tenant_subdomain");
+        StateHasChanged();
+    }
+
+    private void GoToDashboard()
+        => Nav.NavigateTo($"https://{_tenantSubdomain}.{TenantResolver.BaseDomain}/dashboard", forceLoad: true);
 }

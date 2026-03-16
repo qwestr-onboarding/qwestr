@@ -22,7 +22,7 @@ public class UpdateTenantSettingsCommandHandler : IRequestHandler<UpdateTenantSe
             return ActionResult.Failure("Tenant not found.");
         }
 
-        tenant.UpdateSettings(request.Timezone, request.Language, request.CompanyLogoUrl);
+        tenant.UpdateSettings(request.Timezone, request.Language);
         await _tenantRepository.SaveChangesAsync(ct);
 
         return ActionResult.Success();

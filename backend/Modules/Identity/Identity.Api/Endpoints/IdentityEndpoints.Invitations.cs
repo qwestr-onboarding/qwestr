@@ -8,6 +8,7 @@ using Qwestr.Modules.Identity.Application.Commands.AcceptInvitation;
 using Qwestr.Modules.Identity.Application.Commands.CancelInvitation;
 using Qwestr.Modules.Identity.Application.Commands.CreateInvitation;
 using Qwestr.Modules.Identity.Application.Queries.GetInvitationsList;
+using Qwestr.Modules.Identity.Application.Queries.ValidateInvitation;
 using Qwestr.Modules.Identity.Infrastructure.Services;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Invitations.Requests;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Invitations.Responses;
@@ -25,13 +26,15 @@ public static partial class IdentityEndpoints
         var invitations = identity.MapGroup("invitations").WithTags("Identity.Invitations");
 
         invitations.MapPost("/", CreateInvitationHandler)
-            .RequireAuthorization(p => p.RequireRole("Admin", "Owner"));
+            .RequireAuthorization(p => p.RequireRole("Admin", "Owner", "Manager"));
         invitations.MapGet("/", GetInvitationsListHandler)
-            .RequireAuthorization(p => p.RequireRole("Admin", "Owner"));
+            .RequireAuthorization(p => p.RequireRole("Admin", "Owner", "Manager"));
+        invitations.MapGet("/validate", ValidateInvitationHandler)
+            .AllowAnonymous();
         invitations.MapPost("/accept", AcceptInvitationHandler)
             .AllowAnonymous();
         invitations.MapDelete("/{id:guid}", CancelInvitationHandler)
-            .RequireAuthorization(p => p.RequireRole("Admin", "Owner"));
+            .RequireAuthorization(p => p.RequireRole("Admin", "Owner", "Manager"));
 
         return identity;
     }
@@ -55,6 +58,16 @@ public static partial class IdentityEndpoints
         return result.IsSuccess
             ? Results.Ok(new PagedListResponse<InvitationResponse>(result.Value!))
             : Results.BadRequest(new ErrorResponse(result.Error));
+    }
+
+    private static async Task<IResult> ValidateInvitationHandler(
+        [FromQuery] string token, [FromQuery] string subdomain,
+        ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new ValidateInvitationQuery(token, subdomain), ct);
+        return result.IsSuccess
+            ? Results.Ok(result.Value)
+            : Results.NotFound(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> AcceptInvitationHandler(

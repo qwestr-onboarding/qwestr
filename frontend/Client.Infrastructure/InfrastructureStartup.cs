@@ -13,13 +13,11 @@ public static class InfrastructureStartup
     public static IServiceCollection AddQwestrApi(this IServiceCollection services, string baseUrl)
     {
         services.AddScoped<TokenStorageService>();
-        services.AddScoped<AuthHeaderHandler>();
 
         services.AddHttpClient<QwestrApiClient>(client =>
-            {
-                client.BaseAddress = new Uri(baseUrl);
-            })
-            .AddHttpMessageHandler<AuthHeaderHandler>();
+        {
+            client.BaseAddress = new Uri(baseUrl);
+        });
 
         // --- Identity ---
         services.AddScoped<AuthApi>();

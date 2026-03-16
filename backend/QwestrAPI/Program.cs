@@ -102,6 +102,7 @@ app.MapNotificationsModule();
 app.MapOnboardingModule();
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 
 try
 {

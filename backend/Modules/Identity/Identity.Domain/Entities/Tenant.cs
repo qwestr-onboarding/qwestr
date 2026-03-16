@@ -53,7 +53,18 @@ public sealed class Tenant : AggregateRoot<Guid>, IAuditableEntity
         IsActive = false;
     }
 
-    public void UpdateSettings(string? timezone, string? language, string? companyLogoUrl)
+    public void SetLogo(string? logoUrl)
+    {
+        if (Settings is null)
+        {
+            return;
+        }
+
+        Settings.CompanyLogoUrl = logoUrl;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateSettings(string? timezone, string? language)
     {
         if (Settings is null)
         {
@@ -68,11 +79,6 @@ public sealed class Tenant : AggregateRoot<Guid>, IAuditableEntity
         if (language is not null)
         {
             Settings.Language = language;
-        }
-
-        if (companyLogoUrl is not null)
-        {
-            Settings.CompanyLogoUrl = companyLogoUrl;
         }
     }
 }

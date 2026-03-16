@@ -1,31 +1,76 @@
-<div>
+@using System.Security.Claims
+@using Client.Infrastructure.Auth
+@using Qwestr.Shared.Kernel.Enums.Identity
+
+@inject SessionManager Session
+
 <MudNavMenu Rounded="true" Margin="Margin.Dense" Class="pa-1">
+
     <MudNavLink Href="/dashboard" Icon="@QwestrIcons.Navigation.Home" IconColor="Color.Inherit" Match="NavLinkMatch.All">
+        @if (Open) { <MudText>Главная</MudText> }
+    </MudNavLink>
+    <MudNavLink Href="/tests" Icon="@QwestrIcons.Navigation.Tests" IconColor="Color.Inherit">
+        @if (Open) { <MudText>Тесты</MudText> }
+    </MudNavLink>
+    <MudNavLink Href="/knowledge" Icon="@QwestrIcons.Navigation.Knowledge" IconColor="Color.Inherit">
+        @if (Open) { <MudText Style="text-wrap-mode: nowrap;">База знаний</MudText> }
+    </MudNavLink>
+
+    <MudDivider Class="my-1" />
+
+    <MudNavLink Href="/profile" Icon="@QwestrIcons.Navigation.Profile" IconColor="Color.Inherit">
+        @if (Open) { <MudText>Профиль</MudText> }
+    </MudNavLink>
+    <MudNavLink Href="/gamification" Icon="@QwestrIcons.Navigation.Trophy" IconColor="Color.Inherit">
+        @if (Open) { <MudText>Достижения</MudText> }
+    </MudNavLink>
+    <MudNavLink Href="/leaderboard" Icon="@QwestrIcons.Navigation.Leaderboard" IconColor="Color.Inherit">
+        @if (Open) { <MudText>Лидерборд</MudText> }
+    </MudNavLink>
+
+    @if (_role >= UserRole.Manager)
+    {
+        <MudDivider Class="my-1" />
         @if (Open)
         {
-            <MudText>Главная</MudText>
+            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="px-4 pt-1">Управление</MudText>
         }
-    </MudNavLink>
-    <MudNavLink Href="/tests" Icon="@QwestrIcons.Navigation.Tests" IconColor="Color.Inherit" >
+        <MudNavLink Href="/invitations" Icon="@QwestrIcons.Navigation.Invites" IconColor="Color.Inherit">
+            @if (Open) { <MudText>Приглашения</MudText> }
+        </MudNavLink>
+        <MudNavLink Href="/employees" Icon="@QwestrIcons.Navigation.Employees" IconColor="Color.Inherit">
+            @if (Open) { <MudText>Сотрудники</MudText> }
+        </MudNavLink>
+        <MudNavLink Href="/analytics" Icon="@QwestrIcons.Navigation.Analytics" IconColor="Color.Inherit">
+            @if (Open) { <MudText>Аналитика</MudText> }
+        </MudNavLink>
+    }
+
+    @if (_role >= UserRole.Admin)
+    {
+        <MudDivider Class="my-1" />
         @if (Open)
         {
-            <MudText>Тесты</MudText>
+            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="px-4 pt-1">Настройки</MudText>
         }
-    </MudNavLink>
-    <MudNavLink Href="/games" Icon="@QwestrIcons.Navigation.Games" IconColor="Color.Inherit" >
-        @if (Open)
-        {
-            <MudText>Игры</MudText>
-        }
-    </MudNavLink>
-    <MudNavLink Href="/knowledge" Icon="@QwestrIcons.Navigation.Knowledge" IconColor="Color.Inherit" >
-        @if (Open)
-        {
-            <MudText Style="text-wrap-mode: nowrap;">База знаний</MudText>
-        }
-    </MudNavLink>
+        <MudNavLink Href="/tenant-settings" Icon="@QwestrIcons.Navigation.Company" IconColor="Color.Inherit">
+            @if (Open) { <MudText>Компания</MudText> }
+        </MudNavLink>
+        <MudNavLink Href="/integrations" Icon="@QwestrIcons.Navigation.Integrations" IconColor="Color.Inherit">
+            @if (Open) { <MudText>Интеграции</MudText> }
+        </MudNavLink>
+    }
+
 </MudNavMenu>
-</div>
+
 @code {
     [Parameter] public bool Open { get; set; }
+
+    private UserRole _role;
+
+    protected override void OnInitialized()
+    {
+        var roleStr = Session.GetClaimFromToken(ClaimTypes.Role);
+        _role = Enum.TryParse<UserRole>(roleStr, out var r) ? r : UserRole.Employee;
+    }
 }

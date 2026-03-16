@@ -1,0 +1,51 @@
+@using Qwestr.Shared.Kernel.Enums.Identity
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
+            <MudTextField @bind-Value="_email"
+                          Label="Email"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Email"
+                          FullWidth="true" />
+            <MudSelect T="UserRole" @bind-Value="_role"
+                       Label="Роль" Variant="Variant.Outlined" FullWidth="true">
+                <MudSelectItem Value="@UserRole.Employee">Сотрудник</MudSelectItem>
+                <MudSelectItem Value="@UserRole.Manager">Менеджер</MudSelectItem>
+                <MudSelectItem Value="@UserRole.Admin">Администратор</MudSelectItem>
+            </MudSelect>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Отмена</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">
+            Отправить
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _email = "";
+    private UserRole _role = UserRole.Employee;
+    private string? _error;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_email))
+        {
+            _error = "Введите email.";
+            return;
+        }
+        MudDialog.Close(DialogResult.Ok(new CreateResult(_email.Trim(), _role)));
+    }
+
+    public record CreateResult(string Email, UserRole Role);
+}

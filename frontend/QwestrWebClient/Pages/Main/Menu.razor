@@ -1,0 +1,115 @@
+@page "/menu"
+@layout MainLayout
+
+@using System.Security.Claims
+@using Client.Infrastructure.Auth
+@using Qwestr.Shared.Kernel.Enums.Identity
+
+@inject SessionManager Session
+@inject NavigationManager Nav
+
+<PageTitle>Сервисы — Qwestr</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" DisableGutters="true">
+<MudStack Spacing="5">
+
+    <MudStack Spacing="1">
+        <MudText Typo="Typo.overline" Color="Color.Secondary">Личное</MudText>
+        <MudPaper Elevation="1" Class="pa-4">
+            <MudGrid Spacing="3">
+                @foreach (var tile in _personalTiles)
+                {
+                    <MudItem xs="4">
+                        <MudStack AlignItems="AlignItems.Center" Spacing="1"
+                                  Style="cursor:pointer;" @onclick="() => Nav.NavigateTo(tile.Href)">
+                            <MudAvatar Color="@tile.Color" Rounded="true" Size="Size.Large">
+                                <MudIcon Icon="@tile.Icon" />
+                            </MudAvatar>
+                            <MudText Typo="Typo.caption" Align="Align.Center">@tile.Label</MudText>
+                        </MudStack>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudPaper>
+    </MudStack>
+
+    @if (_role >= UserRole.Manager)
+    {
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.overline" Color="Color.Secondary">Управление</MudText>
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudGrid Spacing="3">
+                    @foreach (var tile in _managementTiles)
+                    {
+                        <MudItem xs="4">
+                            <MudStack AlignItems="AlignItems.Center" Spacing="1"
+                                      Style="cursor:pointer;" @onclick="() => Nav.NavigateTo(tile.Href)">
+                                <MudAvatar Color="@tile.Color" Rounded="true" Size="Size.Large">
+                                    <MudIcon Icon="@tile.Icon" />
+                                </MudAvatar>
+                                <MudText Typo="Typo.caption" Align="Align.Center">@tile.Label</MudText>
+                            </MudStack>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudPaper>
+        </MudStack>
+    }
+
+    @if (_role >= UserRole.Admin)
+    {
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.overline" Color="Color.Secondary">Настройки</MudText>
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudGrid Spacing="3">
+                    @foreach (var tile in _adminTiles)
+                    {
+                        <MudItem xs="4">
+                            <MudStack AlignItems="AlignItems.Center" Spacing="1"
+                                      Style="cursor:pointer;" @onclick="() => Nav.NavigateTo(tile.Href)">
+                                <MudAvatar Color="@tile.Color" Rounded="true" Size="Size.Large">
+                                    <MudIcon Icon="@tile.Icon" />
+                                </MudAvatar>
+                                <MudText Typo="Typo.caption" Align="Align.Center">@tile.Label</MudText>
+                            </MudStack>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudPaper>
+        </MudStack>
+    }
+
+</MudStack>
+</MudContainer>
+
+@code {
+    private record TileModel(string Icon, Color Color, string Label, string Href);
+
+    private static readonly TileModel[] _personalTiles =
+    [
+        new(QwestrIcons.Navigation.Profile, Color.Info, "Профиль",    "/profile"),
+        new(QwestrIcons.Navigation.Trophy,  Color.Warning, "Достижения", "/gamification"),
+        new(QwestrIcons.Navigation.Leaderboard, Color.Primary, "Лидерборд",   "/leaderboard"),
+    ];
+
+    private static readonly TileModel[] _managementTiles =
+    [
+        new(QwestrIcons.Navigation.Invites,   Color.Primary, "Приглашения", "/invitations"),
+        new(QwestrIcons.Navigation.Employees,       Color.Primary, "Сотрудники",  "/employees"),
+        new(QwestrIcons.Navigation.Analytics,    Color.Primary, "Аналитика",   "/analytics"),
+    ];
+
+    private static readonly TileModel[] _adminTiles =
+    [
+        new(QwestrIcons.Navigation.Company,  Color.Secondary, "Компания",   "/tenant-settings"),
+        new(QwestrIcons.Navigation.Integrations, Color.Secondary, "Интеграции", "/integrations"),
+    ];
+
+    private UserRole _role;
+
+    protected override void OnInitialized()
+    {
+        var roleStr = Session.GetClaimFromToken(ClaimTypes.Role);
+        _role = Enum.TryParse<UserRole>(roleStr, out var r) ? r : UserRole.Employee;
+    }
+}

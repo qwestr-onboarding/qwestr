@@ -1,0 +1,183 @@
+@page "/invitations"
+@layout MainLayout
+
+@using Client.Infrastructure.Auth
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Identity.Invitations.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses
+@using Qwestr.Shared.Kernel.Enums.Identity
+
+@inject InvitationsApi InvitationsApi
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Приглашения — Qwestr</PageTitle>
+
+<MudStack Spacing="3">
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+        <MudIconButton Icon="@Icons.Material.Outlined.ArrowBack"
+                       OnClick='() => Nav.NavigateTo("/menu")' />
+        <MudText Typo="Typo.h6">Приглашения</MudText>
+    </MudStack>
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <MudSelect T="InvitationStatus?" Value="_statusFilter"
+                   ValueChanged="OnStatusFilterChanged"
+                   Label="Статус" Variant="Variant.Outlined"
+                   Clearable="true" Style="max-width:200px;">
+            @foreach (InvitationStatus s in Enum.GetValues<InvitationStatus>())
+            {
+                <MudSelectItem T="InvitationStatus?" Value="@((InvitationStatus?)s)">
+                    @StatusLabel(s)
+                </MudSelectItem>
+            }
+        </MudSelect>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Outlined.PersonAdd"
+                   OnClick="OpenCreateDialog">
+            Пригласить
+        </MudButton>
+    </MudStack>
+
+    <MudTable T="InvitationResponse" @ref="_table" ServerData="LoadData"
+              Dense="true" Hover="true" HorizontalScrollbar="true">
+        <HeaderContent>
+            <MudTh>Email</MudTh>
+            <MudTh>Роль</MudTh>
+            <MudTh>Статус</MudTh>
+            <MudTh>Пригласил</MudTh>
+            <MudTh>Создано</MudTh>
+            <MudTh>Истекает</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Email">@context.Email</MudTd>
+            <MudTd DataLabel="Роль">@RoleLabel(context.Role)</MudTd>
+            <MudTd DataLabel="Статус">
+                <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">
+                    @StatusLabel(context.Status)
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Пригласил">@context.InvitedByName</MudTd>
+            <MudTd DataLabel="Создано">@context.CreatedAt.ToString("dd.MM.yyyy")</MudTd>
+            <MudTd DataLabel="Истекает">@context.ExpiresAt.ToString("dd.MM.yyyy")</MudTd>
+            <MudTd>
+                @if (context.Status == InvitationStatus.Pending)
+                {
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                   Color="Color.Error" Size="Size.Small"
+                                   OnClick="() => DeleteAsync(context)" />
+                }
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Color="Color.Secondary">Нет приглашений</MudText>
+        </NoRecordsContent>
+        <PagerContent>
+            <MudTablePager />
+        </PagerContent>
+    </MudTable>
+
+</MudStack>
+
+@code {
+    private MudTable<InvitationResponse> _table = default!;
+    private InvitationStatus? _statusFilter;
+
+    private async Task<TableData<InvitationResponse>> LoadData(TableState state, CancellationToken ct)
+    {
+        var result = await InvitationsApi.GetInvitationsListAsync(
+            state.Page + 1, state.PageSize, _statusFilter, ct);
+
+        if (!result.IsSuccess)
+        {
+            Snackbar.Add("Не удалось загрузить приглашения", Severity.Error);
+            return new TableData<InvitationResponse> { Items = [], TotalItems = 0 };
+        }
+
+        return new TableData<InvitationResponse>
+        {
+            Items = result.Data!.Items,
+            TotalItems = result.Data.TotalCount
+        };
+    }
+
+    private async Task OnStatusFilterChanged(InvitationStatus? value)
+    {
+        _statusFilter = value;
+        await _table.ReloadServerData();
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var dialog = await DialogService.ShowAsync<CreateInvitationDialog>("Новое приглашение");
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: CreateInvitationDialog.CreateResult r })
+        {
+            var apiResult = await InvitationsApi.CreateInvitationAsync(
+                new CreateInvitationRequest(r.Email, r.Role));
+
+            if (apiResult.IsSuccess)
+            {
+                Snackbar.Add("Приглашение отправлено", Severity.Success);
+                await _table.ReloadServerData();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.Error ?? "Ошибка при создании приглашения", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteAsync(InvitationResponse invitation)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Отменить приглашение",
+            $"Отменить приглашение для {invitation.Email}?",
+            yesText: "Отменить", cancelText: "Нет");
+
+        if (confirmed != true) return;
+
+        var result = await InvitationsApi.CancelInvitationAsync(invitation.Id);
+
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Приглашение отменено", Severity.Success);
+            await _table.ReloadServerData();
+        }
+        else
+        {
+            Snackbar.Add(result.Error ?? "Не удалось отменить приглашение", Severity.Error);
+        }
+    }
+
+    private static string RoleLabel(UserRole role) => role switch
+    {
+        UserRole.Employee => "Сотрудник",
+        UserRole.Manager  => "Менеджер",
+        UserRole.Admin    => "Администратор",
+        UserRole.Owner    => "Владелец",
+        _                 => role.ToString()
+    };
+
+    private static string StatusLabel(InvitationStatus status) => status switch
+    {
+        InvitationStatus.Pending   => "Ожидает",
+        InvitationStatus.Accepted  => "Принято",
+        InvitationStatus.Expired   => "Истекло",
+        InvitationStatus.Cancelled => "Отменено",
+        _                          => status.ToString()
+    };
+
+    private static Color StatusColor(InvitationStatus status) => status switch
+    {
+        InvitationStatus.Pending   => Color.Warning,
+        InvitationStatus.Accepted  => Color.Success,
+        InvitationStatus.Expired   => Color.Default,
+        InvitationStatus.Cancelled => Color.Error,
+        _                          => Color.Default
+    };
+}
