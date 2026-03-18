@@ -9,6 +9,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Onboarding", "Onboarding", "{07A328A4-DF6D-48CD-8D9C-DA8DA07A4761}"
+	ProjectSection(SolutionItems) = preProject
+		Modules\Onboarding\OnboardingSpec.md = Modules\Onboarding\OnboardingSpec.md
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Modules", "Modules", "{64048FBD-91CF-4199-B7F9-DEBEF1E195CC}"
 EndProject

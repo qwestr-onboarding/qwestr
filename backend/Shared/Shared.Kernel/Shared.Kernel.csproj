@@ -13,4 +13,8 @@
       <PackageReference Include="Serilog" Version="4.3.1" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Enums\Onboarding\" />
+    </ItemGroup>
+
 </Project>

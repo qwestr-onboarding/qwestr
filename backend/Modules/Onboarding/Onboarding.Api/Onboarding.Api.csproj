@@ -17,6 +17,7 @@
     </ItemGroup>
     
     <ItemGroup>
+      <ProjectReference Include="..\..\..\Shared\Shared.Contracts\Shared.Contracts.csproj" />
       <ProjectReference Include="..\Onboarding.Infrastructure\Onboarding.Infrastructure.csproj" />
     </ItemGroup>
 

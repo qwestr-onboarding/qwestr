@@ -1,22 +1,22 @@
-﻿using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 
 namespace Qwestr.Modules.Onboarding.Api.Endpoints;
 
-public static class OnboardingEndpoints
+public static partial class OnboardingEndpoints
 {
+    internal const string HrPolicy = "OnboardingHrOnly";
+
     public static IEndpointRouteBuilder MapOnboardingEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/onboarding").WithTags("Onboarding");
-        group.MapGet("/scenarios", GetScenarios);
-        
+        var onboarding = app.MapGroup("/api/onboarding");
+        onboarding.MapScenariosEndpoints();
+        onboarding.MapStagesEndpoints();
+        onboarding.MapStepsEndpoints();
+        onboarding.MapQuestionsEndpoints();
+        onboarding.MapOptionsEndpoints();
+        onboarding.MapAssignmentsEndpoints();
+        onboarding.MapProgressEndpoints();
         return app;
-    }
-    
-    private static async Task<IResult> GetScenarios(CancellationToken ct)
-    {
-        // var result = await service.GetScenariosAsync(ct);
-        return Results.Ok();
     }
 }
