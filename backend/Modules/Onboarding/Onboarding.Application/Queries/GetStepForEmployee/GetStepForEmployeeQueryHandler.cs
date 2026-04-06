@@ -2,6 +2,7 @@ using MediatR;
 using Qwestr.Modules.Onboarding.Application.Abstractions.Repositories;
 using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses;
 using Qwestr.Shared.Kernel.Entities;
+using Qwestr.Shared.Kernel.Enums.Onboarding;
 
 namespace Qwestr.Modules.Onboarding.Application.Queries.GetStepForEmployee;
 
@@ -50,6 +51,15 @@ public class GetStepForEmployeeQueryHandler : IRequestHandler<GetStepForEmployee
                 o.Order)).ToList()
         )).ToList();
 
+        Guid? currentTestAttemptId = null;
+        string? currentTestDraftAnswersJson = null;
+        if (step.Type == StepType.Test && stepProgress.Status == StepProgressStatus.InProgress)
+        {
+            currentTestAttemptId = await _assignmentRepository.GetLatestIncompleteAttemptIdAsync(stepProgress.Id, ct);
+            if (currentTestAttemptId.HasValue)
+                currentTestDraftAnswersJson = await _assignmentRepository.GetTestAttemptDraftAsync(currentTestAttemptId.Value, ct);
+        }
+
         var response = new StepContentResponse(
             step.Id,
             stepProgress.Id,
@@ -59,7 +69,9 @@ public class GetStepForEmployeeQueryHandler : IRequestHandler<GetStepForEmployee
             step.Content,
             step.Settings,
             stepProgress.Status,
-            questions);
+            questions,
+            currentTestAttemptId,
+            currentTestDraftAnswersJson);
 
         return ActionResult<StepContentResponse>.Success(response);
     }

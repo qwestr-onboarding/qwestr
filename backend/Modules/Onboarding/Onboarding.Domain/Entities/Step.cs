@@ -45,9 +45,10 @@ public sealed class Step : Entity<Guid>
         };
     }
 
-    public void Update(string title, int? points, string? content, string? settings)
+    public void Update(string title, StepType type, int? points, string? content, string? settings)
     {
         Title = title;
+        Type = type;
         Points = points;
         Content = content;
         Settings = settings;

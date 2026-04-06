@@ -1,0 +1,79 @@
+@using System.Text.Json
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Пункты чеклиста</MudText>
+
+    @for (var i = 0; i < _items.Count; i++)
+    {
+        var idx = i;
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudIcon Icon="@Icons.Material.Outlined.DragIndicator"
+                     Size="Size.Small" Color="Color.Tertiary" />
+            <MudTextField Value="_items[idx]"
+                          ValueChanged="@((string v) => UpdateItem(idx, v))"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Style="flex:1;"
+                          ReadOnly="IsReadOnly"
+                          MaxLength="500" />
+            @if (!IsReadOnly)
+            {
+                <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                               Size="Size.Small" Color="Color.Error"
+                               OnClick="() => RemoveItem(idx)" />
+            }
+        </MudStack>
+    }
+
+    @if (!IsReadOnly)
+    {
+        <MudButton Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Outlined.Add"
+                   Color="Color.Primary"
+                   OnClick="AddItem">
+            Добавить пункт
+        </MudButton>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public string? Content { get; set; }
+    [Parameter] public EventCallback<string?> ContentChanged { get; set; }
+    [Parameter] public bool IsReadOnly { get; set; }
+
+    private List<string> _items = [];
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(Content))
+        {
+            try { _items = JsonSerializer.Deserialize<List<string>>(Content) ?? []; }
+            catch { _items = []; }
+        }
+        else
+        {
+            _items = [];
+        }
+    }
+
+    private void UpdateItem(int idx, string value)
+    {
+        _items[idx] = value;
+        Save();
+    }
+
+    private void AddItem()
+    {
+        _items.Add("");
+        Save();
+    }
+
+    private void RemoveItem(int idx)
+    {
+        _items.RemoveAt(idx);
+        Save();
+    }
+
+    private void Save()
+        => ContentChanged.InvokeAsync(JsonSerializer.Serialize(_items));
+}

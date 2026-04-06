@@ -377,6 +377,10 @@ namespace Qwestr.Modules.Onboarding.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completed_at");
 
+                    b.Property<string>("DraftAnswersJson")
+                        .HasColumnType("text")
+                        .HasColumnName("draft_answers_json");
+
                     b.Property<bool?>("IsPassed")
                         .HasColumnType("boolean")
                         .HasColumnName("is_passed");

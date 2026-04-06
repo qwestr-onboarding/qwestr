@@ -1,0 +1,52 @@
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="0"
+          Style="overflow-x:auto; flex-wrap:nowrap; padding:4px 0;">
+    @for (var i = 0; i < Steps.Count; i++)
+    {
+        var step = Steps[i];
+        var isSelected = step.StepId == SelectedStepId;
+        var isClickable = step.Status is StepProgressStatus.Completed or StepProgressStatus.InProgress;
+
+        <MudTooltip Text="@step.Title" Placement="Placement.Bottom" Arrow="true">
+            <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                <MudIconButton Icon="@CircleIcon(step.Status, isSelected)"
+                               Color="@CircleColor(step.Status, isSelected)"
+                               Size="Size.Small"
+                               Style="@($"min-width:32px; width:32px; height:32px; {(isSelected ? "border:2px solid; border-radius:50%;" : "")}")"
+                               Disabled="!isClickable"
+                               OnClick="@(isClickable ? () => OnStepSelected.InvokeAsync(step.StepId) : () => Task.CompletedTask)" />
+            </MudStack>
+        </MudTooltip>
+
+        @if (i < Steps.Count - 1)
+        {
+            <MudDivider Style="width:12px; min-width:12px; border-color:var(--mud-palette-divider);" />
+        }
+    }
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public List<StepProgressStatusResponse> Steps { get; set; } = [];
+    [Parameter] public Guid? SelectedStepId { get; set; }
+    [Parameter] public EventCallback<Guid> OnStepSelected { get; set; }
+
+    private static string CircleIcon(StepProgressStatus status, bool isSelected) => status switch
+    {
+        StepProgressStatus.Completed  => Icons.Material.Rounded.CheckCircle,
+        StepProgressStatus.InProgress => isSelected
+            ? Icons.Material.Rounded.RadioButtonChecked
+            : Icons.Material.Rounded.Pending,
+        StepProgressStatus.Failed     => Icons.Material.Rounded.Cancel,
+        _                             => Icons.Material.Rounded.RadioButtonUnchecked
+    };
+
+    private static Color CircleColor(StepProgressStatus status, bool isSelected) => status switch
+    {
+        StepProgressStatus.Completed  => Color.Success,
+        StepProgressStatus.InProgress => Color.Primary,
+        StepProgressStatus.Failed     => Color.Error,
+        _                             => isSelected ? Color.Primary : Color.Default
+    };
+}

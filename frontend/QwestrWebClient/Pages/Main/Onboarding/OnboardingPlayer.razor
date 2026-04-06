@@ -1,0 +1,366 @@
+@page "/onboarding/{AssignmentId:guid}"
+@layout MainLayout
+
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+@using QwestrWebClient.Pages.Main.Onboarding.Components.Player
+
+@inject OnboardingProgressApi ProgressApi
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Онбординг — Qwestr</PageTitle>
+
+@if (_loading)
+{
+    <MudStack AlignItems="AlignItems.Center" Class="pa-8">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    </MudStack>
+}
+else if (_progress is null)
+{
+    <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="pa-8">
+        <MudText Color="Color.Secondary">Не удалось загрузить данные</MudText>
+        <MudButton Variant="Variant.Text" OnClick="@(() => Nav.NavigateTo("/onboarding"))">
+            ← К списку программ
+        </MudButton>
+    </MudStack>
+}
+else
+{
+    <MudStack Spacing="3" Style="max-width:800px; margin:0 auto;">
+
+        @* Header *@
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudIconButton Icon="@Icons.Material.Outlined.ArrowBack"
+                           OnClick="@(() => Nav.NavigateTo("/onboarding"))" />
+            <MudStack Spacing="0" Style="flex:1; min-width:0;">
+                <MudText Typo="Typo.h6" Style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    @_progress.ScenarioTitle
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    @CompletedSteps из @TotalSteps шагов · @ProgressPercent%
+                </MudText>
+            </MudStack>
+            <MudChip T="string" Size="Size.Small" Color="@AssignmentStatusColor(_progress.Status)">
+                @AssignmentStatusLabel(_progress.Status)
+            </MudChip>
+        </MudStack>
+
+        <MudProgressLinear Value="@ProgressPercent" Rounded="true"
+                           Color="Color.Primary" Size="Size.Small" />
+
+        @* Stage navigation (only when multiple stages) *@
+        @if (_progress.Stages.Count > 1)
+        {
+            <MudStack Row="true" Spacing="1" Style="overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px;">
+                @foreach (var stage in _progress.Stages.OrderBy(s => s.Order))
+                {
+                    var stageCompleted = stage.Steps.All(s => s.Status == StepProgressStatus.Completed);
+                    var stageCurrent = stage.StageId == _selectedStageId;
+                    <MudChip T="string"
+                             Color="@(stageCurrent ? Color.Primary : stageCompleted ? Color.Success : Color.Default)"
+                             Variant="@(stageCurrent ? Variant.Filled : Variant.Outlined)"
+                             Size="Size.Small"
+                             OnClick="@(() => SelectStage(stage.StageId))"
+                             Style="white-space:nowrap; flex-shrink:0;">
+                        @stage.Title
+                    </MudChip>
+                }
+            </MudStack>
+        }
+
+        @* Step circles for current stage *@
+        @if (CurrentStage is not null)
+        {
+            <MudPaper Elevation="0" Class="pa-3"
+                      Style="border-radius:12px; border:1px solid var(--mud-palette-divider);">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+                        @CurrentStage.Title
+                    </MudText>
+                    <StepCircleProgress Steps="CurrentStage.Steps"
+                                        SelectedStepId="_selectedStepId"
+                                        OnStepSelected="OnCircleStepSelected" />
+                </MudStack>
+            </MudPaper>
+        }
+
+        @* Completion screen *@
+        @if (_allCompleted)
+        {
+            <MudPaper Elevation="2" Class="pa-6" Style="border-radius:14px;">
+                <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                    <MudIcon Icon="@Icons.Material.Outlined.EmojiEvents"
+                             Style="font-size:56px;" Color="Color.Warning" />
+                    <MudText Typo="Typo.h6">Онбординг завершён!</MudText>
+                    <MudText Color="Color.Secondary" Align="Align.Center">
+                        Вы успешно прошли все шаги сценария «@_progress.ScenarioTitle».
+                    </MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="@(() => Nav.NavigateTo("/onboarding"))">
+                        К списку программ
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        }
+
+        @* Step content *@
+        @if (!_allCompleted)
+        {
+            @if (_loadingStep)
+            {
+                <MudStack AlignItems="AlignItems.Center" Class="pa-8">
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Small" />
+                </MudStack>
+            }
+            else if (_currentStep is not null)
+            {
+                <MudPaper Elevation="2" Class="pa-4" Style="border-radius:14px;">
+                    <MudStack Spacing="3">
+
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudAvatar Color="@StepTypeColor(_currentStep.Type)"
+                                       Size="Size.Small" Rounded="true">
+                                <MudIcon Icon="@StepTypeIcon(_currentStep.Type)" Size="Size.Small" />
+                            </MudAvatar>
+                            <MudStack Spacing="0" Style="flex:1; min-width:0;">
+                                <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                                    @_currentStep.Title
+                                </MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @StepTypeLabel(_currentStep.Type)
+                                </MudText>
+                            </MudStack>
+                            @if (_currentStep.Points > 0)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning"
+                                         Icon="@Icons.Material.Outlined.Stars">
+                                    @_currentStep.Points баллов
+                                </MudChip>
+                            }
+                        </MudStack>
+
+                        <MudDivider />
+
+                        @switch (_currentStep.Type)
+                        {
+                            case StepType.Information:
+                                <InformationStepViewer Step="_currentStep"
+                                                       OnCompleted="OnStepCompleted" />
+                                break;
+                            case StepType.Question:
+                                <QuestionStepViewer Step="_currentStep"
+                                                    OnCompleted="OnStepCompleted" />
+                                break;
+                            case StepType.Test:
+                                <TestStepViewer Step="_currentStep"
+                                               OnCompleted="OnStepCompleted" />
+                                break;
+                            case StepType.Task:
+                                <TaskStepViewer Step="_currentStep"
+                                               OnCompleted="OnStepCompleted" />
+                                break;
+                            case StepType.Checklist:
+                                <ChecklistStepViewer Step="_currentStep"
+                                                     OnCompleted="OnStepCompleted" />
+                                break;
+                        }
+
+                    </MudStack>
+                </MudPaper>
+            }
+        }
+
+    </MudStack>
+}
+
+@code {
+    [Parameter] public Guid AssignmentId { get; set; }
+
+    private bool _loading = true;
+    private bool _loadingStep;
+    private bool _allCompleted;
+    private MyAssignmentProgressResponse? _progress;
+    private StepContentResponse? _currentStep;
+    private Guid _selectedStageId;
+    private Guid? _selectedStepId;
+
+    private StageProgressResponse? CurrentStage =>
+        _progress?.Stages.FirstOrDefault(s => s.StageId == _selectedStageId);
+
+    private int TotalSteps =>
+        _progress?.Stages.SelectMany(s => s.Steps).Count() ?? 0;
+
+    private int CompletedSteps =>
+        _progress?.Stages.SelectMany(s => s.Steps)
+            .Count(s => s.Status == StepProgressStatus.Completed) ?? 0;
+
+    private int ProgressPercent =>
+        TotalSteps > 0 ? (int)(CompletedSteps * 100.0 / TotalSteps) : 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProgressAndNavigateAsync();
+        _loading = false;
+    }
+
+    private async Task LoadProgressAndNavigateAsync()
+    {
+        var result = await ProgressApi.GetMyAssignmentProgressAsync(AssignmentId);
+        if (!result.IsSuccess)
+        {
+            Snackbar.Add("Не удалось загрузить прогресс", Severity.Error);
+            return;
+        }
+        _progress = result.Data!;
+
+        if (_progress.Status == AssignmentStatus.Completed)
+        {
+            _allCompleted = true;
+            _selectedStageId = _progress.Stages.OrderBy(s => s.Order).LastOrDefault()?.StageId ?? Guid.Empty;
+            return;
+        }
+
+        var nextStep = FindNextStep();
+        if (nextStep is null)
+        {
+            _allCompleted = true;
+            return;
+        }
+
+        SetSelectedStage(nextStep.StepId);
+        await LoadStepAsync(nextStep);
+    }
+
+    private async Task LoadStepAsync(StepProgressStatusResponse stepInfo)
+    {
+        _loadingStep = true;
+        _currentStep = null;
+        _selectedStepId = stepInfo.StepId;
+        StateHasChanged();
+
+        if (stepInfo.Status == StepProgressStatus.NotStarted)
+        {
+            var startResult = await ProgressApi.StartStepAsync(AssignmentId, stepInfo.StepId);
+            if (!startResult.IsSuccess)
+            {
+                Snackbar.Add("Не удалось начать шаг", Severity.Error);
+                _loadingStep = false;
+                return;
+            }
+            // Refresh progress so circles show InProgress status for this step
+            var refresh = await ProgressApi.GetMyAssignmentProgressAsync(AssignmentId);
+            if (refresh.IsSuccess) _progress = refresh.Data;
+        }
+
+        var result = await ProgressApi.GetStepAsync(AssignmentId, stepInfo.StepId);
+        if (result.IsSuccess)
+            _currentStep = result.Data;
+        else
+            Snackbar.Add("Не удалось загрузить шаг", Severity.Error);
+
+        _loadingStep = false;
+    }
+
+    private async Task OnStepCompleted()
+    {
+        var result = await ProgressApi.GetMyAssignmentProgressAsync(AssignmentId);
+        if (result.IsSuccess)
+            _progress = result.Data!;
+
+        if (_progress!.Status == AssignmentStatus.Completed)
+        {
+            _allCompleted = true;
+            _currentStep = null;
+            return;
+        }
+
+        var nextStep = FindNextStep();
+        if (nextStep is null)
+        {
+            _allCompleted = true;
+            _currentStep = null;
+            return;
+        }
+
+        SetSelectedStage(nextStep.StepId);
+        await LoadStepAsync(nextStep);
+    }
+
+    private void SelectStage(Guid stageId) => _selectedStageId = stageId;
+
+    private async Task OnCircleStepSelected(Guid stepId)
+    {
+        var stage = _progress?.Stages.FirstOrDefault(s => s.StageId == _selectedStageId);
+        var stepInfo = stage?.Steps.FirstOrDefault(s => s.StepId == stepId);
+        if (stepInfo is null) return;
+        if (stepInfo.Status == StepProgressStatus.NotStarted) return;
+        await LoadStepAsync(stepInfo);
+    }
+
+    private StepProgressStatusResponse? FindNextStep() =>
+        _progress?.Stages
+            .OrderBy(s => s.Order)
+            .SelectMany(s => s.Steps.OrderBy(step => step.Order))
+            .FirstOrDefault(s => s.Status != StepProgressStatus.Completed);
+
+    private void SetSelectedStage(Guid stepId)
+    {
+        if (_progress is null) return;
+        foreach (var stage in _progress.Stages)
+        {
+            if (stage.Steps.Any(s => s.StepId == stepId))
+            {
+                _selectedStageId = stage.StageId;
+                return;
+            }
+        }
+    }
+
+    private static Color AssignmentStatusColor(AssignmentStatus s) => s switch
+    {
+        AssignmentStatus.InProgress => Color.Info,
+        AssignmentStatus.Completed  => Color.Success,
+        _                           => Color.Default
+    };
+
+    private static string AssignmentStatusLabel(AssignmentStatus s) => s switch
+    {
+        AssignmentStatus.NotStarted => "Не начат",
+        AssignmentStatus.InProgress => "В процессе",
+        AssignmentStatus.Completed  => "Завершён",
+        _                           => s.ToString()
+    };
+
+    private static string StepTypeIcon(StepType t) => t switch
+    {
+        StepType.Information => Icons.Material.Outlined.Info,
+        StepType.Question    => Icons.Material.Outlined.Help,
+        StepType.Test        => Icons.Material.Outlined.Quiz,
+        StepType.Task        => Icons.Material.Outlined.Assignment,
+        StepType.Checklist   => Icons.Material.Outlined.CheckBox,
+        _                    => Icons.Material.Outlined.Article
+    };
+
+    private static Color StepTypeColor(StepType t) => t switch
+    {
+        StepType.Information => Color.Info,
+        StepType.Question    => Color.Warning,
+        StepType.Test        => Color.Secondary,
+        StepType.Task        => Color.Success,
+        StepType.Checklist   => Color.Tertiary,
+        _                    => Color.Default
+    };
+
+    private static string StepTypeLabel(StepType t) => t switch
+    {
+        StepType.Information => "Информационный блок",
+        StepType.Question    => "Вопрос",
+        StepType.Test        => "Тест",
+        StepType.Task        => "Задание",
+        StepType.Checklist   => "Чеклист",
+        _                    => t.ToString()
+    };
+}

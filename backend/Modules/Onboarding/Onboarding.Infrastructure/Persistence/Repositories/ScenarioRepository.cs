@@ -209,6 +209,9 @@ public class ScenarioRepository : IScenarioRepository
     public async Task AddOptionAsync(QuestionOption option, CancellationToken ct = default)
         => await _context.QuestionOptions.AddAsync(option, ct);
 
+    public void Remove(Scenario scenario)
+        => _context.Scenarios.Remove(scenario);
+
     public void RemoveStage(Stage stage)
         => _context.Stages.Remove(stage);
 

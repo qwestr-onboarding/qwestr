@@ -9,8 +9,8 @@
     <MudNavLink Href="/dashboard" Icon="@QwestrIcons.Navigation.Home" IconColor="Color.Inherit" Match="NavLinkMatch.All">
         @if (Open) { <MudText>Главная</MudText> }
     </MudNavLink>
-    <MudNavLink Href="/tests" Icon="@QwestrIcons.Navigation.Tests" IconColor="Color.Inherit">
-        @if (Open) { <MudText>Тесты</MudText> }
+    <MudNavLink Href="/onboarding" Icon="@QwestrIcons.Navigation.Onboarding" IconColor="Color.Inherit">
+        @if (Open) { <MudText>Онбординг</MudText> }
     </MudNavLink>
     <MudNavLink Href="/knowledge" Icon="@QwestrIcons.Navigation.Knowledge" IconColor="Color.Inherit">
         @if (Open) { <MudText Style="text-wrap-mode: nowrap;">База знаний</MudText> }
@@ -35,6 +35,9 @@
         {
             <MudText Typo="Typo.overline" Color="Color.Secondary" Class="px-4 pt-1">Управление</MudText>
         }
+        <MudNavLink Href="/onboarding/scenarios" Icon="@QwestrIcons.Navigation.OnboardingEditor" IconColor="Color.Inherit">
+            @if (Open) { <MudText>Онбординг</MudText> }
+        </MudNavLink>
         <MudNavLink Href="/invitations" Icon="@QwestrIcons.Navigation.Invites" IconColor="Color.Inherit">
             @if (Open) { <MudText>Приглашения</MudText> }
         </MudNavLink>

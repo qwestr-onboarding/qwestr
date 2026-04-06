@@ -1,0 +1,101 @@
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses
+
+@inject UsersApi UsersApi
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_search"
+                          Label="Поиск сотрудника"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Outlined.Search"
+                          Immediate="true"
+                          FullWidth="true" />
+
+            @if (_loading)
+            {
+                <MudProgressLinear Indeterminate="true" />
+            }
+            else
+            {
+                <MudStack Spacing="1" Style="max-height:320px;overflow-y:auto;">
+                    @foreach (var user in FilteredUsers)
+                    {
+                        var selected = _selected.Contains(user.Id);
+                        <MudPaper Elevation="0" Class="pa-2" Style="cursor:pointer;"
+                                  @onclick="() => Toggle(user.Id)">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudCheckBox T="bool" Value="selected"
+                                             ValueChanged="_ => Toggle(user.Id)"
+                                             Color="Color.Primary" />
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.body2">@user.FullName</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @user.Email
+                                    </MudText>
+                                </MudStack>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                    @if (!FilteredUsers.Any())
+                    {
+                        <MudText Color="Color.Secondary" Align="Align.Center" Class="pa-4">
+                            Сотрудники не найдены
+                        </MudText>
+                    }
+                </MudStack>
+
+                @if (_selected.Count > 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Primary">
+                        Выбрано: @_selected.Count
+                    </MudText>
+                }
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Отмена</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="_selected.Count == 0"
+                   OnClick="Submit">
+            Назначить
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Guid ScenarioId { get; set; }
+
+    private List<UserListItemResponse> _users = [];
+    private HashSet<Guid> _selected = [];
+    private string _search = "";
+    private bool _loading = true;
+
+    private IEnumerable<UserListItemResponse> FilteredUsers => _users
+        .Where(u => string.IsNullOrEmpty(_search) ||
+                    u.FullName.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                    u.Email.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await UsersApi.GetUsersListAsync(1, 500);
+        if (result.IsSuccess)
+            _users = [.. result.Data!.Items.Where(u => u.IsActive)];
+        _loading = false;
+    }
+
+    private void Toggle(Guid id)
+    {
+        if (!_selected.Add(id))
+            _selected.Remove(id);
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+        => MudDialog.Close(DialogResult.Ok(_selected.ToList()));
+}

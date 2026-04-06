@@ -1,0 +1,310 @@
+@using System.Text.Json
+@using System.Text.Encodings.Web
+@using QwestrWebClient.Models.Onboarding
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Контент</MudText>
+
+    @if (_blocks.Count == 0 && IsReadOnly)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Нет контента</MudText>
+    }
+
+    @for (var i = 0; i < _blocks.Count; i++)
+    {
+        var block = _blocks[i];
+        var idx = i;
+        var isFirst = idx == 0;
+        var isLast = idx == _blocks.Count - 1;
+
+        <MudPaper Elevation="1" Class="pa-3" Style="border-radius:8px;">
+            <MudStack Spacing="2">
+
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="0">
+                    <MudIcon Icon="@BlockIcon(block.Type)" Size="Size.Small"
+                             Color="Color.Secondary" Class="mr-1" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="flex:1;">
+                        @BlockLabel(block.Type)
+                    </MudText>
+                    @if (!IsReadOnly)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Outlined.ArrowUpward"
+                                       Size="Size.Small" Disabled="isFirst"
+                                       OnClick="() => MoveBlock(idx, -1)" />
+                        <MudIconButton Icon="@Icons.Material.Outlined.ArrowDownward"
+                                       Size="Size.Small" Disabled="isLast"
+                                       OnClick="() => MoveBlock(idx, 1)" />
+                        <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                       Size="Size.Small" Color="Color.Error"
+                                       OnClick="() => RemoveBlock(idx)" />
+                    }
+                </MudStack>
+
+                @switch (block.Type)
+                {
+                    case ContentBlockType.Text:
+                        <MudStack Spacing="1">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="0">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="flex:1;">
+                                    Поддерживается Markdown-форматирование
+                                </MudText>
+                                <MudTooltip Placement="Placement.Left" Color="Color.Dark">
+                                    <TooltipContent>
+                                        <MudStack Spacing="0" Class="pa-1">
+                                            <MudText Typo="Typo.caption"><b>**жирный**</b></MudText>
+                                            <MudText Typo="Typo.caption"><i>*курсив*</i></MudText>
+                                            <MudText Typo="Typo.caption">`инлайн-код`</MudText>
+                                            <MudText Typo="Typo.caption">[текст](url)</MudText>
+                                            <MudText Typo="Typo.caption">- элемент списка</MudText>
+                                            <MudText Typo="Typo.caption">1. нумерованный список</MudText>
+                                        </MudStack>
+                                    </TooltipContent>
+                                    <ChildContent>
+                                        <MudIconButton Icon="@Icons.Material.Outlined.Info"
+                                                       Size="Size.Small" Color="Color.Info" />
+                                    </ChildContent>
+                                </MudTooltip>
+                            </MudStack>
+                            <MudTextField Value="block.Content"
+                                          ValueChanged="@((string? v) => UpdateBlock(idx, b => b.Content = v))"
+                                          Variant="Variant.Outlined" Lines="4" MaxLines="8" AutoGrow="true"
+                                          FullWidth="true" ReadOnly="IsReadOnly"
+                                          MaxLength="5000" />
+                        </MudStack>
+                        break;
+
+                    case ContentBlockType.Heading:
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudSelect T="string" Value="@(block.Level ?? "h2")"
+                                       ValueChanged="@((string v) => UpdateBlock(idx, b => b.Level = v))"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense"
+                                       Style="max-width:100px;" Disabled="IsReadOnly">
+                                <MudSelectItem Value="@("h1")">H1</MudSelectItem>
+                                <MudSelectItem Value="@("h2")">H2</MudSelectItem>
+                                <MudSelectItem Value="@("h3")">H3</MudSelectItem>
+                            </MudSelect>
+                            <MudTextField Value="block.Content"
+                                          ValueChanged="@((string? v) => UpdateBlock(idx, b => b.Content = v))"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          Placeholder="Текст заголовка"
+                                          Style="flex:1;" ReadOnly="IsReadOnly"
+                                          MaxLength="300" />
+                        </MudStack>
+                        break;
+
+                    case ContentBlockType.Image:
+                        <MudStack Spacing="1">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="0">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="flex:1;">
+                                    Прямая ссылка на изображение
+                                </MudText>
+                                <MudTooltip Placement="Placement.Left" Color="Color.Dark">
+                                    <TooltipContent>
+                                        <MudStack Spacing="0" Class="pa-1">
+                                            <MudText Typo="Typo.caption">Поддерживаются:</MudText>
+                                            <MudText Typo="Typo.caption">· Прямая ссылка на изображение</MudText>
+                                            <MudText Typo="Typo.caption">  (заканчивается на .jpg, .png и т.д.)</MudText>
+                                            <MudText Typo="Typo.caption">· Ссылка из хранилища компании</MudText>
+                                        </MudStack>
+                                    </TooltipContent>
+                                    <ChildContent>
+                                        <MudIconButton Icon="@Icons.Material.Outlined.Info"
+                                                       Size="Size.Small" Color="Color.Info" />
+                                    </ChildContent>
+                                </MudTooltip>
+                            </MudStack>
+                            <MudTextField Value="block.Content"
+                                          ValueChanged="@((string? v) => UpdateBlock(idx, b => b.Content = v))"
+                                          Label="URL изображения"
+                                          Variant="Variant.Outlined" FullWidth="true"
+                                          ReadOnly="IsReadOnly"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Outlined.Link"
+                                          MaxLength="2000" />
+                        </MudStack>
+                        break;
+
+                    case ContentBlockType.Video:
+                        <MudStack Spacing="1">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="0">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="flex:1;">
+                                    Ссылка на видео
+                                </MudText>
+                                <MudTooltip Placement="Placement.Left" Color="Color.Dark">
+                                    <TooltipContent>
+                                        <MudStack Spacing="0" Class="pa-1">
+                                            <MudText Typo="Typo.caption">Поддерживаются:</MudText>
+                                            <MudText Typo="Typo.caption">· YouTube</MudText>
+                                            <MudText Typo="Typo.caption" Style="opacity:0.7;">  https://youtu.be/hlWiI4xVXKY</MudText>
+                                            <MudText Typo="Typo.caption">· Rutube</MudText>
+                                            <MudText Typo="Typo.caption" Style="opacity:0.7;">  https://rutube.ru/video/af041c.../</MudText>
+                                            <MudText Typo="Typo.caption">· Хранилище компании</MudText>
+                                        </MudStack>
+                                    </TooltipContent>
+                                    <ChildContent>
+                                        <MudIconButton Icon="@Icons.Material.Outlined.Info"
+                                                       Size="Size.Small" Color="Color.Info" />
+                                    </ChildContent>
+                                </MudTooltip>
+                            </MudStack>
+                            <MudTextField Value="block.Content"
+                                          ValueChanged="@((string? v) => UpdateBlock(idx, b => b.Content = v))"
+                                          Label="URL видео"
+                                          Variant="Variant.Outlined" FullWidth="true"
+                                          ReadOnly="IsReadOnly"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Outlined.Link"
+                                          MaxLength="2000" />
+                        </MudStack>
+                        break;
+
+                    case ContentBlockType.Divider:
+                        <MudDivider />
+                        break;
+
+                    case ContentBlockType.Callout:
+                        <MudStack Spacing="1">
+                            <MudSelect T="string" Value="@(block.Variant ?? "information")"
+                                       ValueChanged="@((string v) => UpdateBlock(idx, b => b.Variant = v))"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense"
+                                       Style="max-width:220px;" Disabled="IsReadOnly">
+                                <MudSelectItem Value="@("information")">Информация</MudSelectItem>
+                                <MudSelectItem Value="@("warning")">Предупреждение</MudSelectItem>
+                                <MudSelectItem Value="@("danger")">Важно</MudSelectItem>
+                                <MudSelectItem Value="@("success")">Успех</MudSelectItem>
+                            </MudSelect>
+                            <MudTextField Value="block.Content"
+                                          ValueChanged="@((string? v) => UpdateBlock(idx, b => b.Content = v))"
+                                          Variant="Variant.Outlined" Lines="3"
+                                          FullWidth="true" ReadOnly="IsReadOnly"
+                                          MaxLength="2000" />
+                        </MudStack>
+                        break;
+                }
+
+            </MudStack>
+        </MudPaper>
+    }
+
+    @if (!IsReadOnly)
+    {
+        <MudMenu>
+            <ActivatorContent>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                           FullWidth="true" StartIcon="@Icons.Material.Outlined.Add">
+                    Добавить блок
+                </MudButton>
+            </ActivatorContent>
+            <ChildContent>
+                <MudMenuItem Icon="@Icons.Material.Outlined.Notes"
+                             OnClick='() => AddBlock(ContentBlockType.Text)'>Текст</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Outlined.Title"
+                             OnClick='() => AddBlock(ContentBlockType.Heading)'>Заголовок</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Outlined.Image"
+                             OnClick='() => AddBlock(ContentBlockType.Image)'>Изображение</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Outlined.PlayCircle"
+                             OnClick='() => AddBlock(ContentBlockType.Video)'>Видео</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Outlined.HorizontalRule"
+                             OnClick='() => AddBlock(ContentBlockType.Divider)'>Разделитель</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Outlined.Campaign"
+                             OnClick='() => AddBlock(ContentBlockType.Callout)'>Сноска</MudMenuItem>
+            </ChildContent>
+        </MudMenu>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public string? Content { get; set; }
+    [Parameter] public EventCallback<string?> ContentChanged { get; set; }
+    [Parameter] public bool IsReadOnly { get; set; }
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+
+    private List<ContentBlock> _blocks = [];
+    private string? _lastSerialized;
+
+    protected override void OnParametersSet()
+    {
+        if (Content == _lastSerialized) return;
+        _lastSerialized = Content;
+        _blocks = ParseBlocks(Content);
+    }
+
+    private static List<ContentBlock> ParseBlocks(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try
+        {
+            return JsonSerializer.Deserialize<List<ContentBlock>>(json)
+                   ?? [];
+        }
+        catch { return []; }
+    }
+
+    private void UpdateBlock(int idx, Action<ContentBlock> update)
+    {
+        update(_blocks[idx]);
+        Commit();
+    }
+
+    private void AddBlock(string type)
+    {
+        _blocks.Add(new ContentBlock
+        {
+            Order   = _blocks.Count,
+            Type    = type,
+            Level   = type == ContentBlockType.Heading ? "h2" : null,
+            Variant = type == ContentBlockType.Callout  ? "information" : null
+        });
+        Commit();
+    }
+
+    private void RemoveBlock(int idx)
+    {
+        _blocks.RemoveAt(idx);
+        Commit();
+    }
+
+    private void MoveBlock(int idx, int direction)
+    {
+        var newIdx = idx + direction;
+        if (newIdx < 0 || newIdx >= _blocks.Count) return;
+        (_blocks[idx], _blocks[newIdx]) = (_blocks[newIdx], _blocks[idx]);
+        Commit();
+    }
+
+    private void Commit()
+    {
+        for (var i = 0; i < _blocks.Count; i++)
+            _blocks[i].Order = i;
+
+        _lastSerialized = _blocks.Count > 0
+            ? JsonSerializer.Serialize(_blocks, JsonOptions)
+            : null;
+        _ = ContentChanged.InvokeAsync(_lastSerialized);
+    }
+
+    private static string BlockIcon(string type) => type switch
+    {
+        ContentBlockType.Heading => Icons.Material.Outlined.Title,
+        ContentBlockType.Image   => Icons.Material.Outlined.Image,
+        ContentBlockType.Video   => Icons.Material.Outlined.PlayCircle,
+        ContentBlockType.Divider => Icons.Material.Outlined.HorizontalRule,
+        ContentBlockType.Callout => Icons.Material.Outlined.Campaign,
+        _                        => Icons.Material.Outlined.Notes
+    };
+
+    private static string BlockLabel(string type) => type switch
+    {
+        ContentBlockType.Text    => "Текст",
+        ContentBlockType.Heading => "Заголовок",
+        ContentBlockType.Image   => "Изображение",
+        ContentBlockType.Video   => "Видео",
+        ContentBlockType.Divider => "Разделитель",
+        ContentBlockType.Callout => "Сноска",
+        _                        => type
+    };
+}

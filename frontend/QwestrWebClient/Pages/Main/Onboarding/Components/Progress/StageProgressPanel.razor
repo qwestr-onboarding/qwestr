@@ -1,0 +1,53 @@
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+
+<MudExpansionPanel bind-Expanded="_isExpanded" Style="border-radius:8px;">
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Style="width:100%;">
+            <MudText Typo="Typo.subtitle1" Style="flex:1;">
+                @Stage.Title
+            </MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@StagePct%</MudText>
+                <MudProgressLinear Value="@StagePct" Color="@StageColor"
+                                   Rounded="true" Size="Size.Small"
+                                   Style="width:80px;" />
+            </MudStack>
+        </MudStack>
+    </TitleContent>
+    <ChildContent>
+        <MudStack Spacing="1" Class="pb-2">
+            @foreach (var step in Stage.Steps)
+            {
+                var progress = StepProgresses.FirstOrDefault(p => p.StepId == step.Id);
+                <StepProgressRow Step="step" Progress="progress" />
+            }
+        </MudStack>
+    </ChildContent>
+</MudExpansionPanel>
+
+@code {
+    [Parameter, EditorRequired] public StageResponse Stage { get; set; } = default!;
+    [Parameter] public List<StepProgressSummaryResponse> StepProgresses { get; set; } = [];
+    [Parameter] public bool DefaultExpanded { get; set; }
+
+    private bool _isExpanded;
+
+    protected override void OnInitialized() => _isExpanded = DefaultExpanded;
+
+    private int StagePct
+    {
+        get
+        {
+            if (Stage.Steps.Count == 0) return 0;
+            var completed = Stage.Steps.Count(step =>
+                StepProgresses.Any(p => p.StepId == step.Id &&
+                                        p.Status == StepProgressStatus.Completed));
+            return (int)(completed * 100.0 / Stage.Steps.Count);
+        }
+    }
+
+    private Color StageColor => StagePct == 100 ? Color.Success
+        : StagePct > 0 ? Color.Info
+        : Color.Default;
+}

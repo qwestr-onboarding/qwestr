@@ -2,6 +2,8 @@
 
 namespace Client.Infrastructure.Api.Models;
 
+public record IdResponse(Guid Id);
+
 public class ApiResult
 {
     public bool IsSuccess { get; init; }

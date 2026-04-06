@@ -40,6 +40,12 @@ public class StartTestAttemptCommandHandler : IRequestHandler<StartTestAttemptCo
             return ActionResult<Guid>.Failure("This step is not a Test step.");
         }
 
+        var incompleteAttemptId = await _assignmentRepository.GetLatestIncompleteAttemptIdAsync(request.StepProgressId, ct);
+        if (incompleteAttemptId.HasValue)
+        {
+            return ActionResult<Guid>.Failure("A test attempt is already in progress.");
+        }
+
         if (!string.IsNullOrEmpty(step.Settings))
         {
             var settings = JsonSerializer.Deserialize<JsonElement>(step.Settings);

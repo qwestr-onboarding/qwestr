@@ -1,0 +1,87 @@
+@page "/onboarding/scenarios/{ScenarioId:guid}"
+@layout MainLayout
+
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using QwestrWebClient.Pages.Main.Onboarding.Components
+
+@inject ScenariosApi ScenariosApi
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>@(_scenario?.Title ?? "Сценарий") — Qwestr</PageTitle>
+
+@if (_loading)
+{
+    <MudStack AlignItems="AlignItems.Center" Class="pa-8">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    </MudStack>
+}
+else if (_scenario is null)
+{
+    <MudAlert Severity="Severity.Error">Сценарий не найден</MudAlert>
+}
+else
+{
+    <MudStack Spacing="3">
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudIconButton Icon="@Icons.Material.Outlined.ArrowBack"
+                           OnClick='() => Nav.NavigateTo("/onboarding/scenarios")' />
+            <MudText Typo="Typo.h6" Style="flex:1;">@_scenario.Title</MudText>
+            <MudChip T="string" Size="Size.Small"
+                     Color="@(_scenario.IsPublished ? Color.Success : Color.Default)">
+                @(_scenario.IsPublished ? "Опубликован" : "Черновик")
+            </MudChip>
+        </MudStack>
+
+        <MudTabs Elevation="0" ApplyEffectsToContainer="true" TabHeaderClass="mud-background"
+                 PanelClass="pt-4" TabPanelClass="mud-background" @ref="_tabs">
+            <MudTabPanel Text="Общие" OnClick="() => SetActiveTab(0)">
+                <ScenarioGeneralTab Scenario="_scenario" OnChanged="ReloadAsync" />
+            </MudTabPanel>
+            <MudTabPanel Text="Структура" OnClick="() => SetActiveTab(1)">
+                <ScenarioStructureTab Scenario="_scenario" OnChanged="ReloadAsync" />
+            </MudTabPanel>
+            <MudTabPanel Text="Назначения" OnClick="() => SetActiveTab(2)">
+                <ScenarioAssignmentsTab Scenario="_scenario" OnChanged="ReloadAsync" />
+            </MudTabPanel>
+        </MudTabs>
+
+    </MudStack>
+}
+
+@code {
+    [Parameter] public Guid ScenarioId { get; set; }
+
+    private ScenarioDetailResponse? _scenario;
+    private bool _loading = true;
+    private int _activeTabIndex = 0;
+    private MudTabs _tabs = null!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await ScenariosApi.GetAsync(ScenarioId);
+        if (result.IsSuccess)
+            _scenario = result.Data;
+        else
+            Snackbar.Add("Не удалось загрузить сценарий", Severity.Error);
+        _loading = false;
+    }
+
+    private async Task ReloadAsync()
+    {
+        var result = await ScenariosApi.GetAsync(ScenarioId);
+        if (result.IsSuccess)
+            _scenario = result.Data;
+        else
+            Snackbar.Add("Не удалось загрузить сценарий", Severity.Error);
+        await _tabs.ActivatePanelAsync(_activeTabIndex);
+        StateHasChanged();
+    }
+
+    private void SetActiveTab(int index)
+    {
+        _activeTabIndex = index;
+    }
+}

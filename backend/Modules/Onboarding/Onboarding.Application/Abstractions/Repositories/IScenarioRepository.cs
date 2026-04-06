@@ -38,6 +38,7 @@ public interface IScenarioRepository
     Task AddQuestionAsync(Question question, CancellationToken ct = default);
     Task AddOptionAsync(QuestionOption option, CancellationToken ct = default);
 
+    void Remove(Scenario scenario);
     void RemoveStage(Stage stage);
     void RemoveStep(Step step);
     void RemoveQuestion(Question question);

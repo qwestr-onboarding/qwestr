@@ -1,0 +1,245 @@
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+@using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses
+
+@inject ScenariosApi ScenariosApi
+@inject AssignmentsApi AssignmentsApi
+@inject UsersApi UsersApi
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+@if (!Scenario.IsPublished)
+{
+    <MudStack AlignItems="AlignItems.Center" Spacing="3" Class="pa-8">
+        <MudIcon Icon="@Icons.Material.Outlined.LockOpen" Size="Size.Large"
+                 Color="Color.Secondary" />
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center">
+            Опубликуйте сценарий, чтобы назначать его сотрудникам
+        </MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Outlined.Publish"
+                   OnClick="PublishAndReloadAsync">
+            Опубликовать
+        </MudButton>
+    </MudStack>
+}
+else
+{
+    <MudStack Spacing="3">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.PersonAdd"
+                       OnClick="OpenAssignDialog">
+                Назначить сотрудника
+            </MudButton>
+            <MudTextField @bind-Value="_search"
+                          Label="Поиск" Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Outlined.Search"
+                          Immediate="true" Style="max-width:260px;" />
+        </MudStack>
+
+        @if (_loadingAssignments)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else
+        {
+            <MudTable T="AssignmentListItemResponse"
+                      Items="FilteredAssignments"
+                      Dense="true" Hover="true"
+                      OnRowClick="OnRowClick" RowClass="cursor-pointer">
+                <HeaderContent>
+                    <MudTh>Сотрудник</MudTh>
+                    <MudTh>Назначен</MudTh>
+                    <MudTh>Прогресс</MudTh>
+                    <MudTh>Статус</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Сотрудник">
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.body2">
+                                @(_users.TryGetValue(context.UserId, out var u)
+                                    ? u.FullName : context.UserId.ToString("N")[..8])
+                            </MudText>
+                            @if (_users.TryGetValue(context.UserId, out var user))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @user.Email
+                                </MudText>
+                            }
+                        </MudStack>
+                    </MudTd>
+                    <MudTd DataLabel="Назначен">
+                        @context.AssignedAt.ToString("dd.MM.yyyy")
+                    </MudTd>
+                    <MudTd DataLabel="Прогресс" Style="min-width:140px;">
+                        @{
+                            var pct = context.TotalSteps > 0
+                                ? (int)(context.CompletedSteps * 100.0 / context.TotalSteps)
+                                : 0;
+                        }
+                        <MudStack Spacing="1">
+                            <MudProgressLinear Value="@pct" Rounded="true"
+                                               Color="Color.Primary" Size="Size.Small" />
+                            <MudText Typo="Typo.caption">
+                                @context.CompletedSteps / @context.TotalSteps (@pct%)
+                            </MudText>
+                        </MudStack>
+                    </MudTd>
+                    <MudTd DataLabel="Статус">
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@StatusColor(context.Status)">
+                            @StatusLabel(context.Status)
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>
+                        <MudStack @onclick:stopPropagation="true" AlignItems="AlignItems.End">
+                            <MudMenu Icon="@Icons.Material.Outlined.MoreVert"
+                                     Size="Size.Small" Dense="true">
+                                <MudMenuItem OnClick="@(() => Nav.NavigateTo(
+                                    $"/onboarding/scenarios/{Scenario.Id}/progress/{context.Id}"))">
+                                    Статистика
+                                </MudMenuItem>
+                                <MudMenuItem OnClick="@(() => UnassignAsync(context))">
+                                    <MudText Color="Color.Error">Отменить назначение</MudText>
+                                </MudMenuItem>
+                            </MudMenu>
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText Color="Color.Secondary" Class="pa-4">Нет назначений</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        }
+    </MudStack>
+}
+
+@code {
+    [Parameter, EditorRequired] public ScenarioDetailResponse Scenario { get; set; } = default!;
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private List<AssignmentListItemResponse> _assignments = [];
+    private Dictionary<Guid, UserListItemResponse> _users = [];
+    private bool _loadingAssignments = true;
+    private string _search = "";
+
+    private IEnumerable<AssignmentListItemResponse> FilteredAssignments => _assignments
+        .Where(a => string.IsNullOrEmpty(_search) ||
+                    (_users.TryGetValue(a.UserId, out var u) &&
+                     (u.FullName.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                      u.Email.Contains(_search, StringComparison.OrdinalIgnoreCase))));
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Scenario.IsPublished) return;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loadingAssignments = true;
+
+        var assignmentsTask = AssignmentsApi.GetListAsync(1, 200, scenarioId: Scenario.Id);
+        var usersTask = UsersApi.GetUsersListAsync(1, 500);
+        await Task.WhenAll(assignmentsTask, usersTask);
+
+        if (assignmentsTask.Result.IsSuccess)
+            _assignments = [.. assignmentsTask.Result.Data!.Items];
+
+        if (usersTask.Result.IsSuccess)
+            _users = usersTask.Result.Data!.Items.ToDictionary(u => u.Id);
+
+        _loadingAssignments = false;
+    }
+
+    private void OnRowClick(TableRowClickEventArgs<AssignmentListItemResponse> args)
+    {
+        if (args.Item is not null)
+            Nav.NavigateTo($"/onboarding/scenarios/{Scenario.Id}/progress/{args.Item.Id}");
+    }
+
+    private async Task OpenAssignDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters<AssignEmployeeDialog>
+        {
+            { x => x.ScenarioId, Scenario.Id }
+        };
+        var dialog = await DialogService.ShowAsync<AssignEmployeeDialog>(
+            "Назначить сотрудника", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: List<Guid> userIds } && userIds.Count > 0)
+        {
+            var errors = new List<string>();
+            foreach (var uid in userIds)
+            {
+                var r = await AssignmentsApi.AssignAsync(
+                    new Qwestr.Shared.Contracts.ApiDto.Onboarding.Requests.AssignScenarioRequest(
+                        Scenario.Id, uid));
+                if (!r.IsSuccess)
+                    errors.Add(r.Error ?? "Ошибка назначения");
+            }
+
+            if (errors.Count == 0)
+                Snackbar.Add("Сценарий назначен", Severity.Success);
+            else
+                Snackbar.Add(string.Join("; ", errors), Severity.Error);
+
+            await LoadAsync();
+        }
+    }
+
+    private async Task UnassignAsync(AssignmentListItemResponse assignment)
+    {
+        var name = _users.TryGetValue(assignment.UserId, out var u) ? u.FullName : "сотрудника";
+        var confirmed = await DialogService.ShowMessageBox(
+            "Отменить назначение",
+            $"Отменить назначение для {name}? Весь прогресс сотрудника по этому сценарию будет удалён безвозвратно.",
+            yesText: "Удалить и отменить", cancelText: "Отмена");
+        if (confirmed != true) return;
+
+        var result = await AssignmentsApi.UnassignAsync(assignment.Id);
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Назначение отменено", Severity.Success);
+            await LoadAsync();
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+    }
+
+    private async Task PublishAndReloadAsync()
+    {
+        var result = await ScenariosApi.PublishAsync(Scenario.Id);
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Сценарий опубликован", Severity.Success);
+            await LoadAsync();
+            await OnChanged.InvokeAsync();
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка публикации", Severity.Error);
+    }
+
+    private static Color StatusColor(AssignmentStatus s) => s switch
+    {
+        AssignmentStatus.NotStarted => Color.Default,
+        AssignmentStatus.InProgress => Color.Info,
+        AssignmentStatus.Completed  => Color.Success,
+        _                           => Color.Default
+    };
+
+    private static string StatusLabel(AssignmentStatus s) => s switch
+    {
+        AssignmentStatus.NotStarted => "Не начат",
+        AssignmentStatus.InProgress => "В процессе",
+        AssignmentStatus.Completed  => "Завершён",
+        _                           => s.ToString()
+    };
+}

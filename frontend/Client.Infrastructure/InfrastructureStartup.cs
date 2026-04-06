@@ -25,6 +25,15 @@ public static class InfrastructureStartup
         services.AddScoped<InvitationsApi>();
         services.AddScoped<TenantApi>();
 
+        // --- Onboarding ---
+        services.AddScoped<ScenariosApi>();
+        services.AddScoped<StagesApi>();
+        services.AddScoped<StepsApi>();
+        services.AddScoped<QuestionsApi>();
+        services.AddScoped<OptionsApi>();
+        services.AddScoped<AssignmentsApi>();
+        services.AddScoped<OnboardingProgressApi>();
+
         services.AddHttpContextAccessor();
         services.AddScoped<TenantResolver>();
         services.AddScoped<BffAuthClient>();

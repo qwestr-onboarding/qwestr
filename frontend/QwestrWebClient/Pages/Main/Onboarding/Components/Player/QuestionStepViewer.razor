@@ -1,0 +1,166 @@
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+
+@inject OnboardingProgressApi ProgressApi
+@inject ISnackbar Snackbar
+
+@if (_question is null)
+{
+    <MudText Color="Color.Secondary">Вопрос не задан</MudText>
+}
+else
+{
+    <MudStack Spacing="3">
+
+        <MudText Typo="Typo.body1" Style="font-weight:500; line-height:1.5;">
+            @_question.QuestionText
+        </MudText>
+
+        @if (!_answered)
+        {
+            @switch (_question.Type)
+            {
+                case QuestionType.SingleChoice:
+                    <MudRadioGroup T="Guid" @bind-Value="_selectedOptionId">
+                        @foreach (var opt in _question.Options.OrderBy(o => o.Order))
+                        {
+                            <MudRadio T="Guid" Value="opt.Id" Color="Color.Primary">
+                                @opt.Text
+                            </MudRadio>
+                        }
+                    </MudRadioGroup>
+                    break;
+
+                case QuestionType.MultipleChoice:
+                    @foreach (var opt in _question.Options.OrderBy(o => o.Order))
+                    {
+                        var optId = opt.Id;
+                        <MudCheckBox T="bool"
+                                     Value="_selectedOptionIds.Contains(optId)"
+                                     ValueChanged="@((bool v) => ToggleOption(optId, v))"
+                                     Color="Color.Primary">
+                            @opt.Text
+                        </MudCheckBox>
+                    }
+                    break;
+
+                case QuestionType.OpenText:
+                    <MudTextField @bind-Value="_textAnswer"
+                                  Label="Ваш ответ"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true"
+                                  Lines="3"
+                                  MaxLength="2000" />
+                    break;
+            }
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       FullWidth="true" Disabled="@(!CanAnswer || _submitting)"
+                       OnClick="AnswerAsync">
+                @(_submitting ? "Проверка..." : "Ответить")
+            </MudButton>
+        }
+        else if (_result is not null)
+        {
+            @* Feedback after answer *@
+            <MudAlert Severity="@(_result.IsCorrect ? Severity.Success : Severity.Error)"
+                      Icon="@(_result.IsCorrect ? Icons.Material.Outlined.CheckCircle : Icons.Material.Outlined.Cancel)">
+                @(_result.IsCorrect ? "Верно!" : "Неверно")
+            </MudAlert>
+
+            @if (!_result.IsCorrect && _result.CorrectOptionIds.Count > 0 &&
+                 _question.Type != QuestionType.OpenText)
+            {
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Правильный ответ:</MudText>
+                    @foreach (var opt in _question.Options
+                        .Where(o => _result.CorrectOptionIds.Contains(o.Id)))
+                    {
+                        <MudChip T="string" Color="Color.Success" Size="Size.Small">@opt.Text</MudChip>
+                    }
+                </MudStack>
+            }
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       EndIcon="@Icons.Material.Outlined.ArrowForward"
+                       FullWidth="true" OnClick="@(() => OnCompleted.InvokeAsync())">
+                Далее
+            </MudButton>
+        }
+        else if (Step.ProgressStatus == StepProgressStatus.Completed)
+        {
+            <MudAlert Severity="Severity.Success" Dense="true">Вопрос уже отвечен</MudAlert>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       EndIcon="@Icons.Material.Outlined.ArrowForward"
+                       FullWidth="true"
+                       OnClick="@(() => OnCompleted.InvokeAsync())">
+                Продолжить
+            </MudButton>
+        }
+
+    </MudStack>
+}
+
+@code {
+    [Parameter, EditorRequired] public StepContentResponse Step { get; set; } = default!;
+    [Parameter] public EventCallback OnCompleted { get; set; }
+
+    private QuestionContentResponse? _question;
+    private Guid _selectedOptionId;
+    private List<Guid> _selectedOptionIds = [];
+    private string? _textAnswer;
+    private bool _answered;
+    private bool _submitting;
+    private AnswerResultResponse? _result;
+
+    protected override void OnParametersSet()
+    {
+        _question = Step.Questions.FirstOrDefault();
+        _answered = Step.ProgressStatus == StepProgressStatus.Completed;
+    }
+
+    private bool CanAnswer => _question?.Type switch
+    {
+        QuestionType.SingleChoice   => _selectedOptionId != Guid.Empty,
+        QuestionType.MultipleChoice => _selectedOptionIds.Count > 0,
+        QuestionType.OpenText       => !string.IsNullOrWhiteSpace(_textAnswer),
+        _                           => false
+    };
+
+    private void ToggleOption(Guid id, bool selected)
+    {
+        if (selected) _selectedOptionIds.Add(id);
+        else _selectedOptionIds.Remove(id);
+    }
+
+    private async Task AnswerAsync()
+    {
+        if (_question is null) return;
+        _submitting = true;
+
+        List<Guid>? optionIds = _question.Type switch
+        {
+            QuestionType.SingleChoice   => _selectedOptionId != Guid.Empty ? [_selectedOptionId] : [],
+            QuestionType.MultipleChoice => _selectedOptionIds,
+            _                           => null
+        };
+
+        var request = new AnswerQuestionStepRequest(
+            _question.Id,
+            optionIds,
+            _question.Type == QuestionType.OpenText ? _textAnswer : null);
+
+        var result = await ProgressApi.AnswerQuestionAsync(Step.StepProgressId, request);
+        if (result.IsSuccess)
+        {
+            _result = result.Data;
+            _answered = true;
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+
+        _submitting = false;
+    }
+}

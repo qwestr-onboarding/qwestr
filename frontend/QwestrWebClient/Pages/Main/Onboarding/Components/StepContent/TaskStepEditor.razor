@@ -1,0 +1,79 @@
+@using System.Text.Json
+@using System.Text.Json.Serialization
+
+<MudStack Spacing="3">
+    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Задание</MudText>
+
+    <MudTextField Value="Content"
+                  ValueChanged="@((string? v) => ContentChanged.InvokeAsync(v))"
+                  Label="Описание задания"
+                  Variant="Variant.Outlined"
+                  FullWidth="true"
+                  Lines="5"
+                  ReadOnly="IsReadOnly"
+                  MaxLength="5000" />
+
+    <MudSwitch T="bool" Value="_requiresReview"
+               ValueChanged="OnRequiresReviewChanged"
+               Label="Требует проверки"
+               Color="Color.Primary"
+               Disabled="IsReadOnly" />
+
+    @if (_requiresReview)
+    {
+        <MudTextField Value="_reviewerInstructions"
+                      ValueChanged="@((string? v) => { _reviewerInstructions = v; SaveSettings(); })"
+                      Label="Инструкция для проверяющего"
+                      Variant="Variant.Outlined"
+                      FullWidth="true"
+                      Lines="3"
+                      ReadOnly="IsReadOnly"
+                      MaxLength="2000" />
+    }
+</MudStack>
+
+@code {
+    [Parameter] public string? Content { get; set; }
+    [Parameter] public EventCallback<string?> ContentChanged { get; set; }
+    [Parameter] public string? Settings { get; set; }
+    [Parameter] public EventCallback<string?> SettingsChanged { get; set; }
+    [Parameter] public bool IsReadOnly { get; set; }
+
+    private bool _requiresReview;
+    private string? _reviewerInstructions;
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(Settings))
+        {
+            try
+            {
+                var s = JsonSerializer.Deserialize<TaskSettings>(Settings);
+                if (s is not null)
+                {
+                    _requiresReview = s.RequiresReview;
+                    _reviewerInstructions = s.ReviewerInstructions;
+                }
+            }
+            catch { }
+        }
+    }
+
+    private void OnRequiresReviewChanged(bool value)
+    {
+        _requiresReview = value;
+        if (!_requiresReview) _reviewerInstructions = null;
+        SaveSettings();
+    }
+
+    private void SaveSettings()
+    {
+        var json = JsonSerializer.Serialize(
+            new TaskSettings(_requiresReview, _reviewerInstructions));
+        SettingsChanged.InvokeAsync(json);
+    }
+
+    private record TaskSettings(
+        [property: JsonPropertyName("requiresReview")] bool RequiresReview,
+        [property: JsonPropertyName("reviewerInstructions")] string? ReviewerInstructions);
+}

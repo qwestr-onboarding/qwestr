@@ -1,0 +1,147 @@
+@using System.Text.Json
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+@using QwestrWebClient.Utils
+
+@inject OnboardingProgressApi ProgressApi
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="3">
+
+    @if (_blocks.Count == 0)
+    {
+        <MudText Color="Color.Secondary" Typo="Typo.body2">Контент не добавлен</MudText>
+    }
+
+    @foreach (var block in _blocks.OrderBy(b => b.Order))
+    {
+        switch (block.Type)
+        {
+            case ContentBlockType.Heading:
+                <MudText Typo="@HeadingTypo(block.Level)" Style="font-weight:700;">
+                    @block.Content
+                </MudText>
+                break;
+
+            case ContentBlockType.Text:
+                <MudText Typo="Typo.body1">
+                    @MarkdownParser.Render(block.Content)
+                </MudText>
+                break;
+
+            case ContentBlockType.Image:
+                @if (!string.IsNullOrWhiteSpace(block.Content))
+                {
+                    @((MarkupString)$"<img src=\"{block.Content}\" style=\"max-width:100%; border-radius:8px; display:block;\" alt=\"\" />")
+                }
+                break;
+
+            case ContentBlockType.Video:
+                @if (!string.IsNullOrWhiteSpace(block.Content))
+                {
+                    var embedUrl = ToEmbedUrl(block.Content);
+                    @if (embedUrl is not null)
+                    {
+                        @((MarkupString)$"<iframe src=\"{embedUrl}\" style=\"width:100%; aspect-ratio:16/9; border:none; border-radius:8px;\" allowfullscreen></iframe>")
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@block.Content</MudText>
+                    }
+                }
+                break;
+
+            case ContentBlockType.Divider:
+                <MudDivider />
+                break;
+
+            case ContentBlockType.Callout:
+                <MudAlert Severity="@CalloutSeverity(block.Variant)" Dense="true">
+                    @MarkdownParser.RenderInlineOnly(block.Content)
+                </MudAlert>
+                break;
+        }
+    }
+
+    @if (Step.ProgressStatus != StepProgressStatus.Completed)
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   EndIcon="@Icons.Material.Outlined.ArrowForward"
+                   FullWidth="true" Disabled="_completing"
+                   OnClick="CompleteAsync">
+            @(_completing ? "Сохранение..." : "Далее")
+        </MudButton>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Success" Dense="true" Icon="@Icons.Material.Outlined.CheckCircle">
+            Шаг уже прочитан
+        </MudAlert>
+    }
+
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public StepContentResponse Step { get; set; } = default!;
+    [Parameter] public EventCallback OnCompleted { get; set; }
+
+    private List<ContentBlock> _blocks = [];
+    private bool _completing;
+
+    protected override void OnParametersSet()
+    {
+        _blocks = string.IsNullOrWhiteSpace(Step.Content)
+            ? []
+            : JsonSerializer.Deserialize<List<ContentBlock>>(Step.Content) ?? [];
+    }
+
+    private async Task CompleteAsync()
+    {
+        _completing = true;
+        var result = await ProgressApi.CompleteInformationStepAsync(Step.StepProgressId);
+        if (result.IsSuccess)
+            await OnCompleted.InvokeAsync();
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+        _completing = false;
+    }
+
+    private static Typo HeadingTypo(string? level) => level switch
+    {
+        "h1" => Typo.h4,
+        "h3" => Typo.h6,
+        _    => Typo.h5
+    };
+
+    private static Severity CalloutSeverity(string? variant) => variant switch
+    {
+        "warning" => Severity.Warning,
+        "danger"  => Severity.Error,
+        "success" => Severity.Success,
+        _         => Severity.Info
+    };
+
+    private static string? ToEmbedUrl(string url)
+    {
+        // YouTube: youtu.be/ID or youtube.com/watch?v=ID
+        if (url.Contains("youtu.be/"))
+        {
+            var id = url.Split("youtu.be/")[1].Split('?')[0];
+            return $"https://www.youtube.com/embed/{id}";
+        }
+        if (url.Contains("youtube.com/watch"))
+        {
+            var query = url.Split('?').LastOrDefault() ?? "";
+            var v = query.Split('&').FirstOrDefault(p => p.StartsWith("v="))?.Substring(2);
+            return v is not null ? $"https://www.youtube.com/embed/{v}" : null;
+        }
+        // Rutube: rutube.ru/video/ID/
+        if (url.Contains("rutube.ru/video/"))
+        {
+            var id = url.Split("rutube.ru/video/")[1].TrimEnd('/').Split('?')[0];
+            return $"https://rutube.ru/play/embed/{id}";
+        }
+        return null;
+    }
+}

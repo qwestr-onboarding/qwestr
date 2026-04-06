@@ -1,0 +1,71 @@
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-2">
+    <MudIcon Icon="@StatusIcon" Color="@StatusColor" Size="Size.Small" />
+    <MudAvatar Color="@StepColor" Size="Size.Small" Rounded="true">
+        <MudIcon Icon="@StepIcon" Size="Size.Small" />
+    </MudAvatar>
+    <MudText Typo="Typo.body2" Style="flex:1;">@Step.Title</MudText>
+    <MudText Typo="Typo.caption" Color="Color.Secondary">
+        @PointsDisplay
+    </MudText>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public StepResponse Step { get; set; } = default!;
+    [Parameter] public StepProgressSummaryResponse? Progress { get; set; }
+
+    private StepProgressStatus Status =>
+        Progress?.Status ?? StepProgressStatus.NotStarted;
+
+    private string StatusIcon => Status switch
+    {
+        StepProgressStatus.Completed  => Icons.Material.Outlined.CheckCircle,
+        StepProgressStatus.InProgress => Icons.Material.Outlined.Pending,
+        StepProgressStatus.Failed     => Icons.Material.Outlined.Cancel,
+        _                             => Icons.Material.Outlined.RadioButtonUnchecked
+    };
+
+    private Color StatusColor => Status switch
+    {
+        StepProgressStatus.Completed  => Color.Success,
+        StepProgressStatus.InProgress => Color.Info,
+        StepProgressStatus.Failed     => Color.Error,
+        _                             => Color.Default
+    };
+
+    private string PointsDisplay
+    {
+        get
+        {
+            if (!Step.Points.HasValue) return "";
+            var earned = Status == StepProgressStatus.Completed ? Step.Points.Value
+                       : Status == StepProgressStatus.Failed ? 0
+                       : (int?)null;
+            return earned.HasValue
+                ? $"{earned} / {Step.Points} баллов"
+                : $"– / {Step.Points} баллов";
+        }
+    }
+
+    private string StepIcon => Step.Type switch
+    {
+        StepType.Information => Icons.Material.Outlined.Info,
+        StepType.Question    => Icons.Material.Outlined.Help,
+        StepType.Test        => Icons.Material.Outlined.Quiz,
+        StepType.Task        => Icons.Material.Outlined.Assignment,
+        StepType.Checklist   => Icons.Material.Outlined.CheckBox,
+        _                    => Icons.Material.Outlined.Article
+    };
+
+    private Color StepColor => Step.Type switch
+    {
+        StepType.Information => Color.Info,
+        StepType.Question    => Color.Warning,
+        StepType.Test        => Color.Secondary,
+        StepType.Task        => Color.Success,
+        StepType.Checklist   => Color.Tertiary,
+        _                    => Color.Default
+    };
+}

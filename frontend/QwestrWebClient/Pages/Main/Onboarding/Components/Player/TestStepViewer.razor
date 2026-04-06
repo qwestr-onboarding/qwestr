@@ -1,0 +1,324 @@
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+
+@inject OnboardingProgressApi ProgressApi
+@inject ISnackbar Snackbar
+
+@switch (_screen)
+{
+    case TestScreen.Intro:
+        <MudStack Spacing="3" AlignItems="AlignItems.Center" Class="pa-2">
+            <MudIcon Icon="@Icons.Material.Outlined.Quiz" Size="Size.Large" Color="Color.Secondary" />
+            <MudStack Spacing="1" Style="width:100%;">
+                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Вопросов</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight:600;">@Step.Questions.Count</MudText>
+                </MudStack>
+                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Порог прохождения</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight:600;">@_settings.PassingThreshold%</MudText>
+                </MudStack>
+                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Попыток</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight:600;">
+                        @(_settings.MaxAttempts == 0 ? "Неограниченно" : _settings.MaxAttempts.ToString())
+                    </MudText>
+                </MudStack>
+            </MudStack>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       FullWidth="true" Disabled="_starting"
+                       OnClick="StartTestAsync">
+                @(_starting ? "Начало..." : "Начать тест")
+            </MudButton>
+        </MudStack>
+        break;
+
+    case TestScreen.Questions:
+        <MudStack Spacing="3">
+            <MudStack Spacing="1">
+                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Вопрос @(_currentQuestionIdx + 1) из @Step.Questions.Count
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@QuestionProgressPercent%</MudText>
+                </MudStack>
+                <MudProgressLinear Value="@QuestionProgressPercent" Rounded="true"
+                                   Color="Color.Primary" Size="Size.Small" />
+            </MudStack>
+
+            <MudText Typo="Typo.body1" Style="font-weight:500; line-height:1.5;">
+                @CurrentQuestion!.QuestionText
+            </MudText>
+
+            @switch (CurrentQuestion!.Type)
+            {
+                case QuestionType.SingleChoice:
+                    <MudRadioGroup T="Guid"
+                                   Value="@GetSingleAnswer(CurrentQuestion.Id)"
+                                   ValueChanged="@((Guid v) => SetSingleAnswer(CurrentQuestion.Id, v))">
+                        @foreach (var opt in CurrentQuestion.Options.OrderBy(o => o.Order))
+                        {
+                            <MudRadio T="Guid" Value="opt.Id" Color="Color.Primary">@opt.Text</MudRadio>
+                        }
+                    </MudRadioGroup>
+                    break;
+
+                case QuestionType.MultipleChoice:
+                    @foreach (var opt in CurrentQuestion.Options.OrderBy(o => o.Order))
+                    {
+                        var optId = opt.Id;
+                        var qId = CurrentQuestion.Id;
+                        <MudCheckBox T="bool"
+                                     Value="@GetMultiAnswer(qId, optId)"
+                                     ValueChanged="@((bool v) => ToggleMultiAnswer(qId, optId, v))"
+                                     Color="Color.Primary">
+                            @opt.Text
+                        </MudCheckBox>
+                    }
+                    break;
+
+                case QuestionType.OpenText:
+                    <MudTextField Value="@GetTextAnswer(CurrentQuestion.Id)"
+                                  ValueChanged="@((string? v) => SetTextAnswer(CurrentQuestion.Id, v))"
+                                  Label="Ваш ответ"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true" Lines="3"
+                                  MaxLength="2000" />
+                    break;
+            }
+
+            <MudStack Row="true" Spacing="2">
+                @if (_currentQuestionIdx > 0)
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Outlined.ArrowBack"
+                               OnClick="PrevQuestion" Style="flex:1;">
+                        Назад
+                    </MudButton>
+                }
+                @if (_currentQuestionIdx < Step.Questions.Count - 1)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               EndIcon="@Icons.Material.Outlined.ArrowForward"
+                               OnClick="NextQuestion" Style="flex:1;">
+                        Далее
+                    </MudButton>
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               EndIcon="@Icons.Material.Outlined.Send"
+                               Disabled="_submitting"
+                               OnClick="SubmitTestAsync" Style="flex:1;">
+                        @(_submitting ? "Отправка..." : "Завершить тест")
+                    </MudButton>
+                }
+            </MudStack>
+        </MudStack>
+        break;
+
+    case TestScreen.Result:
+        @if (_result is not null)
+        {
+            <MudStack Spacing="3" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@(_result.IsPassed ? Icons.Material.Outlined.EmojiEvents : Icons.Material.Outlined.SentimentDissatisfied)"
+                         Size="Size.Large"
+                         Color="@(_result.IsPassed ? Color.Warning : Color.Error)" />
+
+                <MudStack Spacing="1" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h5" Style="font-weight:700;">
+                        @_result.Score%
+                    </MudText>
+                    <MudChip T="string" Size="Size.Medium"
+                             Color="@(_result.IsPassed ? Color.Success : Color.Error)">
+                        @(_result.IsPassed ? "Тест пройден" : "Тест не пройден")
+                    </MudChip>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Попытка @_result.AttemptNumber ·
+                        Порог @_settings.PassingThreshold%
+                    </MudText>
+                </MudStack>
+
+                <MudStack Spacing="1" Style="width:100%;">
+                    @foreach (var qr in _result.QuestionResults)
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@(qr.IsCorrect ? Icons.Material.Outlined.CheckCircle : Icons.Material.Outlined.Cancel)"
+                                     Color="@(qr.IsCorrect ? Color.Success : Color.Error)"
+                                     Size="Size.Small" />
+                            <MudText Typo="Typo.caption" Style="flex:1;">@qr.QuestionText</MudText>
+                        </MudStack>
+                    }
+                </MudStack>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="@(_result.IsPassed ? Color.Primary : Color.Default)"
+                           EndIcon="@Icons.Material.Outlined.ArrowForward"
+                           FullWidth="true"
+                           OnClick="@(() => OnCompleted.InvokeAsync())">
+                    Продолжить
+                </MudButton>
+            </MudStack>
+        }
+        break;
+}
+
+@code {
+    [Parameter, EditorRequired] public StepContentResponse Step { get; set; } = default!;
+    [Parameter] public EventCallback OnCompleted { get; set; }
+
+    private enum TestScreen { Intro, Questions, Result }
+
+    private record TestSettings(
+        [property: JsonPropertyName("passingThreshold")] int PassingThreshold = 70,
+        [property: JsonPropertyName("maxAttempts")] int MaxAttempts = 3);
+
+    private TestScreen _screen = TestScreen.Intro;
+    private TestSettings _settings = new();
+    private Guid _attemptId;
+    private int _currentQuestionIdx;
+    private bool _starting;
+    private bool _submitting;
+    private TestResultResponse? _result;
+
+    // answers: questionId → (optionIds, textAnswer)
+    private Dictionary<Guid, List<Guid>> _optionAnswers = new();
+    private Dictionary<Guid, string?> _textAnswers = new();
+
+    private QuestionContentResponse? CurrentQuestion =>
+        _currentQuestionIdx < Step.Questions.Count ? Step.Questions[_currentQuestionIdx] : null;
+
+    private int QuestionProgressPercent =>
+        Step.Questions.Count > 0
+            ? (int)((_currentQuestionIdx + 1) * 100.0 / Step.Questions.Count)
+            : 0;
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrWhiteSpace(Step.Settings))
+        {
+            try { _settings = JsonSerializer.Deserialize<TestSettings>(Step.Settings) ?? new(); }
+            catch { }
+        }
+
+        if (Step.ProgressStatus == StepProgressStatus.Completed)
+        {
+            _screen = TestScreen.Result;
+        }
+        else if (Step.ProgressStatus == StepProgressStatus.InProgress &&
+                 Step.CurrentTestAttemptId.HasValue &&
+                 _screen == TestScreen.Intro)
+        {
+            _attemptId = Step.CurrentTestAttemptId.Value;
+            _optionAnswers.Clear();
+            _textAnswers.Clear();
+
+            // Restore saved draft answers
+            if (!string.IsNullOrWhiteSpace(Step.CurrentTestDraftAnswersJson))
+            {
+                try
+                {
+                    var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var drafts = JsonSerializer.Deserialize<List<SaveTestDraftAnswerItem>>(
+                        Step.CurrentTestDraftAnswersJson, opts) ?? [];
+                    foreach (var d in drafts)
+                    {
+                        if (d.SelectedOptionIds?.Count > 0)
+                            _optionAnswers[d.QuestionId] = [..d.SelectedOptionIds];
+                        if (!string.IsNullOrEmpty(d.TextAnswer))
+                            _textAnswers[d.QuestionId] = d.TextAnswer;
+                    }
+                }
+                catch { }
+            }
+
+            // Jump to first unanswered question
+            var answered = _optionAnswers.Keys.Concat(_textAnswers.Keys).ToHashSet();
+            var firstUnanswered = Step.Questions.FindIndex(q => !answered.Contains(q.Id));
+            _currentQuestionIdx = firstUnanswered >= 0 ? firstUnanswered : 0;
+
+            _screen = TestScreen.Questions;
+        }
+    }
+
+    private async Task StartTestAsync()
+    {
+        _starting = true;
+        var result = await ProgressApi.StartTestAttemptAsync(Step.StepProgressId);
+        if (result.IsSuccess)
+        {
+            _attemptId = result.Data!.Id;
+            _currentQuestionIdx = 0;
+            _optionAnswers.Clear();
+            _textAnswers.Clear();
+            _screen = TestScreen.Questions;
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+        _starting = false;
+    }
+
+    private async Task SubmitTestAsync()
+    {
+        _submitting = true;
+        var answers = Step.Questions.Select(q => new SubmitTestAnswerItemRequest(
+            q.Id,
+            _optionAnswers.TryGetValue(q.Id, out var opts) ? opts : null,
+            _textAnswers.TryGetValue(q.Id, out var txt) ? txt : null
+        )).ToList();
+
+        var result = await ProgressApi.SubmitTestAnswersAsync(_attemptId,
+            new SubmitTestAnswersRequest(answers));
+
+        if (result.IsSuccess)
+        {
+            _result = result.Data;
+            _screen = TestScreen.Result;
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка отправки", Severity.Error);
+        _submitting = false;
+    }
+
+    private async Task PrevQuestion() { await SaveDraftAsync(); _currentQuestionIdx--; }
+    private async Task NextQuestion() { await SaveDraftAsync(); _currentQuestionIdx++; }
+
+    private Task SaveDraftAsync()
+    {
+        if (_attemptId == Guid.Empty) return Task.CompletedTask;
+        var items = Step.Questions.Select(q => new SaveTestDraftAnswerItem(
+            q.Id,
+            _optionAnswers.TryGetValue(q.Id, out var opts) ? opts : null,
+            _textAnswers.TryGetValue(q.Id, out var txt) ? txt : null
+        )).ToList();
+        _ = ProgressApi.SaveTestDraftAnswersAsync(_attemptId, new SaveTestDraftAnswersRequest(items));
+        return Task.CompletedTask;
+    }
+
+    private Guid GetSingleAnswer(Guid questionId) =>
+        _optionAnswers.TryGetValue(questionId, out var ids) && ids.Count > 0 ? ids[0] : Guid.Empty;
+
+    private void SetSingleAnswer(Guid questionId, Guid optionId) =>
+        _optionAnswers[questionId] = [optionId];
+
+    private bool GetMultiAnswer(Guid questionId, Guid optionId) =>
+        _optionAnswers.TryGetValue(questionId, out var ids) && ids.Contains(optionId);
+
+    private void ToggleMultiAnswer(Guid questionId, Guid optionId, bool selected)
+    {
+        if (!_optionAnswers.ContainsKey(questionId))
+            _optionAnswers[questionId] = [];
+        if (selected) _optionAnswers[questionId].Add(optionId);
+        else _optionAnswers[questionId].Remove(optionId);
+    }
+
+    private string? GetTextAnswer(Guid questionId) =>
+        _textAnswers.TryGetValue(questionId, out var t) ? t : null;
+
+    private void SetTextAnswer(Guid questionId, string? text) =>
+        _textAnswers[questionId] = text;
+}

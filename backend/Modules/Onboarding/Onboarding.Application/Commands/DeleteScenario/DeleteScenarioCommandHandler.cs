@@ -27,27 +27,7 @@ public class DeleteScenarioCommandHandler : IRequestHandler<DeleteScenarioComman
             return ActionResult.Failure("Cannot delete scenario with active assignments.");
         }
 
-        var fullScenario = await _scenarioRepository.GetWithFullTreeAsync(request.ScenarioId, ct);
-        if (fullScenario is not null)
-        {
-            foreach (var stage in fullScenario.Stages)
-            {
-                foreach (var step in stage.Steps)
-                {
-                    foreach (var question in step.Questions)
-                    {
-                        foreach (var option in question.Options)
-                        {
-                            _scenarioRepository.RemoveOption(option);
-                        }
-                        _scenarioRepository.RemoveQuestion(question);
-                    }
-                    _scenarioRepository.RemoveStep(step);
-                }
-                _scenarioRepository.RemoveStage(stage);
-            }
-        }
-
+        _scenarioRepository.Remove(scenario);
         await _scenarioRepository.SaveChangesAsync(ct);
 
         return ActionResult.Success();

@@ -1,0 +1,108 @@
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+
+<MudGrid Spacing="0" Style="min-height:500px;">
+    <MudItem xs="12" md="4" Style="border-right:1px solid var(--mud-palette-divider);">
+        <StageListPanel ScenarioId="Scenario.Id"
+                        Stages="Scenario.Stages"
+                        SelectedStageId="_selectedStageId"
+                        IsPublished="Scenario.IsPublished"
+                        OnStageSelected="OnStageSelected"
+                        OnChanged="ReloadAsync" />
+    </MudItem>
+    <MudItem xs="12" md="8">
+        <StepListPanel Stage="SelectedStage"
+                       IsPublished="Scenario.IsPublished"
+                       OnStepClicked="OpenDrawer"
+                       OnChanged="ReloadAsync" />
+    </MudItem>
+</MudGrid>
+
+<MudDrawer @bind-Open="_drawerOpen"
+           Anchor="Anchor.End"
+           Elevation="1"
+           Variant="DrawerVariant.Temporary"
+           Width="520px"
+           ClipMode="DrawerClipMode.Never">
+    <MudStack Spacing="0" Style="height:100%;">
+        <MudStack Row="true" AlignItems="AlignItems.Center"
+                  Class="pa-4" Style="border-bottom:1px solid var(--mud-palette-divider);">
+            <MudText Typo="Typo.h6" Style="flex:1;">Редактирование шага</MudText>
+            <MudIconButton Icon="@Icons.Material.Outlined.Close"
+                           OnClick="CloseDrawer" />
+        </MudStack>
+        <MudStack Style="flex:1;overflow-y:auto;" Class="pa-4">
+            @if (_selectedStep is not null)
+            {
+                <StepEditorDrawer Step="_selectedStep"
+                                  IsPublished="Scenario.IsPublished"
+                                  OnSaved="OnStepSaved"
+                                  OnDeleted="OnStepDeleted"
+                                  OnContentChanged="OnDrawerContentChanged" />
+            }
+        </MudStack>
+    </MudStack>
+</MudDrawer>
+
+@code {
+    [Parameter, EditorRequired] public ScenarioDetailResponse Scenario { get; set; } = default!;
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private Guid? _selectedStageId;
+    private bool _drawerOpen;
+    private StepResponse? _selectedStep;
+
+    private StageResponse? SelectedStage =>
+        Scenario.Stages.FirstOrDefault(s => s.Id == _selectedStageId);
+
+    protected override void OnParametersSet()
+    {
+        if (Scenario.Stages.All(s => s.Id != _selectedStageId))
+            _selectedStageId = Scenario.Stages.FirstOrDefault()?.Id;
+
+        if (_selectedStep is not null)
+        {
+            var updated = Scenario.Stages
+                .SelectMany(s => s.Steps)
+                .FirstOrDefault(s => s.Id == _selectedStep.Id);
+            if (updated is not null)
+                _selectedStep = updated;
+        }
+    }
+
+    private void OnStageSelected(Guid stageId)
+    {
+        _selectedStageId = stageId;
+        _drawerOpen = false;
+        _selectedStep = null;
+    }
+
+    private void OpenDrawer(StepResponse step)
+    {
+        _selectedStep = step;
+        _drawerOpen = true;
+    }
+
+    private void CloseDrawer()
+    {
+        _drawerOpen = false;
+        _selectedStep = null;
+    }
+
+    private async Task OnStepSaved()
+    {
+        _drawerOpen = false;
+        _selectedStep = null;
+        await ReloadAsync();
+    }
+
+    private async Task OnStepDeleted()
+    {
+        _drawerOpen = false;
+        _selectedStep = null;
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync() => await OnChanged.InvokeAsync();
+
+    private async Task OnDrawerContentChanged() => await OnChanged.InvokeAsync();
+}

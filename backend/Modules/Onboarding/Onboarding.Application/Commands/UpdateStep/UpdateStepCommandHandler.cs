@@ -1,6 +1,7 @@
 using MediatR;
 using Qwestr.Modules.Onboarding.Application.Abstractions.Repositories;
 using Qwestr.Shared.Kernel.Entities;
+using Qwestr.Shared.Kernel.Enums.Onboarding;
 
 namespace Qwestr.Modules.Onboarding.Application.Commands.UpdateStep;
 
@@ -15,7 +16,7 @@ public class UpdateStepCommandHandler : IRequestHandler<UpdateStepCommand, Actio
 
     public async Task<ActionResult> Handle(UpdateStepCommand request, CancellationToken ct)
     {
-        var step = await _scenarioRepository.GetStepByIdAsync(request.StepId, ct);
+        var step = await _scenarioRepository.GetStepWithQuestionsAsync(request.StepId, ct);
         if (step is null)
         {
             return ActionResult.Failure("Step not found.");
@@ -33,7 +34,23 @@ public class UpdateStepCommandHandler : IRequestHandler<UpdateStepCommand, Actio
             return ActionResult.Failure("Step not found.");
         }
 
-        step.Update(request.Title, request.Points, request.Content, request.Settings);
+        if (request.Type == StepType.Question)
+        {
+            var extraQuestions = step.Questions.OrderBy(q => q.Order).Skip(1).ToList();
+            foreach (var question in extraQuestions)
+            {
+                _scenarioRepository.RemoveQuestion(question);
+            }
+        }
+        else if (request.Type != StepType.Test)
+        {
+            foreach (var question in step.Questions.ToList())
+            {
+                _scenarioRepository.RemoveQuestion(question);
+            }
+        }
+
+        step.Update(request.Title, request.Type, request.Points, request.Content, request.Settings);
         await _scenarioRepository.SaveChangesAsync(ct);
 
         return ActionResult.Success();

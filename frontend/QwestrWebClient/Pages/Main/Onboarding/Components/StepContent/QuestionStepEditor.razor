@@ -1,0 +1,235 @@
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+
+@inject QuestionsApi QuestionsApi
+@inject OptionsApi OptionsApi
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="3">
+    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Вопросы</MudText>
+
+    @foreach (var q in Questions)
+    {
+        <MudPaper Elevation="2" Class="pa-3" Style="border-radius:8px;">
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    @if (!IsReadOnly)
+                    {
+                        <MudSelect T="QuestionType" Value="q.Type"
+                                   ValueChanged="@((QuestionType t) => UpdateQuestionType(q, t))"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense"
+                                   Style="max-width:180px;">
+                            <MudSelectItem Value="QuestionType.SingleChoice">Один ответ</MudSelectItem>
+                            <MudSelectItem Value="QuestionType.MultipleChoice">Несколько ответов</MudSelectItem>
+                            <MudSelectItem Value="QuestionType.OpenText">Открытый текст</MudSelectItem>
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small">@QuestionTypeLabel(q.Type)</MudChip>
+                    }
+                    <MudSpacer />
+                    @if (!IsReadOnly)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                       Size="Size.Small" Color="Color.Error"
+                                       OnClick="() => DeleteQuestionAsync(q.Id)" />
+                    }
+                </MudStack>
+
+                <MudTextField Value="q.QuestionText"
+                              ValueChanged="@((string v) => UpdateQuestionText(q, v))"
+                              Label="Текст вопроса"
+                              Variant="Variant.Outlined"
+                              FullWidth="true"
+                              ReadOnly="IsReadOnly"
+                              MaxLength="1000" />
+
+                @if (q.Type != QuestionType.OpenText)
+                {
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Варианты ответов</MudText>
+                        @if (q.Type == QuestionType.SingleChoice)
+                        {
+                            <MudRadioGroup T="Guid"
+                                           Value="@(q.Options.FirstOrDefault(o => o.IsCorrect)?.Id ?? Guid.Empty)"
+                                           ValueChanged="@((Guid id) => SetSingleCorrectOptionAsync(q, id))">
+                                @foreach (var opt in q.Options)
+                                {
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                        <MudRadio T="Guid" Value="opt.Id"
+                                                  Color="Color.Success" Disabled="IsReadOnly" />
+                                        <MudTextField Value="opt.Text"
+                                                      ValueChanged="@((string v) => UpdateOptionText(opt, v))"
+                                                      Variant="Variant.Outlined"
+                                                      Margin="Margin.Dense"
+                                                      Style="flex:1;"
+                                                      ReadOnly="IsReadOnly"
+                                                      MaxLength="500" />
+                                        @if (!IsReadOnly)
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                                           Size="Size.Small" Color="Color.Error"
+                                                           OnClick="() => DeleteOptionAsync(opt.Id)" />
+                                        }
+                                    </MudStack>
+                                }
+                            </MudRadioGroup>
+                        }
+                        else
+                        {
+                            @foreach (var opt in q.Options)
+                            {
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudCheckBox T="bool" Value="opt.IsCorrect"
+                                                 ValueChanged="@((bool v) => UpdateOptionCorrect(opt, v))"
+                                                 Color="Color.Success" Disabled="IsReadOnly" />
+                                    <MudTextField Value="opt.Text"
+                                                  ValueChanged="@((string v) => UpdateOptionText(opt, v))"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  Style="flex:1;"
+                                                  ReadOnly="IsReadOnly"
+                                                  MaxLength="500" />
+                                    @if (!IsReadOnly)
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                                       Size="Size.Small" Color="Color.Error"
+                                                       OnClick="() => DeleteOptionAsync(opt.Id)" />
+                                    }
+                                </MudStack>
+                            }
+                        }
+                        @if (!IsReadOnly)
+                        {
+                            <MudButton Variant="Variant.Text"
+                                       StartIcon="@Icons.Material.Outlined.Add"
+                                       Size="Size.Small"
+                                       OnClick="() => AddOptionAsync(q.Id)">
+                                Добавить вариант
+                            </MudButton>
+                        }
+                    </MudStack>
+                }
+            </MudStack>
+        </MudPaper>
+    }
+
+    @if (!IsReadOnly && (!SingleQuestion || Questions.Count == 0))
+    {
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Outlined.Add"
+                   Color="Color.Primary"
+                   OnClick="AddQuestionAsync">
+            Добавить вопрос
+        </MudButton>
+    }
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public List<QuestionResponse> Questions { get; set; } = [];
+    [Parameter, EditorRequired] public Guid StepId { get; set; }
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public bool SingleQuestion { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private async Task AddQuestionAsync()
+    {
+        var result = await QuestionsApi.CreateAsync(
+            new CreateQuestionRequest(StepId, QuestionType.SingleChoice, "Новый вопрос"));
+        if (result.IsSuccess)
+            await OnChanged.InvokeAsync();
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+    }
+
+    private async Task DeleteQuestionAsync(Guid questionId)
+    {
+        var result = await QuestionsApi.DeleteAsync(questionId);
+        if (result.IsSuccess)
+            await OnChanged.InvokeAsync();
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+    }
+
+    private async Task UpdateQuestionText(QuestionResponse q, string text)
+    {
+        var result = await QuestionsApi.UpdateAsync(q.Id, new UpdateQuestionRequest(q.Type, text));
+        if (result.IsSuccess)
+            await OnChanged.InvokeAsync();
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+    }
+
+    private async Task UpdateQuestionType(QuestionResponse q, QuestionType type)
+    {
+        var result = await QuestionsApi.UpdateAsync(q.Id, new UpdateQuestionRequest(type, q.QuestionText));
+        if (result.IsSuccess)
+            await OnChanged.InvokeAsync();
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+    }
+
+    private async Task AddOptionAsync(Guid questionId)
+    {
+        var result = await OptionsApi.CreateAsync(
+            new CreateQuestionOptionRequest(questionId, "Вариант ответа", false));
+        if (result.IsSuccess)
+            await OnChanged.InvokeAsync();
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+    }
+
+    private async Task DeleteOptionAsync(Guid optionId)
+    {
+        var result = await OptionsApi.DeleteAsync(optionId);
+        if (result.IsSuccess)
+            await OnChanged.InvokeAsync();
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+    }
+
+    private async Task UpdateOptionText(QuestionOptionResponse opt, string text)
+    {
+        var result = await OptionsApi.UpdateAsync(opt.Id, new UpdateQuestionOptionRequest(text, opt.IsCorrect));
+        if (result.IsSuccess)
+            await OnChanged.InvokeAsync();
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+    }
+
+    private async Task SetSingleCorrectOptionAsync(QuestionResponse q, Guid selectedId)
+    {
+        var prev = q.Options.FirstOrDefault(o => o.IsCorrect && o.Id != selectedId);
+        var next = q.Options.FirstOrDefault(o => o.Id == selectedId);
+        if (next is null) return;
+
+        if (prev is not null)
+            await OptionsApi.UpdateAsync(prev.Id, new UpdateQuestionOptionRequest(prev.Text, false));
+
+        var result = await OptionsApi.UpdateAsync(next.Id, new UpdateQuestionOptionRequest(next.Text, true));
+        if (result.IsSuccess)
+            await OnChanged.InvokeAsync();
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+    }
+
+    private async Task UpdateOptionCorrect(QuestionOptionResponse opt, bool isCorrect)
+    {
+        var result = await OptionsApi.UpdateAsync(opt.Id, new UpdateQuestionOptionRequest(opt.Text, isCorrect));
+        if (result.IsSuccess)
+            await OnChanged.InvokeAsync();
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+    }
+
+    private static string QuestionTypeLabel(QuestionType t) => t switch
+    {
+        QuestionType.SingleChoice   => "Один ответ",
+        QuestionType.MultipleChoice => "Несколько ответов",
+        QuestionType.OpenText       => "Открытый текст",
+        _                           => t.ToString()
+    };
+}

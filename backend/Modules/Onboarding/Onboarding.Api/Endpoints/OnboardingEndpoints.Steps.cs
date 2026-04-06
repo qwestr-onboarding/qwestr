@@ -43,7 +43,7 @@ public static partial class OnboardingEndpoints
         Guid id, UpdateStepRequest body, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
     {
         var result = await sender.Send(
-            new UpdateStepCommand(currentUser.TenantId, id, body.Title, body.Points, body.Content, body.Settings), ct);
+            new UpdateStepCommand(currentUser.TenantId, id, body.Title, body.Type, body.Points, body.Content, body.Settings), ct);
         return result.IsSuccess
             ? Results.NoContent()
             : Results.BadRequest(new ErrorResponse(result.Error));

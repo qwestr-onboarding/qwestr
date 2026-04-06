@@ -1,0 +1,237 @@
+@page "/onboarding/scenarios"
+@layout MainLayout
+
+@using Client.Infrastructure.Api.Endpoints
+@using Client.Infrastructure.Api.Models
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using QwestrWebClient.Pages.Main.Onboarding.Components
+
+@inject ScenariosApi ScenariosApi
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Сценарии онбординга — Qwestr</PageTitle>
+
+@if (_loading)
+{
+    <MudStack AlignItems="AlignItems.Center" Class="pa-8">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    </MudStack>
+}
+else
+{
+    <MudStack Spacing="3">
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <MudText Typo="Typo.h6">Сценарии онбординга</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.Add"
+                       OnClick="OpenCreateDialog">
+                Создать
+            </MudButton>
+        </MudStack>
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap" Justify="Justify.FlexStart">
+            <MudTextField @bind-Value="_search"
+                          Label="Поиск по названию"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Outlined.Search"
+                          Immediate="true" />
+            <MudSelect T="bool?" Value="_publishedFilter" ValueChanged="OnFilterChanged"
+                       Label="Статус" Variant="Variant.Outlined"
+                       Clearable="true" Style="max-width:200px;">
+                <MudSelectItem T="bool?" Value="@((bool?)false)">Черновик</MudSelectItem>
+                <MudSelectItem T="bool?" Value="@((bool?)true)">Опубликован</MudSelectItem>
+            </MudSelect>
+        </MudStack>
+
+        <MudTable T="ScenarioListItemResponse"
+                  Items="FilteredScenarios"
+                  Dense="true" Hover="true"
+                  OnRowClick="OnRowClick" RowClass="cursor-pointer">
+            <HeaderContent>
+                <MudTh>Название</MudTh>
+                <MudTh>Статус</MudTh>
+                <MudTh>Этапов</MudTh>
+                <MudTh>Шагов</MudTh>
+                <MudTh>Изменён</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Название">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.body2" Style="font-weight:500;">@context.Title</MudText>
+                        @if (!string.IsNullOrEmpty(context.Description))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @(context.Description.Length > 70
+                                    ? context.Description[..70] + "…"
+                                    : context.Description)
+                            </MudText>
+                        }
+                    </MudStack>
+                </MudTd>
+                <MudTd DataLabel="Статус">
+                    <MudChip T="string" Size="Size.Small"
+                             Color="@(context.IsPublished ? Color.Success : Color.Default)">
+                        @(context.IsPublished ? "Опубликован" : "Черновик")
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Этапов">@context.StageCount</MudTd>
+                <MudTd DataLabel="Шагов">@context.StepCount</MudTd>
+                <MudTd DataLabel="Изменён">
+                    @((context.UpdatedAt ?? context.CreatedAt).ToString("dd.MM.yy"))
+                </MudTd>
+                <MudTd>
+                    <MudStack @onclick:stopPropagation="true" AlignItems="AlignItems.End">
+                        <MudMenu Icon="@Icons.Material.Outlined.MoreVert"
+                                 Size="Size.Small" Dense="true">
+                            <MudMenuItem OnClick="@(() => Nav.NavigateTo($"/onboarding/scenarios/{context.Id}"))">
+                                Редактировать
+                            </MudMenuItem>
+                            <MudMenuItem OnClick="@(() => DuplicateAsync(context))">
+                                Дублировать
+                            </MudMenuItem>
+                            @if (context.IsPublished)
+                            {
+                                <MudMenuItem OnClick="@(() => UnpublishAsync(context))">
+                                    Снять с публикации
+                                </MudMenuItem>
+                            }
+                            else
+                            {
+                                <MudMenuItem OnClick="@(() => PublishAsync(context))">
+                                    Опубликовать
+                                </MudMenuItem>
+                                <MudMenuItem OnClick="@(() => DeleteAsync(context))">
+                                    <MudText Color="Color.Error">Удалить</MudText>
+                                </MudMenuItem>
+                            }
+                        </MudMenu>
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Color="Color.Secondary" Class="pa-4">Нет сценариев</MudText>
+            </NoRecordsContent>
+        </MudTable>
+
+    </MudStack>
+}
+
+@code {
+    private bool _loading = true;
+    private List<ScenarioListItemResponse> _scenarios = [];
+    private string _search = "";
+    private bool? _publishedFilter;
+
+    private IEnumerable<ScenarioListItemResponse> FilteredScenarios => _scenarios
+        .Where(s => string.IsNullOrEmpty(_search) ||
+                    s.Title.Contains(_search, StringComparison.OrdinalIgnoreCase))
+        .Where(s => _publishedFilter is null || s.IsPublished == _publishedFilter);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        var result = await ScenariosApi.GetListAsync(1, 100);
+        if (result.IsSuccess)
+            _scenarios = [.. result.Data!.Items];
+        else
+            Snackbar.Add("Не удалось загрузить сценарии", Severity.Error);
+        _loading = false;
+    }
+
+    private void OnFilterChanged(bool? value) => _publishedFilter = value;
+
+    private void OnRowClick(TableRowClickEventArgs<ScenarioListItemResponse> args)
+    {
+        if (args.Item is not null)
+            Nav.NavigateTo($"/onboarding/scenarios/{args.Item.Id}");
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var dialog = await DialogService.ShowAsync<CreateScenarioDialog>("Новый сценарий");
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: CreateScenarioDialog.CreateResult r })
+        {
+            var apiResult = await ScenariosApi.CreateAsync(
+                new CreateScenarioRequest(r.Title, r.Description, []));
+            if (apiResult.IsSuccess)
+                Nav.NavigateTo($"/onboarding/scenarios/{apiResult.Data!.Id}");
+            else
+                Snackbar.Add(apiResult.Error ?? "Ошибка создания", Severity.Error);
+        }
+    }
+
+    private async Task DuplicateAsync(ScenarioListItemResponse scenario)
+    {
+        var result = await ScenariosApi.DuplicateAsync(scenario.Id);
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Сценарий продублирован", Severity.Success);
+            Nav.NavigateTo($"/onboarding/scenarios/{result.Data!.Id}");
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка дублирования", Severity.Error);
+    }
+
+    private async Task UnpublishAsync(ScenarioListItemResponse scenario)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Снять с публикации",
+            $"Снять «{scenario.Title}» с публикации? Сценарий станет черновиком, редактирование структуры будет разблокировано.",
+            yesText: "Снять", cancelText: "Отмена");
+        if (confirmed != true) return;
+
+        var result = await ScenariosApi.UnpublishAsync(scenario.Id);
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Сценарий снят с публикации", Severity.Success);
+            await LoadAsync();
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+    }
+
+    private async Task PublishAsync(ScenarioListItemResponse scenario)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Опубликовать сценарий",
+            $"Опубликовать «{scenario.Title}»? После публикации структура будет заблокирована.",
+            yesText: "Опубликовать", cancelText: "Отмена");
+        if (confirmed != true) return;
+
+        var result = await ScenariosApi.PublishAsync(scenario.Id);
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Сценарий опубликован", Severity.Success);
+            await LoadAsync();
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка публикации", Severity.Error);
+    }
+
+    private async Task DeleteAsync(ScenarioListItemResponse scenario)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Удалить сценарий",
+            $"Удалить «{scenario.Title}»? Это действие необратимо.",
+            yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed != true) return;
+
+        var result = await ScenariosApi.DeleteAsync(scenario.Id);
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Сценарий удалён", Severity.Success);
+            await LoadAsync();
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка удаления", Severity.Error);
+    }
+}

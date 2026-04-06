@@ -421,3 +421,4 @@ FodyWeavers.xsd
 /.claude/settings.local.json
 .claude/
 /backend/Modules/Onboarding/OnboardingSpec.md
+/frontend/CLAUDE.md

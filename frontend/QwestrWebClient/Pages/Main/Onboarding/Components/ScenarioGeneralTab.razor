@@ -1,0 +1,97 @@
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+
+@inject ScenariosApi ScenariosApi
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="3" Style="max-width:600px;">
+
+    <MudTextField @bind-Value="_title"
+                  Label="Название сценария"
+                  Variant="Variant.Outlined"
+                  FullWidth="true"
+                  MaxLength="200" />
+
+    <MudTextField @bind-Value="_description"
+                  Label="Описание"
+                  Variant="Variant.Outlined"
+                  FullWidth="true"
+                  Lines="3"
+                  MaxLength="1000" />
+
+    <MudTextField @bind-Value="_tagsRaw"
+                  Label="Теги (через запятую)"
+                  Variant="Variant.Outlined"
+                  FullWidth="true"
+                  HelperText="Например: разработка, новички, продажи" />
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Статус</MudText>
+            <MudChip T="string" Size="Size.Small"
+                     Color="@(Scenario.IsPublished ? Color.Success : Color.Default)">
+                @(Scenario.IsPublished ? "Опубликован" : "Черновик")
+            </MudChip>
+        </MudStack>
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Создан</MudText>
+            <MudText Typo="Typo.body2">@Scenario.CreatedAt.ToString("dd.MM.yyyy")</MudText>
+        </MudStack>
+        @if (Scenario.UpdatedAt.HasValue)
+        {
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Изменён</MudText>
+                <MudText Typo="Typo.body2">@Scenario.UpdatedAt.Value.ToString("dd.MM.yyyy")</MudText>
+            </MudStack>
+        }
+    </MudStack>
+
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               OnClick="SaveAsync" Disabled="_saving">
+        @(_saving ? "Сохранение..." : "Сохранить")
+    </MudButton>
+
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public ScenarioDetailResponse Scenario { get; set; } = default!;
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string _title = "";
+    private string _description = "";
+    private string _tagsRaw = "";
+    private bool _saving;
+
+    protected override void OnParametersSet()
+    {
+        _title = Scenario.Title;
+        _description = Scenario.Description ?? "";
+        _tagsRaw = string.Join(", ", Scenario.Tags);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_title)) return;
+
+        var tags = _tagsRaw
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(t => !string.IsNullOrEmpty(t))
+            .ToList();
+
+        _saving = true;
+        var result = await ScenariosApi.UpdateAsync(
+            Scenario.Id,
+            new UpdateScenarioRequest(_title.Trim(), _description.Trim(), tags));
+
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Сохранено", Severity.Success);
+            await OnChanged.InvokeAsync();
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка сохранения", Severity.Error);
+
+        _saving = false;
+    }
+}

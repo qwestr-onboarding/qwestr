@@ -1,0 +1,181 @@
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+
+@inject StagesApi StagesApi
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="0">
+    <MudStack Spacing="1" Class="pa-2">
+        @for (var i = 0; i < Stages.Count; i++)
+        {
+            var stage = Stages[i];
+            var idx = i;
+            var isFirst = idx == 0;
+            var isLast = idx == Stages.Count - 1;
+            var isSelected = stage.Id == SelectedStageId;
+            var isEditing = _editingStageId == stage.Id;
+
+            <MudPaper Elevation="0"
+                      Class="@($"pa-2 {(isSelected ? "mud-theme-primary" : "")}")"
+                      Style="@($"border-radius:8px;cursor:pointer;{(isSelected ? "" : "background:transparent;")}")"
+                      @onclick="() => OnStageSelected.InvokeAsync(stage.Id)">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    @if (!IsPublished)
+                    {
+                        <MudStack Spacing="0" @onclick:stopPropagation="true">
+                            <MudIconButton Icon="@Icons.Material.Outlined.ArrowUpward"
+                                           Size="Size.Small"
+                                           Disabled="isFirst"
+                                           OnClick="@(async () => await MoveAsync(stage.Id, "up"))" />
+                            <MudIconButton Icon="@Icons.Material.Outlined.ArrowDownward"
+                                           Size="Size.Small"
+                                           Disabled="isLast"
+                                           OnClick="@(async () => await MoveAsync(stage.Id, "down"))" />
+                        </MudStack>
+                    }
+
+                    @if (isEditing)
+                    {
+                        <MudTextField @bind-Value="_editingName"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Style="flex:1;"
+                                      @onclick:stopPropagation="true"
+                                      @onkeydown="OnRenameKeyDown" />
+                        <MudStack Row="true" Spacing="0" @onclick:stopPropagation="true">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Check"
+                                           Size="Size.Small" Color="Color.Success"
+                                           OnClick="@(async () => await SaveRenameAsync(stage))" />
+                            <MudIconButton Icon="@Icons.Material.Outlined.Close"
+                                           Size="Size.Small"
+                                           OnClick="CancelRename" />
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Style="@($"flex:1;font-weight:{(isSelected ? "600" : "400")};")">
+                            @(idx + 1). @stage.Title
+                        </MudText>
+
+                        @if (!IsPublished)
+                        {
+                            <MudStack @onclick:stopPropagation="true">
+                                <MudMenu Icon="@Icons.Material.Outlined.MoreVert"
+                                         Size="Size.Small" Dense="true">
+                                    <MudMenuItem OnClick="@(() => StartRename(stage))">
+                                        Переименовать
+                                    </MudMenuItem>
+                                    <MudMenuItem OnClick="@(() => DeleteStageAsync(stage))">
+                                        <MudText Color="Color.Error">Удалить</MudText>
+                                    </MudMenuItem>
+                                </MudMenu>
+                            </MudStack>
+                        }
+                    }
+                </MudStack>
+            </MudPaper>
+        }
+    </MudStack>
+
+    @if (!IsPublished)
+    {
+        <MudDivider />
+        <MudButton Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Outlined.Add"
+                   Color="Color.Primary"
+                   FullWidth="true"
+                   Class="ma-2"
+                   OnClick="AddStageAsync">
+            Добавить этап
+        </MudButton>
+    }
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public Guid ScenarioId { get; set; }
+    [Parameter, EditorRequired] public List<StageResponse> Stages { get; set; } = [];
+    [Parameter] public Guid? SelectedStageId { get; set; }
+    [Parameter] public bool IsPublished { get; set; }
+    [Parameter] public EventCallback<Guid> OnStageSelected { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private Guid? _editingStageId;
+    private string _editingName = "";
+
+    private void StartRename(StageResponse stage)
+    {
+        _editingStageId = stage.Id;
+        _editingName = stage.Title;
+    }
+
+    private void CancelRename()
+    {
+        _editingStageId = null;
+        _editingName = "";
+    }
+
+    private async Task SaveRenameAsync(StageResponse stage)
+    {
+        if (string.IsNullOrWhiteSpace(_editingName)) return;
+
+        var result = await StagesApi.UpdateAsync(
+            stage.Id, new UpdateStageRequest(_editingName.Trim(), stage.Description));
+
+        if (result.IsSuccess)
+        {
+            _editingStageId = null;
+            await OnChanged.InvokeAsync();
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка переименования", Severity.Error);
+    }
+
+    private void OnRenameKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CancelRename();
+    }
+
+    private async Task AddStageAsync()
+    {
+        var result = await StagesApi.CreateAsync(
+            new CreateStageRequest(ScenarioId, "Новый этап", null));
+
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Этап добавлен", Severity.Success);
+            await OnStageSelected.InvokeAsync(result.Data!.Id);
+            await OnChanged.InvokeAsync();
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка создания этапа", Severity.Error);
+    }
+
+    private async Task MoveAsync(Guid stageId, string direction)
+    {
+        var result = await StagesApi.MoveAsync(stageId, new MoveRequest(direction));
+        if (result.IsSuccess)
+            await OnChanged.InvokeAsync();
+        else
+            Snackbar.Add(result.Error ?? "Ошибка перемещения", Severity.Error);
+    }
+
+    private async Task DeleteStageAsync(StageResponse stage)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Удалить этап",
+            $"Удалить «{stage.Title}» и все его шаги?",
+            yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed != true) return;
+
+        var result = await StagesApi.DeleteAsync(stage.Id);
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Этап удалён", Severity.Success);
+            await OnChanged.InvokeAsync();
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка удаления", Severity.Error);
+    }
+}

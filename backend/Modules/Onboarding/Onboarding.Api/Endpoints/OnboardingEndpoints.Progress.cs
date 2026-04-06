@@ -9,6 +9,7 @@ using Qwestr.Modules.Onboarding.Application.Commands.CompleteInformationStep;
 using Qwestr.Modules.Onboarding.Application.Commands.CompleteTaskStep;
 using Qwestr.Modules.Onboarding.Application.Commands.StartStep;
 using Qwestr.Modules.Onboarding.Application.Commands.StartTestAttempt;
+using Qwestr.Modules.Onboarding.Application.Commands.SaveTestDraftAnswers;
 using Qwestr.Modules.Onboarding.Application.Commands.SubmitTestAnswers;
 using Qwestr.Modules.Onboarding.Application.Commands.UpdateChecklistProgress;
 using Qwestr.Modules.Onboarding.Application.Queries.GetMyAssignmentProgress;
@@ -42,6 +43,7 @@ public static partial class OnboardingEndpoints
         my.MapPost("/progress/{progressId:guid}/test/start", StartTestAttemptHandler);
 
         // Тест
+        my.MapPut("/test/{attemptId:guid}/draft", SaveTestDraftAnswersHandler);
         my.MapPost("/test/{attemptId:guid}/submit", SubmitTestAnswersHandler);
         my.MapGet("/test/{attemptId:guid}/result", GetTestAttemptResultHandler);
 
@@ -144,7 +146,20 @@ public static partial class OnboardingEndpoints
         var result = await sender.Send(
             new StartTestAttemptCommand(currentUser.TenantId, currentUser.UserId, progressId), ct);
         return result.IsSuccess
-            ? Results.Ok(new { attemptId = result.Value })
+            ? Results.Ok(new { id = result.Value })
+            : Results.BadRequest(new ErrorResponse(result.Error));
+    }
+
+    private static async Task<IResult> SaveTestDraftAnswersHandler(
+        Guid attemptId, SaveTestDraftAnswersRequest body, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
+    {
+        var answers = body.Answers.Select(a =>
+            new DraftAnswerDto(a.QuestionId, a.SelectedOptionIds, a.TextAnswer)).ToList();
+
+        var result = await sender.Send(
+            new SaveTestDraftAnswersCommand(currentUser.TenantId, currentUser.UserId, attemptId, answers), ct);
+        return result.IsSuccess
+            ? Results.NoContent()
             : Results.BadRequest(new ErrorResponse(result.Error));
     }
 

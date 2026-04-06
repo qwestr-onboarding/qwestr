@@ -1,0 +1,184 @@
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+
+@inject StepsApi StepsApi
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+@if (Stage is null)
+{
+    <MudStack AlignItems="AlignItems.Center" Class="pa-8">
+        <MudText Color="Color.Secondary">Выберите этап слева</MudText>
+    </MudStack>
+}
+else
+{
+    <MudStack Spacing="0">
+        <MudStack Class="pa-3" Spacing="1">
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-1">
+                @Stage.Title
+            </MudText>
+
+            @for (var i = 0; i < Stage.Steps.Count; i++)
+            {
+                var step = Stage.Steps[i];
+                var idx = i;
+                var isFirst = idx == 0;
+                var isLast = idx == Stage.Steps.Count - 1;
+
+                <MudPaper Elevation="1" Class="pa-2" Style="border-radius:8px;cursor:pointer;"
+                          @onclick="() => OnStepClicked.InvokeAsync(step)">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        @if (!IsPublished)
+                        {
+                            <MudStack Spacing="0" @onclick:stopPropagation="true">
+                                <MudIconButton Icon="@Icons.Material.Outlined.ArrowUpward"
+                                               Size="Size.Small" Disabled="isFirst"
+                                               OnClick="@(async () => await MoveAsync(step.Id, "up"))" />
+                                <MudIconButton Icon="@Icons.Material.Outlined.ArrowDownward"
+                                               Size="Size.Small" Disabled="isLast"
+                                               OnClick="@(async () => await MoveAsync(step.Id, "down"))" />
+                            </MudStack>
+                        }
+
+                        <MudAvatar Color="@StepTypeColor(step.Type)"
+                                   Size="Size.Small" Rounded="true">
+                            <MudIcon Icon="@StepTypeIcon(step.Type)" Size="Size.Small" />
+                        </MudAvatar>
+
+                        <MudStack Spacing="0" Style="flex:1;min-width:0;">
+                            <MudText Typo="Typo.body2" Style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                @step.Title
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @StepTypeLabel(step.Type)
+                                @if (step.Points.HasValue)
+                                {
+                                    @($" · {step.Points} баллов")
+                                }
+                                @if (step.Questions.Count > 0)
+                                {
+                                    @($" · {step.Questions.Count} вопр.")
+                                }
+                            </MudText>
+                        </MudStack>
+
+                        @if (!IsPublished)
+                        {
+                            <MudStack @onclick:stopPropagation="true">
+                                <MudMenu Icon="@Icons.Material.Outlined.MoreVert"
+                                         Size="Size.Small" Dense="true">
+                                    <MudMenuItem OnClick="@(() => DeleteStepAsync(step))">
+                                        <MudText Color="Color.Error">Удалить</MudText>
+                                    </MudMenuItem>
+                                </MudMenu>
+                            </MudStack>
+                        }
+                    </MudStack>
+                </MudPaper>
+            }
+
+            @if (Stage.Steps.Count == 0)
+            {
+                <MudText Color="Color.Secondary" Align="Align.Center" Class="pa-4">
+                    Нет шагов
+                </MudText>
+            }
+        </MudStack>
+
+        @if (!IsPublished)
+        {
+            <MudDivider />
+            <MudButton Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Outlined.Add"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Class="ma-2"
+                       OnClick="AddStepAsync">
+                Добавить шаг
+            </MudButton>
+        }
+    </MudStack>
+}
+
+@code {
+    [Parameter] public StageResponse? Stage { get; set; }
+    [Parameter] public bool IsPublished { get; set; }
+    [Parameter] public EventCallback<StepResponse> OnStepClicked { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private async Task AddStepAsync()
+    {
+        if (Stage is null) return;
+
+        var result = await StepsApi.CreateAsync(
+            new CreateStepRequest(Stage.Id, "Новый шаг", StepType.Information, null, null, null));
+
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Шаг добавлен", Severity.Success);
+            await OnChanged.InvokeAsync();
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка создания шага", Severity.Error);
+    }
+
+    private async Task MoveAsync(Guid stepId, string direction)
+    {
+        var result = await StepsApi.MoveAsync(stepId, new MoveRequest(direction));
+        if (result.IsSuccess)
+            await OnChanged.InvokeAsync();
+        else
+            Snackbar.Add(result.Error ?? "Ошибка перемещения", Severity.Error);
+    }
+
+    private async Task DeleteStepAsync(StepResponse step)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Удалить шаг",
+            $"Удалить шаг «{step.Title}»?",
+            yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed != true) return;
+
+        var result = await StepsApi.DeleteAsync(step.Id);
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Шаг удалён", Severity.Success);
+            await OnChanged.InvokeAsync();
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка удаления", Severity.Error);
+    }
+
+    private static string StepTypeIcon(StepType type) => type switch
+    {
+        StepType.Information => Icons.Material.Outlined.Info,
+        StepType.Question    => Icons.Material.Outlined.Help,
+        StepType.Test        => Icons.Material.Outlined.Quiz,
+        StepType.Task        => Icons.Material.Outlined.Assignment,
+        StepType.Checklist   => Icons.Material.Outlined.CheckBox,
+        _                    => Icons.Material.Outlined.Article
+    };
+
+    private static Color StepTypeColor(StepType type) => type switch
+    {
+        StepType.Information => Color.Info,
+        StepType.Question    => Color.Warning,
+        StepType.Test        => Color.Secondary,
+        StepType.Task        => Color.Success,
+        StepType.Checklist   => Color.Tertiary,
+        _                    => Color.Default
+    };
+
+    private static string StepTypeLabel(StepType type) => type switch
+    {
+        StepType.Information => "Информация",
+        StepType.Question    => "Вопрос",
+        StepType.Test        => "Тест",
+        StepType.Task        => "Задание",
+        StepType.Checklist   => "Чеклист",
+        _                    => type.ToString()
+    };
+}

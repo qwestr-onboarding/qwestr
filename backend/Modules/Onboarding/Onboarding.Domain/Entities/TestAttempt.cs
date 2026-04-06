@@ -15,6 +15,8 @@ public sealed class TestAttempt : Entity<Guid>
     public bool? IsPassed { get; private set; }
     public DateTime StartedAt { get; private set; }
     public DateTime? CompletedAt { get; private set; }
+    /// <summary>JSON-снимок незавершённых ответов для восстановления после перезагрузки страницы.</summary>
+    public string? DraftAnswersJson { get; private set; }
 
     public StepProgress StepProgress { get; private set; } = null!;
     public ICollection<QuestionAnswer> QuestionAnswers { get; private set; } = [];
@@ -30,10 +32,13 @@ public sealed class TestAttempt : Entity<Guid>
         };
     }
 
+    public void SaveDraft(string? draftJson) => DraftAnswersJson = draftJson;
+
     public void Complete(int score, bool isPassed)
     {
         Score = score;
         IsPassed = isPassed;
         CompletedAt = DateTime.UtcNow;
+        DraftAnswersJson = null;
     }
 }

@@ -1,0 +1,107 @@
+@using System.Text.Json
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+
+@inject OnboardingProgressApi ProgressApi
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="3">
+
+    @if (_items.Count == 0)
+    {
+        <MudText Color="Color.Secondary" Typo="Typo.body2">Список пуст</MudText>
+    }
+    else
+    {
+        @for (var i = 0; i < _items.Count; i++)
+        {
+            var idx = i;
+            var isChecked = _checkedIndices.Contains(idx);
+            var isReadOnly = Step.ProgressStatus == StepProgressStatus.Completed;
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2"
+                      Style="@(isChecked ? "opacity:0.7;" : "")">
+                <MudCheckBox T="bool" Value="isChecked"
+                             ValueChanged="@((bool v) => ToggleItem(idx, v))"
+                             Color="Color.Success"
+                             Disabled="isReadOnly" />
+                <MudText Typo="Typo.body1"
+                         Style="@(isChecked ? "text-decoration:line-through;" : "")">
+                    @_items[idx]
+                </MudText>
+            </MudStack>
+        }
+
+        @if (Step.ProgressStatus != StepProgressStatus.Completed)
+        {
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Отмечено @_checkedIndices.Count из @_items.Count
+                </MudText>
+                <MudProgressLinear Value="@(_items.Count > 0 ? _checkedIndices.Count * 100 / _items.Count : 0)"
+                                   Rounded="true" Color="Color.Success" Size="Size.Small" />
+            </MudStack>
+
+            <MudButton Variant="Variant.Filled" Color="Color.Success"
+                       StartIcon="@Icons.Material.Outlined.CheckCircle"
+                       FullWidth="true"
+                       Disabled="@(_checkedIndices.Count < _items.Count || _completing)"
+                       OnClick="CompleteAsync">
+                @(_completing ? "Сохранение..." : "Готово")
+            </MudButton>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Success" Dense="true">
+                Чеклист выполнен
+            </MudAlert>
+        }
+    }
+
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public StepContentResponse Step { get; set; } = default!;
+    [Parameter] public EventCallback OnCompleted { get; set; }
+
+    private List<string> _items = [];
+    private HashSet<int> _checkedIndices = [];
+    private bool _completing;
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrWhiteSpace(Step.Content)) return;
+        try { _items = JsonSerializer.Deserialize<List<string>>(Step.Content) ?? []; }
+        catch { _items = []; }
+
+        if (Step.ProgressStatus == StepProgressStatus.Completed)
+            _checkedIndices = [.. Enumerable.Range(0, _items.Count)];
+    }
+
+    private void ToggleItem(int index, bool value)
+    {
+        if (value) _checkedIndices.Add(index);
+        else _checkedIndices.Remove(index);
+
+        _ = ProgressApi.UpdateChecklistProgressAsync(
+            Step.StepProgressId,
+            new UpdateChecklistProgressRequest(_checkedIndices.OrderBy(i => i).ToList()));
+    }
+
+    private async Task CompleteAsync()
+    {
+        _completing = true;
+        await ProgressApi.UpdateChecklistProgressAsync(
+            Step.StepProgressId,
+            new UpdateChecklistProgressRequest(_checkedIndices.OrderBy(i => i).ToList()));
+
+        var result = await ProgressApi.CompleteChecklistStepAsync(Step.StepProgressId);
+        if (result.IsSuccess)
+            await OnCompleted.InvokeAsync();
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+        _completing = false;
+    }
+}

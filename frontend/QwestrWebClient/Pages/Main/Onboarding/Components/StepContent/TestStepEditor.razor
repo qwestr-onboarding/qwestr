@@ -1,0 +1,67 @@
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+
+<MudStack Spacing="3">
+    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Настройки теста</MudText>
+
+    <MudStack Row="true" Spacing="2">
+        <MudNumericField T="int" Value="_passingThreshold"
+                         ValueChanged="@((int v) => { _passingThreshold = v; SaveSettings(); })"
+                         Label="Порог прохождения (%)"
+                         Variant="Variant.Outlined"
+                         ReadOnly="IsReadOnly"
+                         Min="1" Max="100" Style="max-width:220px;" />
+
+        <MudNumericField T="int" Value="_maxAttempts"
+                         ValueChanged="@((int v) => { _maxAttempts = v; SaveSettings(); })"
+                         Label="Макс. попыток"
+                         Variant="Variant.Outlined"
+                         ReadOnly="IsReadOnly"
+                         Min="1" Max="10" Style="max-width:160px;" />
+    </MudStack>
+
+    <MudDivider />
+
+    <QuestionStepEditor Questions="Questions"
+                        StepId="StepId"
+                        IsReadOnly="IsReadOnly"
+                        OnChanged="OnChanged" />
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public List<QuestionResponse> Questions { get; set; } = [];
+    [Parameter, EditorRequired] public Guid StepId { get; set; }
+    [Parameter] public string? Settings { get; set; }
+    [Parameter] public EventCallback<string?> SettingsChanged { get; set; }
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private int _passingThreshold = 70;
+    private int _maxAttempts = 3;
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrEmpty(Settings)) return;
+        try
+        {
+            var s = JsonSerializer.Deserialize<TestSettings>(Settings);
+            if (s is not null)
+            {
+                _passingThreshold = s.PassingThreshold;
+                _maxAttempts = s.MaxAttempts;
+            }
+        }
+        catch { }
+    }
+
+    private void SaveSettings()
+    {
+        var json = JsonSerializer.Serialize(new TestSettings(_passingThreshold, _maxAttempts));
+        SettingsChanged.InvokeAsync(json);
+    }
+
+    private record TestSettings(
+        [property: JsonPropertyName("passingThreshold")] int PassingThreshold,
+        [property: JsonPropertyName("maxAttempts")] int MaxAttempts);
+}

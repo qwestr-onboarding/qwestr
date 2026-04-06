@@ -1,0 +1,138 @@
+@page "/onboarding"
+@layout MainLayout
+
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+
+@inject OnboardingProgressApi ProgressApi
+@inject NavigationManager Nav
+
+<PageTitle>Мой онбординг — Qwestr</PageTitle>
+
+@if (_loading)
+{
+    <MudStack AlignItems="AlignItems.Center" Class="pa-8">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    </MudStack>
+}
+else
+{
+    <MudStack Spacing="4">
+
+        <MudText Typo="Typo.h6">Мой онбординг</MudText>
+
+        @if (_assignments.Count == 0)
+        {
+            <MudStack AlignItems="AlignItems.Center" Spacing="3" Class="pa-12">
+                <MudIcon Icon="@Icons.Material.Outlined.Checklist"
+                         Size="Size.Large" Color="Color.Secondary" />
+                <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center">
+                    Вам пока не назначено ни одного сценария онбординга
+                </MudText>
+            </MudStack>
+        }
+        else
+        {
+            <MudGrid Spacing="3">
+                @foreach (var a in _assignments)
+                {
+                    var pct = a.TotalSteps > 0
+                        ? (int)(a.CompletedSteps * 100.0 / a.TotalSteps)
+                        : 0;
+                    var isDone = a.Status == AssignmentStatus.Completed;
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard Elevation="2" Style="border-radius:14px; height:100%; display:flex; flex-direction:column;">
+                            <MudCardContent Style="flex:1;">
+                                <MudStack Spacing="3">
+                                    <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="1">
+                                        <MudStack Spacing="0" Style="flex:1;">
+                                            <MudText Typo="Typo.subtitle1" Style="font-weight:600; line-height:1.3;">
+                                                @a.ScenarioTitle
+                                            </MudText>
+                                            @if (!string.IsNullOrEmpty(a.ScenarioDescription))
+                                            {
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-top:2px;">
+                                                    @(a.ScenarioDescription.Length > 90
+                                                        ? a.ScenarioDescription[..90] + "…"
+                                                        : a.ScenarioDescription)
+                                                </MudText>
+                                            }
+                                        </MudStack>
+                                        <MudChip T="string" Size="Size.Small"
+                                                 Color="@StatusColor(a.Status)"
+                                                 Style="margin-top:2px; flex-shrink:0;">
+                                            @StatusLabel(a.Status)
+                                        </MudChip>
+                                    </MudStack>
+
+                                    <MudStack Spacing="1">
+                                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @a.CompletedSteps из @a.TotalSteps шагов
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Style="font-weight:600;">
+                                                @pct%
+                                            </MudText>
+                                        </MudStack>
+                                        <MudProgressLinear Value="@pct" Rounded="true"
+                                                           Color="@(isDone ? Color.Success : Color.Primary)"
+                                                           Size="Size.Small" />
+                                    </MudStack>
+
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        Назначен @a.AssignedAt.ToString("dd.MM.yyyy")
+                                        @if (a.CompletedAt.HasValue)
+                                        {
+                                            <text> · Завершён @a.CompletedAt.Value.ToString("dd.MM.yyyy")</text>
+                                        }
+                                    </MudText>
+                                </MudStack>
+                            </MudCardContent>
+                            <MudCardActions>
+                                <MudButton Variant="Variant.Filled"
+                                           Color="@(isDone ? Color.Default : Color.Primary)"
+                                           FullWidth="true"
+                                           Disabled="isDone"
+                                           OnClick="@(() => Nav.NavigateTo($"/onboarding/{a.AssignmentId}"))">
+                                    @(a.Status == AssignmentStatus.NotStarted ? "Начать"
+                                      : isDone ? "Завершён ✓"
+                                      : "Продолжить")
+                                </MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+
+    </MudStack>
+}
+
+@code {
+    private bool _loading = true;
+    private List<MyAssignmentSummaryResponse> _assignments = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await ProgressApi.GetMyAssignmentsAsync();
+        if (result.IsSuccess)
+            _assignments = result.Data!;
+        _loading = false;
+    }
+
+    private static Color StatusColor(AssignmentStatus s) => s switch
+    {
+        AssignmentStatus.InProgress => Color.Info,
+        AssignmentStatus.Completed  => Color.Success,
+        _                           => Color.Default
+    };
+
+    private static string StatusLabel(AssignmentStatus s) => s switch
+    {
+        AssignmentStatus.NotStarted => "Не начат",
+        AssignmentStatus.InProgress => "В процессе",
+        AssignmentStatus.Completed  => "Завершён",
+        _                           => s.ToString()
+    };
+}

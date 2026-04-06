@@ -11,7 +11,14 @@ public record StepContentResponse(
     string? Content,
     string? Settings,
     StepProgressStatus ProgressStatus,
-    List<QuestionContentResponse> Questions);
+    List<QuestionContentResponse> Questions,
+    Guid? CurrentTestAttemptId = null,
+    string? CurrentTestDraftAnswersJson = null);
+
+public record TestDraftAnswerResponse(
+    Guid QuestionId,
+    List<Guid>? SelectedOptionIds,
+    string? TextAnswer);
 
 public record QuestionContentResponse(
     Guid Id,

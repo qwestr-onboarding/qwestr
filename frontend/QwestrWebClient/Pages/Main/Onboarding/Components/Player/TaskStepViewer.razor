@@ -1,0 +1,58 @@
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+
+@inject OnboardingProgressApi ProgressApi
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="3">
+
+    @if (!string.IsNullOrWhiteSpace(Step.Content))
+    {
+        <MudPaper Elevation="0" Class="pa-4"
+                  Style="background:var(--mud-palette-background-grey); border-radius:8px;">
+            <MudText Typo="Typo.body1" Style="white-space:pre-wrap; line-height:1.7;">
+                @Step.Content
+            </MudText>
+        </MudPaper>
+    }
+
+    @if (Step.ProgressStatus != StepProgressStatus.Completed)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true">
+            Выполните задание и нажмите кнопку ниже для подтверждения
+        </MudAlert>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Success"
+                   StartIcon="@Icons.Material.Outlined.CheckCircle"
+                   FullWidth="true" Disabled="_completing"
+                   OnClick="CompleteAsync">
+            @(_completing ? "Сохранение..." : "Выполнено")
+        </MudButton>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Success" Dense="true" Icon="@Icons.Material.Outlined.CheckCircle">
+            Задание выполнено
+        </MudAlert>
+    }
+
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public StepContentResponse Step { get; set; } = default!;
+    [Parameter] public EventCallback OnCompleted { get; set; }
+
+    private bool _completing;
+
+    private async Task CompleteAsync()
+    {
+        _completing = true;
+        var result = await ProgressApi.CompleteTaskStepAsync(Step.StepProgressId);
+        if (result.IsSuccess)
+            await OnCompleted.InvokeAsync();
+        else
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+        _completing = false;
+    }
+}

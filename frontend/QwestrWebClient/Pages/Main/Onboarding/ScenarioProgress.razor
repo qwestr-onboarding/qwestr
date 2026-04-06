@@ -1,0 +1,134 @@
+@page "/onboarding/scenarios/{ScenarioId:guid}/progress/{AssignmentId:guid}"
+@layout MainLayout
+
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+@using QwestrWebClient.Pages.Main.Onboarding.Components.Progress
+
+@inject ScenariosApi ScenariosApi
+@inject AssignmentsApi AssignmentsApi
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Прогресс — Qwestr</PageTitle>
+
+@if (_loading)
+{
+    <MudStack AlignItems="AlignItems.Center" Class="pa-8">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    </MudStack>
+}
+else if (_assignment is null || _scenario is null)
+{
+    <MudAlert Severity="Severity.Error">Данные не найдены</MudAlert>
+}
+else
+{
+    <MudStack Spacing="3">
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudIconButton Icon="@Icons.Material.Outlined.ArrowBack"
+                           OnClick='() => Nav.NavigateTo($"/onboarding/scenarios/{ScenarioId}")' />
+            <MudText Typo="Typo.h6">@_scenario.Title</MudText>
+        </MudStack>
+
+        @* Summary *@
+        <MudPaper Elevation="1" Class="pa-4">
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center"
+                          Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Назначен</MudText>
+                        <MudText Typo="Typo.body2">@_assignment.AssignedAt.ToString("dd.MM.yyyy")</MudText>
+                    </MudStack>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Статус</MudText>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@StatusColor(_assignment.Status)">
+                            @StatusLabel(_assignment.Status)
+                        </MudChip>
+                    </MudStack>
+                    @if (_assignment.CompletedAt.HasValue)
+                    {
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Завершён</MudText>
+                            <MudText Typo="Typo.body2">@_assignment.CompletedAt.Value.ToString("dd.MM.yyyy")</MudText>
+                        </MudStack>
+                    }
+                </MudStack>
+                <MudStack Spacing="1">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2">Общий прогресс</MudText>
+                        <MudText Typo="Typo.body2">@ProgressPct%</MudText>
+                    </MudStack>
+                    <MudProgressLinear Value="@ProgressPct" Color="Color.Primary"
+                                       Rounded="true" Size="Size.Medium" />
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        @* Stage panels *@
+        <MudExpansionPanels MultiExpansion="true">
+            @foreach (var stage in _scenario.Stages)
+            {
+                var stageProgresses = _assignment.StepProgresses
+                    .Where(p => stage.Steps.Any(s => s.Id == p.StepId))
+                    .ToList();
+                <StageProgressPanel Stage="stage"
+                                    StepProgresses="stageProgresses"
+                                    DefaultExpanded="@(stage == CurrentStage)" />
+            }
+        </MudExpansionPanels>
+
+    </MudStack>
+}
+
+@code {
+    [Parameter] public Guid ScenarioId { get; set; }
+    [Parameter] public Guid AssignmentId { get; set; }
+
+    private ScenarioDetailResponse? _scenario;
+    private AssignmentDetailResponse? _assignment;
+    private bool _loading = true;
+
+    private int ProgressPct => _assignment is null ? 0
+        : _assignment.StepProgresses.Count == 0 ? 0
+        : (int)(_assignment.StepProgresses.Count(p => p.Status == StepProgressStatus.Completed) * 100.0
+                / _assignment.StepProgresses.Count);
+
+    private StageResponse? CurrentStage => _scenario?.Stages.FirstOrDefault(stage =>
+        stage.Steps.Any(step => _assignment?.StepProgresses
+            .Any(p => p.StepId == step.Id && p.Status == StepProgressStatus.InProgress) == true));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var t1 = AssignmentsApi.GetAsync(AssignmentId);
+        var t2 = ScenariosApi.GetAsync(ScenarioId);
+        await Task.WhenAll(t1, t2);
+
+        if (t1.Result.IsSuccess) _assignment = t1.Result.Data;
+        else Snackbar.Add("Не удалось загрузить назначение", Severity.Error);
+
+        if (t2.Result.IsSuccess) _scenario = t2.Result.Data;
+        else Snackbar.Add("Не удалось загрузить сценарий", Severity.Error);
+
+        _loading = false;
+    }
+
+    private static Color StatusColor(AssignmentStatus s) => s switch
+    {
+        AssignmentStatus.NotStarted => Color.Default,
+        AssignmentStatus.InProgress => Color.Info,
+        AssignmentStatus.Completed  => Color.Success,
+        _                           => Color.Default
+    };
+
+    private static string StatusLabel(AssignmentStatus s) => s switch
+    {
+        AssignmentStatus.NotStarted => "Не начат",
+        AssignmentStatus.InProgress => "В процессе",
+        AssignmentStatus.Completed  => "Завершён",
+        _                           => s.ToString()
+    };
+}

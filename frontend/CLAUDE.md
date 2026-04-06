@@ -66,8 +66,7 @@
 ## Component Rules
 
 - Использовать ТОЛЬКО MudBlazor компоненты (MudCard, MudAvatar, MudIcon, MudText, MudPaper и т.д.)
-- Кастомный CSS только если MudBlazor не покрывает потребность — и только в scoped .razor.css
-- Никакого inline CSS в .razor файлах
+- Кастомный CSS только если MudBlazor не покрывает потребность — и только в Style аттрибуте
 - Никаких сторонних JS-библиотек без явного запроса
 
 ## Project Structure

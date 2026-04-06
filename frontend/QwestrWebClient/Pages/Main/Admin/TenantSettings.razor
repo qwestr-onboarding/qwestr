@@ -305,12 +305,12 @@ else
         }
     }
 
-    private async Task OnLogoSelected(IBrowserFile file)
+    private async Task OnLogoSelected(IBrowserFile? file)
     {
         _logoUploading = true;
         try
         {
-            await using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            await using var stream = file!.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
             var result = await TenantApi.UploadLogoAsync(stream, file.Name, file.ContentType);
             if (result.IsSuccess)
             {

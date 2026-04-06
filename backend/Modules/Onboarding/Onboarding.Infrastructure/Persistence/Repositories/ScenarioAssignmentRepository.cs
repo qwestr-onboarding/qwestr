@@ -103,6 +103,27 @@ public class ScenarioAssignmentRepository : IScenarioAssignmentRepository
             .Select(t => (int?)t.AttemptNumber)
             .MaxAsync(ct) ?? 0;
 
+    public async Task<Guid?> GetLatestIncompleteAttemptIdAsync(Guid stepProgressId, CancellationToken ct = default)
+        => await _context.TestAttempts
+            .Where(t => t.StepProgressId == stepProgressId && t.CompletedAt == null)
+            .OrderByDescending(t => t.StartedAt)
+            .Select(t => (Guid?)t.Id)
+            .FirstOrDefaultAsync(ct);
+
+    public async Task<string?> GetTestAttemptDraftAsync(Guid attemptId, CancellationToken ct = default)
+        => await _context.TestAttempts
+            .Where(t => t.Id == attemptId)
+            .Select(t => t.DraftAnswersJson)
+            .FirstOrDefaultAsync(ct);
+
+    public async Task SaveTestAttemptDraftAsync(Guid attemptId, string? draftJson, CancellationToken ct = default)
+    {
+        var attempt = await _context.TestAttempts.FindAsync([attemptId], ct);
+        if (attempt is null) return;
+        attempt.SaveDraft(draftJson);
+        await _context.SaveChangesAsync(ct);
+    }
+
     public async Task AddAsync(ScenarioAssignment assignment, CancellationToken ct = default)
         => await _context.ScenarioAssignments.AddAsync(assignment, ct);
 

@@ -1,0 +1,215 @@
+@using Client.Infrastructure.Api.Endpoints
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+@using QwestrWebClient.Pages.Main.Onboarding.Components.StepContent
+
+@inject StepsApi StepsApi
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="3">
+
+    <MudTextField @bind-Value="_title"
+                  Label="Название шага"
+                  Variant="Variant.Outlined"
+                  FullWidth="true"
+                  ReadOnly="IsPublished"
+                  MaxLength="200" />
+
+    @if (!IsPublished)
+    {
+        <MudSelect T="StepType" Value="_type" ValueChanged="OnTypeChangedAsync"
+                   Label="Тип шага" Variant="Variant.Outlined" FullWidth="true"
+                   Disabled="_saving">
+            <MudSelectItem Value="StepType.Information">Информация</MudSelectItem>
+            <MudSelectItem Value="StepType.Question">Вопрос</MudSelectItem>
+            <MudSelectItem Value="StepType.Test">Тест</MudSelectItem>
+            <MudSelectItem Value="StepType.Task">Задание</MudSelectItem>
+            <MudSelectItem Value="StepType.Checklist">Чеклист</MudSelectItem>
+        </MudSelect>
+    }
+    else
+    {
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Тип шага</MudText>
+            <MudText Typo="Typo.body2">@StepTypeLabel(_type)</MudText>
+        </MudStack>
+    }
+
+    <MudNumericField T="int?" @bind-Value="_points"
+                     Label="Баллы за выполнение"
+                     Variant="Variant.Outlined"
+                     FullWidth="true"
+                     ReadOnly="IsPublished"
+                     Min="0" Max="9999" />
+
+    <MudDivider />
+
+    @switch (_type)
+    {
+        case StepType.Information:
+            <InformationStepEditor @bind-Content="_content"
+                                   IsReadOnly="IsPublished" />
+            break;
+        case StepType.Question:
+            <QuestionStepEditor Questions="Step.Questions"
+                                StepId="Step.Id"
+                                IsReadOnly="IsPublished"
+                                SingleQuestion="true"
+                                OnChanged="OnStepContentChanged" />
+            break;
+        case StepType.Test:
+            <TestStepEditor Questions="Step.Questions"
+                            StepId="Step.Id"
+                            @bind-Settings="_settings"
+                            IsReadOnly="IsPublished"
+                            OnChanged="OnStepContentChanged" />
+            break;
+        case StepType.Task:
+            <TaskStepEditor @bind-Content="_content"
+                            @bind-Settings="_settings"
+                            IsReadOnly="IsPublished" />
+            break;
+        case StepType.Checklist:
+            <ChecklistStepEditor @bind-Content="_content"
+                                 IsReadOnly="IsPublished" />
+            break;
+    }
+
+    @if (!IsPublished)
+    {
+        <MudDivider />
+        <MudStack Row="true" Justify="Justify.SpaceBetween">
+            <MudButton Variant="Variant.Text" Color="Color.Error"
+                       StartIcon="@Icons.Material.Outlined.Delete"
+                       OnClick="DeleteAsync">
+                Удалить
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.Save"
+                       OnClick="SaveAsync" Disabled="_saving">
+                @(_saving ? "Сохранение..." : "Сохранить шаг")
+            </MudButton>
+        </MudStack>
+    }
+
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public StepResponse Step { get; set; } = default!;
+    [Parameter] public bool IsPublished { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnDeleted { get; set; }
+    [Parameter] public EventCallback OnContentChanged { get; set; }
+
+    private Guid _loadedStepId;
+    private string _title = "";
+    private StepType _type;
+    private StepType _originalType;
+    private int? _points;
+    private string? _content;
+    private string? _settings;
+    private bool _saving;
+
+    protected override void OnParametersSet()
+    {
+        // Only reset editable fields when a different step is opened.
+        // When the same step is reloaded (questions/options changed),
+        // keep the user's in-progress edits and let Step.Questions update in children.
+        if (_loadedStepId == Step.Id) return;
+        _loadedStepId = Step.Id;
+        _title = Step.Title;
+        _type = Step.Type;
+        _originalType = Step.Type;
+        _points = Step.Points;
+        _content = Step.Content;
+        _settings = Step.Settings;
+    }
+
+    private async Task OnTypeChangedAsync(StepType newType)
+    {
+        if (newType == _type) return;
+
+        if (newType != _originalType)
+        {
+            var confirmed = await DialogService.ShowMessageBox(
+                "Изменить тип шага",
+                "При смене типа контент шага будет сброшен. Продолжить?",
+                yesText: "Изменить", cancelText: "Отмена");
+            if (confirmed != true) return;
+        }
+
+        _content = null;
+        _settings = null;
+        _type = newType;
+
+        _saving = true;
+        var result = await StepsApi.UpdateAsync(
+            Step.Id,
+            new UpdateStepRequest(string.IsNullOrWhiteSpace(_title) ? Step.Title : _title.Trim(),
+                _type, _points, _content, _settings));
+
+        if (result.IsSuccess)
+        {
+            _originalType = _type;
+            await OnContentChanged.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.Error ?? "Ошибка сохранения", Severity.Error);
+            _type = _originalType;
+        }
+        _saving = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_title)) return;
+
+        _saving = true;
+        var result = await StepsApi.UpdateAsync(
+            Step.Id,
+            new UpdateStepRequest(_title.Trim(), _type, _points, _content, _settings));
+
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Шаг сохранён", Severity.Success);
+            await OnSaved.InvokeAsync();
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка сохранения", Severity.Error);
+
+        _saving = false;
+    }
+
+    private async Task DeleteAsync()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Удалить шаг",
+            $"Удалить «{Step.Title}»?",
+            yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed != true) return;
+
+        var result = await StepsApi.DeleteAsync(Step.Id);
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Шаг удалён", Severity.Success);
+            await OnDeleted.InvokeAsync();
+        }
+        else
+            Snackbar.Add(result.Error ?? "Ошибка удаления", Severity.Error);
+    }
+
+    private Task OnStepContentChanged() => OnContentChanged.InvokeAsync();
+
+    private static string StepTypeLabel(StepType type) => type switch
+    {
+        StepType.Information => "Информация",
+        StepType.Question    => "Вопрос",
+        StepType.Test        => "Тест",
+        StepType.Task        => "Задание",
+        StepType.Checklist   => "Чеклист",
+        _                    => type.ToString()
+    };
+}
