@@ -1,0 +1,296 @@
+@page "/profile"
+@page "/profile/{ViewUserId:guid}"
+@layout MainLayout
+
+@using System.Security.Claims
+@using Client.Infrastructure.Api.Endpoints
+@using Client.Infrastructure.Api.Endpoints.Gamification
+@using Qwestr.Shared.Contracts.ApiDto.Gamification.Responses
+@using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses
+
+@inject GamificationProfileApi ProfileApi
+@inject UsersApi UsersApi
+
+<PageTitle>Профиль — Qwestr</PageTitle>
+
+@if (_loading)
+{
+    <MudStack Spacing="3">
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="220px" Style="border-radius:16px;" />
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="140px" Style="border-radius:12px;" />
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="140px" Style="border-radius:12px;" />
+    </MudStack>
+}
+else if (_profile is null)
+{
+    <MudStack AlignItems="AlignItems.Center" Spacing="3" Class="pa-12">
+        <MudIcon Icon="@Icons.Material.Outlined.PersonOff" Size="Size.Large" Color="Color.Secondary" />
+        <MudText Typo="Typo.body1" Color="Color.Secondary">Профиль не найден</MudText>
+    </MudStack>
+}
+else
+{
+    <MudStack Spacing="4">
+
+        @* Hero card *@
+        <MudPaper Elevation="3" Style="border-radius:16px;overflow:hidden;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 55%,#0f3460 100%);color:white;">
+            <MudStack Spacing="3" Class="pa-5">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Style="width:72px;height:72px;font-size:1.75rem;background:rgba(255,255,255,0.15);color:white;flex-shrink:0;">
+                        @_initials
+                    </MudAvatar>
+                    <MudStack Spacing="1" Style="flex:1;min-width:0;">
+                        <MudText Typo="Typo.h6" Style="font-weight:700;color:white;line-height:1.2;">@_displayName</MudText>
+                        @if (!string.IsNullOrEmpty(_profile.TierTitle))
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudPaper Style="@($"background:{_profile.TierColor ?? "#6C3FC5"};border-radius:12px;padding:2px 10px;")" Elevation="0">
+                                    <MudText Typo="Typo.caption" Style="font-weight:700;color:white;">@_profile.TierTitle</MudText>
+                                </MudPaper>
+                                <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,0.7);">@_profile.CurrentLevel ур.</MudText>
+                            </MudStack>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,0.7);">Уровень @_profile.CurrentLevel</MudText>
+                        }
+                    </MudStack>
+                    <MudStack Spacing="0" AlignItems="AlignItems.End" Style="flex-shrink:0;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@QwestrIcons.Gamification.XpBadge" Color="Color.Warning" Size="Size.Small" />
+                            <MudText Typo="Typo.body1" Style="font-weight:700;color:white;">@_profile.TotalXp XP</MudText>
+                        </MudStack>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@QwestrIcons.Gamification.CoinBadge" Size="Size.Small" Style="color:#64b5f6;" />
+                            <MudText Typo="Typo.body1" Style="font-weight:700;color:white;">@_profile.AvailableCoins монет</MudText>
+                        </MudStack>
+                    </MudStack>
+                </MudStack>
+
+                @if (_profile.XpToNextLevel > 0)
+                {
+                    var threshold = _profile.TotalXp + _profile.XpToNextLevel;
+                    var xpPercent = threshold > 0 ? (int)(_profile.TotalXp * 100.0 / threshold) : 0;
+                    <MudStack Spacing="1">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,0.65);">До уровня @(_profile.CurrentLevel + 1)</MudText>
+                            <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,0.65);">@_profile.TotalXp / @threshold XP</MudText>
+                        </MudStack>
+                        <MudProgressLinear Value="@xpPercent" Rounded="true" Color="Color.Warning" Size="Size.Medium"
+                                           Style="background:rgba(255,255,255,0.18);" />
+                    </MudStack>
+                }
+            </MudStack>
+        </MudPaper>
+
+        @* Earned Awards *@
+        <MudStack Spacing="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Награды</MudText>
+                @if (_earnedAwards.Count > 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">(@_earnedAwards.Count)</MudText>
+                }
+            </MudStack>
+            @if (_earnedAwards.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
+                    Пока нет достижений. Завершите первый шаг адаптации, чтобы получить XP
+                </MudAlert>
+            }
+            else
+            {
+                <MudGrid Spacing="2">
+                    @foreach (var a in _earnedAwards.OrderByDescending(x => x.EarnedAt))
+                    {
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudCard Elevation="1" Style="border-radius:12px;">
+                                <MudCardContent Class="pa-3">
+                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                        <MudAvatar Size="Size.Medium" Style="background:#f5f5f5;flex-shrink:0;">
+                                            @if (!string.IsNullOrEmpty(a.IconUrl))
+                                            {
+                                                @((MarkupString)$"<img src=\"{a.IconUrl}\" style=\"width:28px;height:28px;object-fit:contain;\" alt=\"\" />")
+                                            }
+                                            else if (a.IsManual)
+                                            {
+                                                <MudIcon Icon="@QwestrIcons.Gamification.Badge" Color="Color.Primary" />
+                                            }
+                                            else
+                                            {
+                                                <MudIcon Icon="@QwestrIcons.Gamification.Achievement" Color="Color.Warning" />
+                                            }
+                                        </MudAvatar>
+                                        <MudStack Spacing="0" Style="flex:1;min-width:0;">
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                <MudText Typo="Typo.body2" Style="font-weight:600;">@a.Title</MudText>
+                                                @if (a.IsManual)
+                                                {
+                                                    <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Small"
+                                                             Color="Color.Secondary" Title="Выдано вручную" />
+                                                }
+                                            </MudStack>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@a.EarnedAt.ToString("dd.MM.yyyy")</MudText>
+                                        </MudStack>
+                                    </MudStack>
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+        </MudStack>
+
+        @* Achievement progress *@
+        @if (_progressItems.Any(p => !p.IsCompleted))
+        {
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600;">В процессе</MudText>
+                @foreach (var p in _progressItems.Where(x => !x.IsCompleted)
+                    .OrderByDescending(x => x.TargetValue > 0 ? (double)x.CurrentValue / x.TargetValue : 0))
+                {
+                    var pct = p.TargetValue > 0 ? (int)(p.CurrentValue * 100.0 / p.TargetValue) : 0;
+                    <MudCard Elevation="1" Style="border-radius:12px;">
+                        <MudCardContent Class="pa-3">
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                <MudAvatar Size="Size.Medium" Style="background:#f5f5f5;opacity:0.65;flex-shrink:0;">
+                                    @if (!string.IsNullOrEmpty(p.IconUrl))
+                                    {
+                                        @((MarkupString)$"<img src=\"{p.IconUrl}\" style=\"width:28px;height:28px;object-fit:contain;opacity:0.5;\" alt=\"\" />")
+                                    }
+                                    else
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Outlined.EmojiEvents" Color="Color.Secondary" />
+                                    }
+                                </MudAvatar>
+                                <MudStack Spacing="1" Style="flex:1;">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                        <MudText Typo="Typo.body2" Style="font-weight:600;">@p.Title</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@p.CurrentValue / @p.TargetValue</MudText>
+                                    </MudStack>
+                                    <MudProgressLinear Value="@pct" Rounded="true" Color="Color.Primary" Size="Size.Small" />
+                                </MudStack>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                }
+            </MudStack>
+        }
+
+        @* Transactions (lazy, only own profile) *@
+        @if (!_isOtherUser)
+        {
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:600;">История начислений</MudText>
+                    <MudSpacer />
+                    @if (!_txLoaded && !_txLoading)
+                    {
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="LoadTransactionsAsync">Показать</MudButton>
+                    }
+                </MudStack>
+                @if (_txLoading)
+                {
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                }
+                else if (_txLoaded)
+                {
+                    @if (_transactions.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Транзакций пока нет</MudText>
+                    }
+                    else
+                    {
+                        <MudStack Spacing="1">
+                            @foreach (var t in _transactions)
+                            {
+                                <MudPaper Elevation="0" Style="border-radius:10px;background:#f9f9f9;padding:10px 14px;">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                                        <MudStack Spacing="0" Style="flex:1;min-width:0;">
+                                            <MudText Typo="Typo.body2">@t.Reason</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@t.OccurredAt.ToString("dd.MM.yyyy HH:mm")</MudText>
+                                        </MudStack>
+                                        <MudStack Spacing="0" AlignItems="AlignItems.End">
+                                            @if (t.XpAmount != 0)
+                                            {
+                                                <MudText Typo="Typo.caption" Color="Color.Warning" Style="font-weight:600;">
+                                                    @(t.XpAmount > 0 ? "+" : "")@t.XpAmount XP
+                                                </MudText>
+                                            }
+                                            @if (t.CoinsAmount != 0)
+                                            {
+                                                <MudText Typo="Typo.caption" Style="color:#64b5f6;font-weight:600;">
+                                                    @(t.CoinsAmount > 0 ? "+" : "")@t.CoinsAmount монет
+                                                </MudText>
+                                            }
+                                        </MudStack>
+                                    </MudStack>
+                                </MudPaper>
+                            }
+                        </MudStack>
+                    }
+                }
+            </MudStack>
+        }
+
+    </MudStack>
+}
+
+@code {
+    [Parameter] public Guid? ViewUserId { get; set; }
+
+    private bool _loading = true;
+    private bool _isOtherUser;
+    private PlayerProfileResponse? _profile;
+    private List<EarnedAwardResponse> _earnedAwards = [];
+    private List<AchievementProgressResponse> _progressItems = [];
+    private List<PointsTransactionResponse> _transactions = [];
+    private bool _txLoading;
+    private bool _txLoaded;
+    private string _displayName = "";
+    private string _initials = "?";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isOtherUser = ViewUserId.HasValue;
+
+        var profileTask = _isOtherUser
+            ? ProfileApi.GetProfileByUserIdAsync(ViewUserId!.Value)
+            : ProfileApi.GetMyProfileAsync();
+        var awardsTask = _isOtherUser
+            ? Task.FromResult(Client.Infrastructure.Api.Models.ApiResult<EarnedAwardListResponse>.Success(new EarnedAwardListResponse([])))
+            : ProfileApi.GetMyEarnedAwardsAsync();
+        var progressTask = _isOtherUser
+            ? Task.FromResult(Client.Infrastructure.Api.Models.ApiResult<AchievementProgressListResponse>.Success(new AchievementProgressListResponse([])))
+            : ProfileApi.GetMyAchievementProgressAsync();
+        var userTask = _isOtherUser
+            ? UsersApi.GetUserByIdAsync(ViewUserId!.Value)
+            : UsersApi.GetCurrentUserAsync();
+
+        await Task.WhenAll(profileTask, awardsTask, progressTask, userTask);
+
+        if (profileTask.Result.IsSuccess) _profile = profileTask.Result.Data;
+        if (awardsTask.Result.IsSuccess) _earnedAwards = awardsTask.Result.Data!.Items;
+        if (progressTask.Result.IsSuccess) _progressItems = progressTask.Result.Data!.Items;
+
+        var userResult = userTask.Result;
+        if (userResult.IsSuccess && userResult.Data is { } u)
+        {
+            _displayName = $"{u.FirstName} {u.LastName}".Trim();
+            var parts = _displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            _initials = string.Join("", parts.Take(2).Select(p => char.ToUpper(p[0])));
+        }
+
+        _loading = false;
+    }
+
+    private async Task LoadTransactionsAsync()
+    {
+        _txLoading = true;
+        StateHasChanged();
+        var result = await ProfileApi.GetMyTransactionsAsync();
+        if (result.IsSuccess) _transactions = result.Data!.Items;
+        _txLoading = false;
+        _txLoaded = true;
+    }
+}

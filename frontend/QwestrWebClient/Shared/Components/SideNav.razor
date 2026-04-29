@@ -21,8 +21,14 @@
     <MudNavLink Href="/profile" Icon="@QwestrIcons.Navigation.Profile" IconColor="Color.Inherit">
         @if (Open) { <MudText>Профиль</MudText> }
     </MudNavLink>
-    <MudNavLink Href="/gamification" Icon="@QwestrIcons.Navigation.Trophy" IconColor="Color.Inherit">
+    <MudNavLink Href="/achievements" Icon="@QwestrIcons.Navigation.Trophy" IconColor="Color.Inherit">
         @if (Open) { <MudText>Достижения</MudText> }
+    </MudNavLink>
+    <MudNavLink Href="/shop" Icon="@QwestrIcons.Navigation.Store" IconColor="Color.Inherit">
+        @if (Open) { <MudText>Магазин</MudText> }
+    </MudNavLink>
+    <MudNavLink Href="/inventory" Icon="@QwestrIcons.Navigation.Backpack" IconColor="Color.Inherit">
+        @if (Open) { <MudText>Инвентарь</MudText> }
     </MudNavLink>
     <MudNavLink Href="/leaderboard" Icon="@QwestrIcons.Navigation.Leaderboard" IconColor="Color.Inherit">
         @if (Open) { <MudText>Лидерборд</MudText> }
@@ -46,6 +52,21 @@
         </MudNavLink>
         <MudNavLink Href="/analytics" Icon="@QwestrIcons.Navigation.Analytics" IconColor="Color.Inherit">
             @if (Open) { <MudText>Аналитика</MudText> }
+        </MudNavLink>
+        
+        <MudDivider Class="my-1" />
+        @if (Open)
+        {
+            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="px-4 pt-1">Геймификация</MudText>
+        }
+        <MudNavLink Href="/manage/gamification/levels" Icon="@QwestrIcons.Navigation.Medal" IconColor="Color.Inherit">
+            @if (Open) { <MudText>Уровни</MudText> }
+        </MudNavLink>
+        <MudNavLink Href="/manage/gamification/awards" Icon="@QwestrIcons.Navigation.Gem" IconColor="Color.Inherit">
+            @if (Open) { <MudText>Награды</MudText> }
+        </MudNavLink>
+        <MudNavLink Href="/manage/gamification/shop" Icon="@QwestrIcons.Navigation.Store" IconColor="Color.Inherit">
+            @if (Open) { <MudText>Магазин (HR)</MudText> }
         </MudNavLink>
     }
 

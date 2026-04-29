@@ -87,17 +87,23 @@
 
     private static readonly TileModel[] _personalTiles =
     [
-        new(QwestrIcons.Navigation.Profile, Color.Info, "Профиль",    "/profile"),
-        new(QwestrIcons.Navigation.Trophy,  Color.Warning, "Достижения", "/gamification"),
-        new(QwestrIcons.Navigation.Leaderboard, Color.Primary, "Лидерборд",   "/leaderboard"),
+        new(QwestrIcons.Navigation.Profile,     Color.Info,    "Профиль",    "/profile"),
+        new(QwestrIcons.Navigation.Trophy,      Color.Warning, "Достижения", "/achievements"),
+        new(QwestrIcons.Navigation.Store,       Color.Primary, "Магазин",   "/shop"),
+        new(QwestrIcons.Navigation.Backpack,    Color.Secondary, "Инвентарь", "/inventory"),
+        new(QwestrIcons.Navigation.Leaderboard, Color.Primary, "Лидерборд",  "/leaderboard"),
     ];
 
     private static readonly TileModel[] _managementTiles =
     [
-        new(QwestrIcons.Navigation.OnboardingEditor,   Color.Primary, "Онбординг", "/onboarding/scenarios"),
-        new(QwestrIcons.Navigation.Invites,   Color.Primary, "Приглашения", "/invitations"),
-        new(QwestrIcons.Navigation.Employees,       Color.Primary, "Сотрудники",  "/employees"),
-        new(QwestrIcons.Navigation.Analytics,    Color.Primary, "Аналитика",   "/analytics"),
+        new(QwestrIcons.Navigation.OnboardingEditor, Color.Primary,  "Онбординг",    "/onboarding/scenarios"),
+        new(QwestrIcons.Navigation.Invites,          Color.Primary,  "Приглашения",  "/invitations"),
+        new(QwestrIcons.Navigation.Employees,        Color.Primary,  "Сотрудники",   "/employees"),
+        new(QwestrIcons.Navigation.Analytics,        Color.Primary,  "Аналитика",    "/analytics"),
+        
+        new(QwestrIcons.Navigation.Medal,           Color.Primary,  "Тиры уровней", "/manage/gamification/levels"),
+        new(QwestrIcons.Navigation.Gem,     Color.Primary,  "Награды",      "/manage/gamification/awards"),
+        new(QwestrIcons.Navigation.Store, Color.Primary, "Магазин (HR)", "/manage/gamification/shop"),
     ];
 
     private static readonly TileModel[] _adminTiles =

@@ -1,0 +1,202 @@
+@page "/shop"
+@layout MainLayout
+
+@using Client.Infrastructure.Api.Endpoints.Gamification
+@using Qwestr.Shared.Contracts.ApiDto.Gamification.Responses
+
+@inject GamificationShopApi ShopApi
+@inject GamificationProfileApi ProfileApi
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Магазин — Qwestr</PageTitle>
+
+@if (_loading)
+{
+    <MudStack Spacing="3">
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="56px" Style="border-radius:12px;" />
+        <MudGrid Spacing="2">
+            @for (var i = 0; i < 6; i++)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="160px" Style="border-radius:12px;" />
+                </MudItem>
+            }
+        </MudGrid>
+    </MudStack>
+}
+else
+{
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6" Style="font-weight:700;">Магазин</MudText>
+        @* Balance banner *@
+        <MudPaper Elevation="1" Style="border-radius:12px;padding:12px 18px;background:linear-gradient(90deg,#e3f2fd,#f3e5f5);">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@QwestrIcons.Gamification.CoinBadge" Color="Color.Primary" />
+                <MudText Typo="Typo.body1">Ваш баланс:</MudText>
+                <MudText Typo="Typo.h6" Style="font-weight:700;">@_coins монет</MudText>
+            </MudStack>
+        </MudPaper>
+
+        @* Slot tabs *@
+        <MudTabs Elevation="0" Rounded="true" PanelClass="pt-3" ApplyEffectsToContainer="true">
+            @foreach (var slot in _slotOrder)
+            {
+                var slotItems = _items.Where(i => i.Slot == slot).ToList();
+                if (slotItems.Count == 0) continue;
+                <MudTabPanel Text="@SlotLabel(slot)">
+                    <MudGrid Spacing="2">
+                        @foreach (var item in slotItems)
+                        {
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudCard Elevation="1" Style="border-radius:12px;height:100%;display:flex;flex-direction:column;">
+                                    <MudCardContent Style="flex:1;">
+                                        <MudStack Spacing="2">
+                                            <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2">
+                                                <MudAvatar Size="Size.Large" Style="background:#f5f5f5;flex-shrink:0;">
+                                                    @if (!string.IsNullOrEmpty(item.IconUrl))
+                                                    {
+                                                        @((MarkupString)$"<img src=\"{item.IconUrl}\" style=\"width:36px;height:36px;object-fit:contain;\" alt=\"\" />")
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudIcon Icon="@Icons.Material.Outlined.Inventory2" />
+                                                    }
+                                                </MudAvatar>
+                                                <MudStack Spacing="0" Style="flex:1;">
+                                                    <MudText Typo="Typo.subtitle2" Style="font-weight:600;">@item.Name</MudText>
+                                                    @if (!string.IsNullOrEmpty(item.Description))
+                                                    {
+                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                            @(item.Description.Length > 60 ? item.Description[..60] + "…" : item.Description)
+                                                        </MudText>
+                                                    }
+                                                </MudStack>
+                                            </MudStack>
+
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                <MudIcon Icon="@QwestrIcons.Gamification.CoinBadge" Size="Size.Small" Color="Color.Primary" />
+                                                <MudText Typo="Typo.body2" Style="font-weight:700;">@item.Price монет</MudText>
+                                                @if (item.RequiredLevel.HasValue)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small"
+                                                             Color="@(_level >= item.RequiredLevel ? Color.Success : Color.Warning)"
+                                                             Style="height:20px;">
+                                                        @(item.RequiredLevel.Value) ур.
+                                                    </MudChip>
+                                                }
+                                            </MudStack>
+
+                                            @if (item.IsOwned && item.StackingPolicy == "Unique")
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Success"
+                                                         Icon="@Icons.Material.Outlined.CheckCircle">
+                                                    У вас есть
+                                                </MudChip>
+                                            }
+                                            @if (item.RequiredLevel.HasValue && _level < item.RequiredLevel.Value)
+                                            {
+                                                <MudText Typo="Typo.caption" Color="Color.Warning">
+                                                    Требуется уровень @item.RequiredLevel
+                                                </MudText>
+                                            }
+                                        </MudStack>
+                                    </MudCardContent>
+                                    <MudCardActions>
+                                        @{
+                                            var canBuy = item.IsAvailable &&
+                                                         !(item.IsOwned && item.StackingPolicy == "Unique");
+                                            var btnText = item.IsOwned && item.StackingPolicy == "Unique"
+                                                ? "Куплено"
+                                                : item.StackingPolicy == "Stackable" && item.IsOwned
+                                                    ? "Купить ещё"
+                                                    : "Купить";
+                                        }
+                                        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                                   Disabled="@(!canBuy || _purchasing == item.Id)"
+                                                   OnClick="@(() => BuyAsync(item))">
+                                            @(item.IsOwned && item.StackingPolicy == "Unique" ? "Куплено" : $"{item.Price} монет")
+                                        </MudButton>
+                                    </MudCardActions>
+                                </MudCard>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudTabPanel>
+            }
+        </MudTabs>
+
+        @if (_items.Count == 0)
+        {
+            <MudStack AlignItems="AlignItems.Center" Spacing="3" Class="pa-12">
+                <MudIcon Icon="@Icons.Material.Outlined.StoreMallDirectory" Size="Size.Large" Color="Color.Secondary" />
+                <MudText Typo="Typo.body1" Color="Color.Secondary">Магазин пока пуст — попросите HR добавить предметы</MudText>
+            </MudStack>
+        }
+
+    </MudStack>
+}
+
+@code {
+    private static readonly string[] _slotOrder =
+        ["AvatarFrame", "Background", "Pet", "Class", "Weapon", "ProfileColor", "Consumable"];
+
+    private bool _loading = true;
+    private List<ShopItemResponse> _items = [];
+    private int _coins;
+    private int _level;
+    private Guid _purchasing;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var shopTask = ShopApi.GetShopItemsAsync();
+        var profileTask = ProfileApi.GetMyProfileAsync();
+        await Task.WhenAll(shopTask, profileTask);
+        if (shopTask.Result.IsSuccess) _items = shopTask.Result.Data!.Items;
+        if (profileTask.Result.IsSuccess)
+        {
+            _coins = profileTask.Result.Data!.AvailableCoins;
+            _level = profileTask.Result.Data!.CurrentLevel;
+        }
+        _loading = false;
+    }
+
+    private async Task BuyAsync(ShopItemResponse item)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Подтверждение",
+            $"Купить «{item.Name}» за {item.Price} монет?",
+            yesText: "Купить", cancelText: "Отмена");
+        if (confirm != true) return;
+
+        _purchasing = item.Id;
+        var result = await ShopApi.PurchaseShopItemAsync(item.Id);
+        if (result.IsSuccess)
+        {
+            Snackbar.Add($"«{item.Name}» куплено!", Severity.Success);
+            // Refresh
+            var shopTask = ShopApi.GetShopItemsAsync();
+            var profileTask = ProfileApi.GetMyProfileAsync();
+            await Task.WhenAll(shopTask, profileTask);
+            if (shopTask.Result.IsSuccess) _items = shopTask.Result.Data!.Items;
+            if (profileTask.Result.IsSuccess) _coins = profileTask.Result.Data!.AvailableCoins;
+        }
+        else
+        {
+            Snackbar.Add(result.Error ?? "Ошибка покупки", Severity.Error);
+        }
+        _purchasing = Guid.Empty;
+    }
+
+    private static string SlotLabel(string slot) => slot switch
+    {
+        "ProfileColor" => "Цвет профиля",
+        "AvatarFrame"  => "Рамка аватара",
+        "Background"   => "Фон",
+        "Pet"          => "Питомцы",
+        "Class"        => "Классы",
+        "Weapon"       => "Оружие",
+        "Consumable"   => "Расходники",
+        _              => slot,
+    };
+}

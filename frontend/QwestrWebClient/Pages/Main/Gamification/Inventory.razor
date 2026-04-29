@@ -1,0 +1,210 @@
+@page "/inventory"
+@layout MainLayout
+
+@using Client.Infrastructure.Api.Endpoints.Gamification
+@using Qwestr.Shared.Contracts.ApiDto.Gamification.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Gamification.Responses
+
+@inject GamificationInventoryApi InventoryApi
+@inject GamificationProfileApi ProfileApi
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Инвентарь — Qwestr</PageTitle>
+
+@if (_loading)
+{
+    <MudGrid Spacing="2">
+        @for (var i = 0; i < 4; i++)
+        {
+            <MudItem xs="12" sm="6">
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="120px" Style="border-radius:12px;" />
+            </MudItem>
+        }
+    </MudGrid>
+}
+else
+{
+    <MudStack Spacing="3">
+
+        <MudText Typo="Typo.h6" Style="font-weight:700;">Инвентарь</MudText>
+
+        <MudTabs Elevation="0" Rounded="true" PanelClass="pt-3" ApplyEffectsToContainer="true">
+            @foreach (var slot in _slotOrder)
+            {
+                var slotItems = _items.Where(i => i.Slot == slot).ToList();
+                <MudTabPanel Text="@SlotLabel(slot)">
+                    @if (slotItems.Count == 0)
+                    {
+                        <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="pa-8">
+                            <MudIcon Icon="@Icons.Material.Outlined.Inventory2" Color="Color.Secondary" />
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                                У вас нет ничего в этой категории
+                            </MudText>
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                                       OnClick="@(() => Nav.NavigateTo("/shop"))">
+                                Открыть магазин
+                            </MudButton>
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudGrid Spacing="2">
+                            @foreach (var item in slotItems)
+                            {
+                                var isEquipped = IsEquipped(slot, item.ShopItemId);
+                                <MudItem xs="12" sm="6" md="4">
+                                    <MudCard Elevation="@(isEquipped ? 3 : 1)"
+                                             Style="@($"border-radius:12px;height:100%;{(isEquipped ? "border:2px solid var(--mud-palette-primary);" : "")}")">
+                                        <MudCardContent>
+                                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start">
+                                                <MudAvatar Size="Size.Large" Style="background:#f5f5f5;flex-shrink:0;">
+                                                    @if (!string.IsNullOrEmpty(item.IconUrl))
+                                                    {
+                                                        @((MarkupString)$"<img src=\"{item.IconUrl}\" style=\"width:36px;height:36px;object-fit:contain;\" alt=\"\" />")
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudIcon Icon="@Icons.Material.Outlined.Inventory2" />
+                                                    }
+                                                </MudAvatar>
+                                                <MudStack Spacing="0" Style="flex:1;">
+                                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                        <MudText Typo="Typo.subtitle2" Style="font-weight:600;">@item.Name</MudText>
+                                                        @if (item.Quantity > 1)
+                                                        {
+                                                            <MudChip T="string" Size="Size.Small" Color="Color.Default"
+                                                                     Style="height:18px;">×@item.Quantity</MudChip>
+                                                        }
+                                                    </MudStack>
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                        @item.AcquiredAt.ToString("dd.MM.yyyy")
+                                                    </MudText>
+                                                    @if (isEquipped)
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary"
+                                                                 Icon="@Icons.Material.Outlined.CheckCircle"
+                                                                 Style="height:22px;margin-top:4px;">
+                                                            Экипировано
+                                                        </MudChip>
+                                                    }
+                                                </MudStack>
+                                            </MudStack>
+                                        </MudCardContent>
+                                        @if (slot != "Consumable")
+                                        {
+                                            <MudCardActions>
+                                                @if (isEquipped)
+                                                {
+                                                    <MudButton Variant="Variant.Outlined" FullWidth="true"
+                                                               Disabled="_busy"
+                                                               OnClick="@(() => UnequipAsync(slot))">
+                                                        Снять
+                                                    </MudButton>
+                                                }
+                                                else
+                                                {
+                                                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                                               FullWidth="true" Disabled="_busy"
+                                                               OnClick="@(() => EquipAsync(item.ShopItemId))">
+                                                        Надеть
+                                                    </MudButton>
+                                                }
+                                            </MudCardActions>
+                                        }
+                                    </MudCard>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    }
+                </MudTabPanel>
+            }
+        </MudTabs>
+
+    </MudStack>
+}
+
+@code {
+    private static readonly string[] _slotOrder =
+        ["AvatarFrame", "Background", "Pet", "Class", "Weapon", "ProfileColor", "Consumable"];
+
+    private bool _loading = true;
+    private bool _busy;
+    private List<InventoryItemResponse> _items = [];
+    private PlayerProfileResponse? _profile;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+        _loading = false;
+    }
+
+    private async Task RefreshAsync()
+    {
+        var t1 = InventoryApi.GetMyInventoryAsync();
+        var t2 = ProfileApi.GetMyProfileAsync();
+        await Task.WhenAll(t1, t2);
+        if (t1.Result.IsSuccess) _items = t1.Result.Data!.Items;
+        if (t2.Result.IsSuccess) _profile = t2.Result.Data;
+    }
+
+    private bool IsEquipped(string slot, Guid shopItemId)
+    {
+        if (_profile is null) return false;
+        var eq = _profile.Equipment;
+        return slot switch
+        {
+            "ProfileColor" => eq.ProfileColor?.Id == shopItemId,
+            "AvatarFrame"  => eq.AvatarFrame?.Id  == shopItemId,
+            "Background"   => eq.Background?.Id   == shopItemId,
+            "Pet"          => eq.Pet?.Id           == shopItemId,
+            "Class"        => eq.Class?.Id         == shopItemId,
+            "Weapon"       => eq.Weapon?.Id        == shopItemId,
+            _              => false,
+        };
+    }
+
+    private async Task EquipAsync(Guid shopItemId)
+    {
+        _busy = true;
+        var result = await InventoryApi.EquipItemAsync(new EquipItemRequest(shopItemId));
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Экипировано!", Severity.Success);
+            await RefreshAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+        }
+        _busy = false;
+    }
+
+    private async Task UnequipAsync(string slot)
+    {
+        _busy = true;
+        var result = await InventoryApi.UnequipItemAsync(new UnequipItemRequest(slot));
+        if (result.IsSuccess)
+        {
+            Snackbar.Add("Снято", Severity.Normal);
+            await RefreshAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
+        }
+        _busy = false;
+    }
+
+    private static string SlotLabel(string slot) => slot switch
+    {
+        "ProfileColor" => "Цвет профиля",
+        "AvatarFrame"  => "Рамка аватара",
+        "Background"   => "Фон",
+        "Pet"          => "Питомцы",
+        "Class"        => "Классы",
+        "Weapon"       => "Оружие",
+        "Consumable"   => "Расходники",
+        _              => slot,
+    };
+}

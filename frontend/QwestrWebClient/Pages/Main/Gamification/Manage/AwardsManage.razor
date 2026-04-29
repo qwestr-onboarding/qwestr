@@ -1,0 +1,263 @@
+@page "/manage/gamification/awards"
+@layout MainLayout
+
+@using System.Security.Claims
+@using Client.Infrastructure.Api.Endpoints.Gamification
+@using QwestrWebClient.Pages.Main.Gamification.Manage.Dialogs
+@using Qwestr.Shared.Contracts.ApiDto.Gamification.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Gamification.Responses
+@using Qwestr.Shared.Kernel.Enums.Identity
+
+@inject GamificationAwardsApi AwardsApi
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+@inject SessionManager Session
+
+<PageTitle>Управление наградами — Qwestr</PageTitle>
+
+@if (!_authorized)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <MudStack Spacing="4">
+
+        <MudStack Row="true" AlignItems="AlignItems.Center">
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h6" Style="font-weight:700;">Награды</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Достижения и бейджи</MudText>
+            </MudStack>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.Add"
+                       OnClick="CreateAsync">
+                Добавить
+            </MudButton>
+        </MudStack>
+
+        @* Filter *@
+        <MudStack Row="true" Spacing="1">
+            @foreach (var kv in _filterOptions)
+            {
+                var key = kv.Key;
+                <MudChip T="string" Value="@key"
+                         Color="@(_filter == key ? Color.Primary : Color.Default)"
+                         Variant="@(_filter == key ? Variant.Filled : Variant.Outlined)"
+                         OnClick="@(() => _filter = key)">
+                    @kv.Value
+                </MudChip>
+            }
+        </MudStack>
+
+        @if (_loading)
+        {
+            <MudStack Spacing="2">
+                @for (var i = 0; i < 4; i++)
+                {
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="72px" Style="border-radius:10px;" />
+                }
+            </MudStack>
+        }
+        else
+        {
+            var visible = _filter == "All"
+                ? _awards
+                : _awards.Where(a => a.IssuanceType == _filter).ToList();
+
+            @if (visible.Count == 0)
+            {
+                <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="pa-10">
+                    <MudIcon Icon="@Icons.Material.Outlined.EmojiEvents" Size="Size.Large" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">Наград пока нет</MudText>
+                </MudStack>
+            }
+            else
+            {
+                <MudStack Spacing="2">
+                    @foreach (var a in visible)
+                    {
+                        <MudPaper Elevation="1" Style="@($"border-radius:12px;padding:14px 16px;{(!a.IsActive ? "opacity:0.55;" : "")}")">
+                            <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2">
+                                <MudAvatar Size="Size.Medium" Style="background:#f5f5f5;flex-shrink:0;">
+                                    @if (!string.IsNullOrEmpty(a.IconUrl))
+                                    {
+                                        @((MarkupString)$"<img src=\"{a.IconUrl}\" style=\"width:28px;height:28px;object-fit:contain;\" alt=\"\" />")
+                                    }
+                                    else if (a.IssuanceType.ToLower() == "manual")
+                                    {
+                                        <MudIcon Icon="@QwestrIcons.Gamification.Badge" Color="Color.Primary" Size="Size.Small" />
+                                    }
+                                    else
+                                    {
+                                        <MudIcon Icon="@QwestrIcons.Gamification.Achievement" Color="Color.Warning" Size="Size.Small" />
+                                    }
+                                </MudAvatar>
+                                <MudStack Spacing="0" Style="flex:1;min-width:0;">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Style="flex-wrap:wrap;">
+                                        <MudText Typo="Typo.subtitle2" Style="font-weight:600;">@a.Title</MudText>
+                                        <MudChip T="string" Size="Size.Small"
+                                                 Color="@(a.IssuanceType == "Automatic" ? Color.Info : Color.Secondary)"
+                                                 Style="height:20px;">
+                                            @(a.IssuanceType == "Automatic" ? "Достижение" : "Бейдж")
+                                        </MudChip>
+                                        @if (!a.IsActive)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Style="height:20px;">Отключена</MudChip>
+                                        }
+                                    </MudStack>
+                                    @if (!string.IsNullOrEmpty(a.Description))
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @(a.Description.Length > 80 ? a.Description[..80] + "…" : a.Description)
+                                        </MudText>
+                                    }
+                                    @if (a.Rule is not null)
+                                    {
+                                        <MudText Typo="Typo.caption" Style="color:#7b5ccc;">
+                                            @RuleSummary(a.Rule)
+                                        </MudText>
+                                    }
+                                    @if (a.XpBonus > 0 || a.CoinsBonus > 0)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @(a.XpBonus > 0 ? $"+{a.XpBonus} XP" : "")
+                                            @(a.CoinsBonus > 0 ? $"  +{a.CoinsBonus} монет" : "")
+                                        </MudText>
+                                    }
+                                </MudStack>
+                                <MudStack Row="true" Spacing="1" Style="flex-shrink:0;">
+                                    @if (a.IssuanceType == "Manual" && a.IsActive)
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Outlined.CardGiftcard"
+                                                       Size="Size.Small" Color="Color.Primary"
+                                                       title="Выдать бейдж"
+                                                       OnClick="@(() => IssueAsync(a))" />
+                                    }
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
+                                                   OnClick="@(() => EditAsync(a))" />
+                                    @if (a.IsActive)
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Outlined.VisibilityOff"
+                                                       Size="Size.Small" Color="Color.Warning"
+                                                       title="Деактивировать"
+                                                       OnClick="@(() => DeactivateAsync(a))" />
+                                    }
+                                </MudStack>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                </MudStack>
+            }
+        }
+
+    </MudStack>
+}
+
+@code {
+    private static readonly Dictionary<string, string> _filterOptions = new()
+    {
+        ["All"]       = "Все",
+        ["Automatic"] = "Достижения",
+        ["Manual"]    = "Бейджи",
+    };
+
+    private bool _authorized;
+    private bool _loading = true;
+    private List<AwardResponse> _awards = [];
+    private string _filter = "All";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var roleStr = Session.GetClaimFromToken(ClaimTypes.Role);
+        var role = Enum.TryParse<UserRole>(roleStr, out var r) ? r : UserRole.Employee;
+        if (role < UserRole.Manager) { Nav.NavigateTo("/dashboard"); return; }
+        _authorized = true;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        var result = await AwardsApi.GetAwardsForManagementAsync();
+        if (result.IsSuccess) _awards = result.Data!.Items;
+        _loading = false;
+    }
+
+    private async Task CreateAsync()
+    {
+        var dialog = await DialogService.ShowAsync<AwardDialog>("Новая награда");
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: { } data })
+        {
+            Client.Infrastructure.Api.Models.ApiResult<Client.Infrastructure.Api.Models.IdResponse>? res = null;
+            if (data is CreateAutomaticAwardRequest autoReq)
+                res = await AwardsApi.CreateAutomaticAwardAsync(autoReq);
+            else if (data is CreateManualAwardRequest manualReq)
+                res = await AwardsApi.CreateManualAwardAsync(manualReq);
+
+            if (res?.IsSuccess == true) { Snackbar.Add("Награда создана", Severity.Success); await LoadAsync(); }
+            else if (res is not null) Snackbar.Add(res.Error ?? "Ошибка", Severity.Error);
+        }
+    }
+
+    private async Task EditAsync(AwardResponse award)
+    {
+        var params_ = new DialogParameters<AwardDialog> { { x => x.Existing, award } };
+        var dialog = await DialogService.ShowAsync<AwardDialog>("Редактировать награду", params_);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: UpdateAwardRequest req })
+        {
+            var res = await AwardsApi.UpdateAwardAsync(award.Id, req);
+            if (res.IsSuccess) { Snackbar.Add("Награда обновлена", Severity.Success); await LoadAsync(); }
+            else Snackbar.Add(res.Error ?? "Ошибка", Severity.Error);
+        }
+    }
+
+    private async Task DeactivateAsync(AwardResponse award)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Деактивировать",
+            $"Деактивировать награду «{award.Title}»? Она перестанет выдаваться, история сохранится.",
+            yesText: "Деактивировать", cancelText: "Отмена");
+        if (confirmed != true) return;
+        var res = await AwardsApi.DeactivateAwardAsync(award.Id);
+        if (res.IsSuccess) { Snackbar.Add("Деактивировано", Severity.Normal); await LoadAsync(); }
+        else Snackbar.Add(res.Error ?? "Ошибка", Severity.Error);
+    }
+
+    private async Task IssueAsync(AwardResponse award)
+    {
+        var dialog = await DialogService.ShowAsync<IssueBadgeDialog>($"Выдать бейдж «{award.Title}»");
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: Guid profileId })
+        {
+            var res = await AwardsApi.IssueManualAwardAsync(award.Id, new IssueManualAwardRequest(profileId));
+            if (res.IsSuccess) Snackbar.Add($"Бейдж «{award.Title}» выдан", Severity.Success);
+            else Snackbar.Add(res.Error ?? "Ошибка выдачи", Severity.Error);
+        }
+    }
+
+    private static string RuleSummary(AwardRuleResponse rule)
+    {
+        var trigger = rule.Trigger switch
+        {
+            "StepCompleted"     => "завершён шаг",
+            "ScenarioCompleted" => "завершён сценарий",
+            "TestPassed"        => "пройден тест",
+            "LevelReached"      => "достигнут уровень",
+            "DailyActivity"     => "активность",
+            "PointsAccumulated" => "накоплен опыт",
+            _                   => rule.Trigger,
+        };
+        return rule.Condition switch
+        {
+            "Count"           => $"{trigger} × {rule.TargetValue}",
+            "CountWithFilter" => $"{trigger} × {rule.TargetValue} с фильтром",
+            "Threshold"       => $"{trigger} ≥ {rule.TargetValue}",
+            "Streak"          => $"{trigger} × {rule.TargetValue} подряд",
+            _                 => $"{trigger} {rule.Condition} {rule.TargetValue}",
+        };
+    }
+}

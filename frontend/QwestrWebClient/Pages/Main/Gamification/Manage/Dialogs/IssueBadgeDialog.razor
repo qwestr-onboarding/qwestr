@@ -1,0 +1,111 @@
+@using Client.Infrastructure.Api.Endpoints
+@using Client.Infrastructure.Api.Endpoints.Gamification
+@using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses
+
+@inject UsersApi UsersApi
+@inject GamificationProfileApi ProfileApi
+
+<MudDialog Style="min-width:400px;">
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
+            <MudTextField Value="@_search" Label="Поиск сотрудника"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Outlined.Search"
+                          Immediate="true" FullWidth="true"
+                          T="string"
+                          ValueChanged="@((string v) => { _search = v ?? ""; FilterUsers(); })" />
+            @if (_loading)
+            {
+                <MudProgressLinear Indeterminate="true" />
+            }
+            else
+            {
+                <MudStack Spacing="1" Style="max-height:300px;overflow-y:auto;">
+                    @foreach (var u in _filtered)
+                    {
+                        var selected = _selectedUserId == u.Id;
+                        <MudPaper Elevation="0" Style="@($"border-radius:8px;padding:8px 12px;cursor:pointer;{(selected ? "border:2px solid var(--mud-palette-primary);background:#f0ebff;" : "border:1px solid #eee;")}")"
+                                  @onclick="() => _selectedUserId = u.Id">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudAvatar Size="Size.Small" Color="Color.Secondary">
+                                    @(u.FullName.Length > 0 ? char.ToUpper(u.FullName[0]) : '?')
+                                </MudAvatar>
+                                <MudStack Spacing="0" Style="flex:1;">
+                                    <MudText Typo="Typo.body2" Style="font-weight:600;">@u.FullName</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@u.Email</MudText>
+                                </MudStack>
+                                @if (selected)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Outlined.CheckCircle" Color="Color.Primary" Size="Size.Small" />
+                                }
+                            </MudStack>
+                        </MudPaper>
+                    }
+                    @if (_filtered.Count == 0 && !_loading)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center">Нет результатов</MudText>
+                    }
+                </MudStack>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Отмена</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="@(_selectedUserId == Guid.Empty || _confirming)"
+                   OnClick="Confirm">
+            @(_confirming ? "Выдача..." : "Выдать бейдж")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private bool _loading = true;
+    private bool _confirming;
+    private List<UserListItemResponse> _users = [];
+    private List<UserListItemResponse> _filtered = [];
+    private string _search = "";
+    private Guid _selectedUserId;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await UsersApi.GetUsersListAsync(1, 100);
+        if (result.IsSuccess)
+        {
+            _users = result.Data!.Items.Where(u => u.IsActive).ToList();
+            _filtered = _users;
+        }
+        _loading = false;
+    }
+
+    private void FilterUsers()
+    {
+        _filtered = string.IsNullOrWhiteSpace(_search)
+            ? _users
+            : _users.Where(u => u.FullName.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                              || u.Email.Contains(_search, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    private async Task Confirm()
+    {
+        if (_selectedUserId == Guid.Empty) return;
+        _confirming = true;
+        // Get ProfileId from UserId
+        var profileResult = await ProfileApi.GetProfileByUserIdAsync(_selectedUserId);
+        if (!profileResult.IsSuccess)
+        {
+            _error = "Не удалось найти профиль сотрудника";
+            _confirming = false;
+            return;
+        }
+        MudDialog.Close(DialogResult.Ok(profileResult.Data!.Id));
+    }
+}

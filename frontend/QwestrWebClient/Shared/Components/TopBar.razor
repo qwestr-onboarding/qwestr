@@ -1,9 +1,16 @@
+@using Client.Infrastructure.Api.Endpoints
+@using Client.Infrastructure.Api.Endpoints.Gamification
+@using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses
+@using Qwestr.Shared.Contracts.ApiDto.Gamification.Responses
+@using System.Globalization
+
 @inject BffAuthClient BffAuth
 @inject SessionManager Session
 @inject NavigationManager Nav
+@inject UsersApi UsersApi
+@inject GamificationProfileApi ProfileApi
 
-<div>
-<MudAppBar Fixed="true" Elevation="0" Class="border-b-1 mud-border-default">
+<MudAppBar Fixed="true" Elevation="0" Class="border-b-1 mud-border-default" Style="overflow:visible;margin: 0;width: 100vw;">
     <MudHidden Breakpoint="Breakpoint.SmAndDown">
         <MudIconButton Icon="@Icons.Material.Filled.Menu"
                        Color="Color.Inherit"
@@ -13,9 +20,9 @@
 
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="ml-1">
         <MudStack Spacing="0">
-            <MudText Typo="Typo.h6" Class="brand-name" Style="font-weight: 600;  line-height: 1.1;" >Qwestr</MudText>
+            <MudText Typo="Typo.h6" Class="brand-name" Style="font-weight:600;line-height:1.1;">Qwestr</MudText>
             <MudHidden Breakpoint="Breakpoint.SmAndDown">
-                <MudText Typo="Typo.caption" Style="color: #9e9e9e; line-height: 1.1">Платформа адаптации сотрудников</MudText>
+                <MudText Typo="Typo.caption" Style="color:#9e9e9e;line-height:1.1">Платформа адаптации сотрудников</MudText>
             </MudHidden>
         </MudStack>
     </MudStack>
@@ -23,29 +30,111 @@
     <MudSpacer />
 
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-        <PointsBadge Points="1250"/>
+
+        @if (_profile is not null)
+        {
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            @* Tier + level badge *@
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1"
+                          Style="padding:4px 10px;background:rgba(0,0,0,0.05);border-radius:20px;overflow: hidden; position: relative; height: 34px">
+                @if (!string.IsNullOrEmpty(_profile.TierTitle))
+                {
+                    <MudPaper Style="@($"background:{_profile.TierColor ?? "#6C3FC5"};border-radius:8px;padding:1px 8px;margin-right:10px")" Elevation="0">
+                        <MudText Typo="Typo.caption" Style="font-weight:700;color:white;font-size:0.68rem;">@_profile.TierTitle</MudText>
+                    </MudPaper> 
+                    <MudText Typo="Typo.caption" Style="font-weight:700;color:#666;">@_profile.CurrentLevel ур.</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Style="font-weight:600;color:#999;">Ур. @_profile.CurrentLevel</MudText>
+                }
+                @if (_profile.XpToNextLevel > 0)
+                {
+                    var threshold = _profile.TotalXp + _profile.XpToNextLevel;
+                    var pct = threshold > 0 ? (double)_profile.TotalXp * 100.0 / threshold : 0;
+                    <MudProgressLinear Value="@pct" Color="@(pct > 20 ? pct > 70 ? Color.Success : Color.Primary : Color.Secondary)" Size="Size.Small"
+                                       Style="height:100%; position: absolute; bottom: 0; left: 0; z-index: -1; opacity: 0.3;" />
+                }
+                </MudStack>
+            </MudHidden>
+            @* XP counter
+            
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1"
+                          Style="padding:4px 10px;background:rgba(255,193,7,0.12);border-radius:20px 20px 20px 20px; height: 34px">
+                    <MudIcon Icon="@QwestrIcons.Gamification.XpBadge" Color="Color.Warning" Size="Size.Small" />
+                    <MudText Typo="Typo.body2" Style="font-weight:600;">
+                        @_profile.TotalXp.ToString("N0", CultureInfo.InvariantCulture)
+                    </MudText>
+                </MudStack>*@
+            
+
+            @* Coins counter *@
+            
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1"
+                          Style="padding:4px 10px;background:rgba(255, 152, 0, 0.1);border-radius:20px; height: 34px">
+                    <MudIcon Icon="@QwestrIcons.Gamification.CoinBadge" Size="Size.Small" Color="Color.Warning" />
+                    <MudText Typo="Typo.body2" Style="font-weight:600;" Color="Color.Warning">
+                        @_profile.AvailableCoins.ToString("N0", CultureInfo.InvariantCulture)
+                    </MudText>
+                </MudStack>
+            
+        }
+
+        @* Avatar + menu *@
         <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Variant="Variant.Outlined">
             <ActivatorContent>
-                <MudAvatar Color="Color.Primary" Style="cursor: pointer; font-size: 1rem">JD</MudAvatar>
+                <MudStack Style="position:relative;display:inline-flex;cursor:pointer;">
+                    <MudAvatar Style="@AvatarStyle()">@_initials</MudAvatar>
+                    @if (_profile?.Equipment?.AvatarFrame?.IconUrl is { Length: > 0 } frameUrl)
+                    {
+                        @((MarkupString)$"<img src=\"{frameUrl}\" style=\"position:absolute;inset:-3px;width:calc(100%+6px);height:calc(100%+6px);object-fit:contain;pointer-events:none;\" alt=\"\" />")
+                    }
+                </MudStack>
             </ActivatorContent>
             <ChildContent>
-                <MudStack Spacing="1" Style="padding: 2px 6px">
+                @if (_user is not null || _profile is not null)
+                {
+                    <MudStack Spacing="0" Class="px-3 py-2">
+                        @if (_user is not null)
+                        {
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">@($"{_user.FirstName} {_user.LastName}".Trim())</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_user.Email</MudText>
+                        }
+                        @if (_profile is not null && !string.IsNullOrEmpty(_profile.TierTitle))
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-1">
+                                <MudPaper Style="@($"background:{_profile.TierColor ?? "#6C3FC5"};border-radius:10px;padding:1px 8px;")" Elevation="0">
+                                    <MudText Typo="Typo.caption" Style="font-weight:700;color:white;">@_profile.TierTitle</MudText>
+                                </MudPaper>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@_profile.CurrentLevel ур.</MudText>
+                            </MudStack>
+                        }
+                    </MudStack>
+                    <MudDivider Class="my-1" />
+                }
+                <MudStack Spacing="1" Style="padding:2px 6px;">
                     <MudMenuItem Href="/profile" Class="border-rounded">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                            <MudIcon Icon="@QwestrIcons.Navigation.Profile" Size="Size.Small"/>
+                            <MudIcon Icon="@QwestrIcons.Navigation.Profile" Size="Size.Small" />
                             <MudText>Профиль</MudText>
+                        </MudStack>
+                    </MudMenuItem>
+                    <MudMenuItem Href="/gamification" Class="border-rounded">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@QwestrIcons.Navigation.Trophy" Size="Size.Small" />
+                            <MudText>Моя статистика</MudText>
                         </MudStack>
                     </MudMenuItem>
                     <MudMenuItem Href="/settings" Class="border-rounded">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                            <MudIcon Icon="@QwestrIcons.Navigation.Settings" Size="Size.Small"/>
+                            <MudIcon Icon="@QwestrIcons.Navigation.Settings" Size="Size.Small" />
                             <MudText>Настройки</MudText>
                         </MudStack>
                     </MudMenuItem>
-                    <MudDivider/>
+                    <MudDivider />
                     <MudMenuItem Class="border-rounded" OnClick="Logout" Disabled="_loggingOut">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                            <MudIcon Icon="@QwestrIcons.Navigation.Logout" Size="Size.Small"/>
+                            <MudIcon Icon="@QwestrIcons.Navigation.Logout" Size="Size.Small" />
                             <MudText>@(_loggingOut ? "Выход..." : "Выход")</MudText>
                         </MudStack>
                     </MudMenuItem>
@@ -54,13 +143,39 @@
         </MudMenu>
     </MudStack>
 </MudAppBar>
-</div>
 
 @code {
     [Parameter] public bool DrawerOpen { get; set; }
     [Parameter] public EventCallback OnMenuToggle { get; set; }
 
     private bool _loggingOut;
+    private PlayerProfileResponse? _profile;
+    private UserProfileResponse? _user;
+    private string _initials = "?";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var profileTask = ProfileApi.GetMyProfileAsync();
+        var userTask    = UsersApi.GetCurrentUserAsync();
+        await Task.WhenAll(profileTask, userTask);
+
+        if (profileTask.Result.IsSuccess) _profile = profileTask.Result.Data;
+        if (userTask.Result.IsSuccess && userTask.Result.Data is { } u)
+        {
+            _user = u;
+            var name = $"{u.FirstName} {u.LastName}".Trim();
+            var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            _initials = string.Join("", parts.Take(2).Select(p => char.ToUpper(p[0])));
+        }
+    }
+
+    private string AvatarStyle()
+    {
+        var bg = _profile?.TierColor is { } c ? c : "var(--mud-palette-primary)";
+        var frame = _profile?.Equipment?.AvatarFrame;
+        var border = frame is not null ? "3px solid rgba(255,193,7,0.8)" : "none";
+        return $"cursor:pointer;font-size:1rem;background:{bg};color:white;border:{border};";
+    }
 
     private async Task Logout()
     {

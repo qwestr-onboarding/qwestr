@@ -1,0 +1,153 @@
+@page "/manage/gamification/levels"
+@layout MainLayout
+
+@using System.Security.Claims
+@using Client.Infrastructure.Api.Endpoints.Gamification
+@using QwestrWebClient.Pages.Main.Gamification.Manage.Dialogs
+@using Qwestr.Shared.Contracts.ApiDto.Gamification.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Gamification.Responses
+@using Qwestr.Shared.Kernel.Enums.Identity
+
+@inject GamificationLevelTiersApi TiersApi
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+@inject SessionManager Session
+
+<PageTitle>Тиры уровней — Qwestr</PageTitle>
+
+@if (!_authorized)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <MudStack Spacing="4">
+
+        <MudStack Row="true" AlignItems="AlignItems.Center">
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h6" Style="font-weight:700;">Тиры уровней</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Звания и оформление уровней сотрудников
+                </MudText>
+            </MudStack>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.Add"
+                       OnClick="CreateAsync">
+                Добавить тир
+            </MudButton>
+        </MudStack>
+
+        @if (_loading)
+        {
+            <MudStack Spacing="2">
+                @for (var i = 0; i < 4; i++)
+                {
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="64px" Style="border-radius:10px;" />
+                }
+            </MudStack>
+        }
+        else if (_tiers.Count == 0)
+        {
+            <MudStack AlignItems="AlignItems.Center" Spacing="3" Class="pa-12">
+                <MudIcon Icon="@Icons.Material.Outlined.EmojiEvents" Size="Size.Large" Color="Color.Secondary" />
+                <MudText Typo="Typo.body1" Color="Color.Secondary">Тиры уровней ещё не настроены</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAsync">
+                    Создать первый тир
+                </MudButton>
+            </MudStack>
+        }
+        else
+        {
+            <MudStack Spacing="2">
+                @foreach (var tier in _tiers.OrderBy(t => t.Order))
+                {
+                    <MudPaper Elevation="1" Style="border-radius:12px;padding:14px 16px;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                            <MudPaper Style="@($"background:{tier.Color};border-radius:8px;width:40px;height:40px;flex-shrink:0;")"
+                                      Elevation="0" />
+                            <MudStack Spacing="0" Style="flex:1;">
+                                <MudText Typo="Typo.subtitle2" Style="font-weight:600;">@tier.Title</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    Уровни @tier.FromLevel – @tier.ToLevel · Порядок @tier.Order
+                                </MudText>
+                            </MudStack>
+                            @if (!string.IsNullOrEmpty(tier.FrameUrl))
+                            {
+                                <MudIcon Icon="@Icons.Material.Outlined.Image" Size="Size.Small"
+                                         Color="Color.Secondary" Title="Есть рамка" />
+                            }
+                            <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
+                                           OnClick="@(() => EditAsync(tier))" />
+                            <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small"
+                                           Color="Color.Error"
+                                           OnClick="@(() => DeleteAsync(tier))" />
+                        </MudStack>
+                    </MudPaper>
+                }
+            </MudStack>
+        }
+
+    </MudStack>
+}
+
+@code {
+    private bool _authorized;
+    private bool _loading = true;
+    private List<LevelTierResponse> _tiers = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var roleStr = Session.GetClaimFromToken(ClaimTypes.Role);
+        var role = Enum.TryParse<UserRole>(roleStr, out var r) ? r : UserRole.Employee;
+        if (role < UserRole.Manager) { Nav.NavigateTo("/dashboard"); return; }
+        _authorized = true;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        var result = await TiersApi.GetLevelTiersAsync();
+        if (result.IsSuccess) _tiers = result.Data!.Items;
+        _loading = false;
+    }
+
+    private async Task CreateAsync()
+    {
+        var dialog = await DialogService.ShowAsync<LevelTierDialog>("Новый тир");
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: CreateLevelTierRequest req })
+        {
+            var res = await TiersApi.CreateLevelTierAsync(req);
+            if (res.IsSuccess) { Snackbar.Add("Тир создан", Severity.Success); await LoadAsync(); }
+            else Snackbar.Add(res.Error ?? "Ошибка", Severity.Error);
+        }
+    }
+
+    private async Task EditAsync(LevelTierResponse tier)
+    {
+        var params_ = new DialogParameters<LevelTierDialog> { { x => x.Existing, tier } };
+        var dialog = await DialogService.ShowAsync<LevelTierDialog>("Редактировать тир", params_);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: UpdateLevelTierRequest req })
+        {
+            var res = await TiersApi.UpdateLevelTierAsync(tier.Id, req);
+            if (res.IsSuccess) { Snackbar.Add("Тир обновлён", Severity.Success); await LoadAsync(); }
+            else Snackbar.Add(res.Error ?? "Ошибка", Severity.Error);
+        }
+    }
+
+    private async Task DeleteAsync(LevelTierResponse tier)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Удалить тир",
+            $"Удалить тир «{tier.Title}»? Это действие необратимо.",
+            yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed != true) return;
+        var res = await TiersApi.DeleteLevelTierAsync(tier.Id);
+        if (res.IsSuccess) { Snackbar.Add("Тир удалён", Severity.Normal); await LoadAsync(); }
+        else Snackbar.Add(res.Error ?? "Ошибка", Severity.Error);
+    }
+}

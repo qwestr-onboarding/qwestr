@@ -1,0 +1,227 @@
+@page "/manage/gamification/shop"
+@layout MainLayout
+
+@using System.Security.Claims
+@using Client.Infrastructure.Api.Endpoints.Gamification
+@using QwestrWebClient.Pages.Main.Gamification.Manage.Dialogs
+@using Qwestr.Shared.Contracts.ApiDto.Gamification.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Gamification.Responses
+@using Qwestr.Shared.Kernel.Enums.Identity
+
+@inject GamificationShopApi ShopApi
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+@inject SessionManager Session
+
+<PageTitle>Управление магазином — Qwestr</PageTitle>
+
+@if (!_authorized)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <MudStack Spacing="4">
+
+        <MudStack Row="true" AlignItems="AlignItems.Center">
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h6" Style="font-weight:700;">Магазин</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Предметы для сотрудников</MudText>
+            </MudStack>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.Add"
+                       OnClick="CreateAsync">
+                Добавить предмет
+            </MudButton>
+        </MudStack>
+
+        @* Slot filter *@
+        <MudStack Row="true" Spacing="1" Style="flex-wrap:wrap;">
+            @foreach (var kv in _slotFilterOptions)
+            {
+                var key = kv.Key;
+                <MudChip T="string" Value="@key"
+                         Color="@(_slotFilter == key ? Color.Primary : Color.Default)"
+                         Variant="@(_slotFilter == key ? Variant.Filled : Variant.Outlined)"
+                         OnClick="@(() => _slotFilter = key)">
+                    @kv.Value
+                </MudChip>
+            }
+        </MudStack>
+
+        @if (_loading)
+        {
+            <MudGrid Spacing="2">
+                @for (var i = 0; i < 6; i++)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="130px" Style="border-radius:12px;" />
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else
+        {
+            var visible = _slotFilter == "All"
+                ? _items
+                : _items.Where(i => i.Slot == _slotFilter).ToList();
+
+            @if (visible.Count == 0)
+            {
+                <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="pa-10">
+                    <MudIcon Icon="@Icons.Material.Outlined.StoreMallDirectory" Size="Size.Large" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">Предметов нет</MudText>
+                </MudStack>
+            }
+            else
+            {
+                <MudGrid Spacing="2">
+                    @foreach (var item in visible)
+                    {
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudCard Elevation="1"
+                                     Style="@($"border-radius:12px;height:100%;{(!item.IsActive ? "opacity:0.55;" : "")}")">
+                                <MudCardContent>
+                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start">
+                                        <MudAvatar Size="Size.Medium" Style="background:#f5f5f5;flex-shrink:0;">
+                                            @if (!string.IsNullOrEmpty(item.IconUrl))
+                                            {
+                                                @((MarkupString)$"<img src=\"{item.IconUrl}\" style=\"width:28px;height:28px;object-fit:contain;\" alt=\"\" />")
+                                            }
+                                            else
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Outlined.Inventory2" />
+                                            }
+                                        </MudAvatar>
+                                        <MudStack Spacing="0" Style="flex:1;min-width:0;">
+                                            <MudText Typo="Typo.subtitle2" Style="font-weight:600;">@item.Name</MudText>
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Default" Style="height:18px;">
+                                                    @SlotLabel(item.Slot)
+                                                </MudChip>
+                                                @if (!item.IsActive)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Style="height:18px;">
+                                                        Отключён
+                                                    </MudChip>
+                                                }
+                                            </MudStack>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @item.Price монет
+                                                @if (item.RequiredLevel.HasValue)
+                                                {
+                                                    <text> · от @item.RequiredLevel ур.</text>
+                                                }
+                                                · @item.StackingPolicy
+                                            </MudText>
+                                        </MudStack>
+                                    </MudStack>
+                                </MudCardContent>
+                                <MudCardActions>
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
+                                                   OnClick="@(() => EditAsync(item))" />
+                                    @if (item.IsActive)
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Outlined.VisibilityOff"
+                                                       Size="Size.Small" Color="Color.Warning"
+                                                       title="Деактивировать"
+                                                       OnClick="@(() => DeactivateAsync(item))" />
+                                    }
+                                </MudCardActions>
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+        }
+
+    </MudStack>
+}
+
+@code {
+    private static readonly Dictionary<string, string> _slotLabels = new()
+    {
+        ["AvatarFrame"]  = "Рамки",
+        ["Background"]   = "Фоны",
+        ["Pet"]          = "Питомцы",
+        ["Class"]        = "Классы",
+        ["Weapon"]       = "Оружие",
+        ["ProfileColor"] = "Цвет",
+        ["Consumable"]   = "Расходники",
+    };
+
+    private static readonly Dictionary<string, string> _slotFilterOptions = new()
+    {
+        ["All"]          = "Все",
+        ["AvatarFrame"]  = "Рамки",
+        ["Background"]   = "Фоны",
+        ["Pet"]          = "Питомцы",
+        ["Class"]        = "Классы",
+        ["Weapon"]       = "Оружие",
+        ["ProfileColor"] = "Цвет",
+        ["Consumable"]   = "Расходники",
+    };
+
+    private bool _authorized;
+    private bool _loading = true;
+    private List<ShopItemManagementResponse> _items = [];
+    private string _slotFilter = "All";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var roleStr = Session.GetClaimFromToken(ClaimTypes.Role);
+        var role = Enum.TryParse<UserRole>(roleStr, out var r) ? r : UserRole.Employee;
+        if (role < UserRole.Manager) { Nav.NavigateTo("/dashboard"); return; }
+        _authorized = true;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        var result = await ShopApi.GetShopItemsForManagementAsync();
+        if (result.IsSuccess) _items = result.Data!.Items;
+        _loading = false;
+    }
+
+    private async Task CreateAsync()
+    {
+        var dialog = await DialogService.ShowAsync<ShopItemDialog>("Новый предмет");
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: CreateShopItemRequest req })
+        {
+            var res = await ShopApi.CreateShopItemAsync(req);
+            if (res.IsSuccess) { Snackbar.Add("Предмет создан", Severity.Success); await LoadAsync(); }
+            else Snackbar.Add(res.Error ?? "Ошибка", Severity.Error);
+        }
+    }
+
+    private async Task EditAsync(ShopItemManagementResponse item)
+    {
+        var params_ = new DialogParameters<ShopItemDialog> { { x => x.Existing, item } };
+        var dialog = await DialogService.ShowAsync<ShopItemDialog>("Редактировать предмет", params_);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: UpdateShopItemRequest req })
+        {
+            var res = await ShopApi.UpdateShopItemAsync(item.Id, req);
+            if (res.IsSuccess) { Snackbar.Add("Предмет обновлён", Severity.Success); await LoadAsync(); }
+            else Snackbar.Add(res.Error ?? "Ошибка", Severity.Error);
+        }
+    }
+
+    private async Task DeactivateAsync(ShopItemManagementResponse item)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Деактивировать",
+            $"Деактивировать «{item.Name}»? Предмет пропадёт из магазина, но останется у тех, кто купил.",
+            yesText: "Деактивировать", cancelText: "Отмена");
+        if (confirmed != true) return;
+        var res = await ShopApi.DeactivateShopItemAsync(item.Id);
+        if (res.IsSuccess) { Snackbar.Add("Деактивировано", Severity.Normal); await LoadAsync(); }
+        else Snackbar.Add(res.Error ?? "Ошибка", Severity.Error);
+    }
+
+    private static string SlotLabel(string slot) => _slotLabels.GetValueOrDefault(slot, slot);
+}

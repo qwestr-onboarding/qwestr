@@ -1,0 +1,181 @@
+@page "/leaderboard"
+@layout MainLayout
+
+@using Client.Infrastructure.Api.Endpoints.Gamification
+@using Qwestr.Shared.Contracts.ApiDto.Gamification.Responses
+
+@inject GamificationLeaderboardApi LeaderboardApi
+@inject NavigationManager Nav
+
+<PageTitle>Лидерборд — Qwestr</PageTitle>
+
+<MudStack Spacing="4">
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <MudText Typo="Typo.h6" Style="font-weight:700;">Лидерборд</MudText>
+        <MudSpacer />
+        <MudChipSet T="string" @bind-SelectedValue="_period" SelectionMode="SelectionMode.SingleSelection"
+                    CheckMark="false" Style="gap:4px;">
+            @foreach (var p in _periods)
+            {
+                <MudChip T="string" Value="@p.Key" Color="@(_period == p.Key ? Color.Primary : Color.Default)"
+                         Variant="@(_period == p.Key ? Variant.Filled : Variant.Outlined)"
+                         OnClick="@(() => ChangePeriodAsync(p.Key))"
+                         Size="Size.Small">
+                    @p.Value
+                </MudChip>
+            }
+        </MudChipSet>
+    </MudStack>
+
+    @if (_loading)
+    {
+        <MudStack Spacing="2">
+            @for (var i = 0; i < 5; i++)
+            {
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="56px" Style="border-radius:10px;" />
+            }
+        </MudStack>
+    }
+    else
+    {
+        @* Top 3 podium *@
+        @if (_entries.Count >= 3)
+        {
+            <MudGrid Spacing="2" Class="mb-2">
+                @foreach (var pos in new[] { 1, 0, 2 })
+                {
+                    var e = _entries[pos];
+                    var (icon, color) = pos == 0
+                        ? (QwestrIcons.Navigation.Trophy, "#FFD700")
+                        : pos == 1
+                            ? (QwestrIcons.Navigation.Trophy, "#C0C0C0")
+                            : (QwestrIcons.Navigation.Trophy, "#CD7F32");
+                    <MudItem xs="4">
+                        <MudCard Elevation="2" Style="border-radius:14px;text-align:center;cursor:pointer;"
+                                 @onclick="@(() => Nav.NavigateTo($"/gamification/{e.UserId}"))">
+                            <MudCardContent Class="pa-3">
+                                <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@icon" Style="@($"color:{color};font-size:2rem;")" />
+                                    <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                        @(e.DisplayName.Length > 0 ? char.ToUpper(e.DisplayName[0]) : '?')
+                                    </MudAvatar>
+                                    <MudText Typo="Typo.caption" Style="font-weight:600;line-height:1.2;">@TrimName(e.DisplayName)</MudText>
+                                    @if (!string.IsNullOrEmpty(e.TierTitle))
+                                    {
+                                        <MudText Typo="Typo.caption" Style="@($"color:{e.TierColor ?? "#999"};font-size:0.65rem;")">@e.TierTitle</MudText>
+                                    }
+                                    <MudText Typo="Typo.caption" Style="font-weight:700;">@XpDisplay(e) XP</MudText>
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+
+        @* Full list *@
+        <MudStack Spacing="1">
+            @foreach (var e in _entries)
+            {
+                var isSelf = e.UserId == _myId;
+                <MudPaper Elevation="@(isSelf ? 2 : 1)"
+                          Style="@($"border-radius:10px;padding:12px 14px;cursor:pointer;{(isSelf ? "border:2px solid var(--mud-palette-primary);" : "")}")"
+                          @onclick="@(() => Nav.NavigateTo($"/gamification/{e.UserId}"))">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudText Typo="Typo.body2" Style="font-weight:700;min-width:28px;color:#9e9e9e;">
+                            @PosLabel(e.Position)
+                        </MudText>
+                        <MudAvatar Size="Size.Small" Color="@(isSelf ? Color.Primary : Color.Secondary)">
+                            @(e.DisplayName.Length > 0 ? char.ToUpper(e.DisplayName[0]) : '?')
+                        </MudAvatar>
+                        <MudStack Spacing="0" Style="flex:1;min-width:0;">
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">
+                                @e.DisplayName @(isSelf ? "(Вы)" : "")
+                            </MudText>
+                            @if (!string.IsNullOrEmpty(e.TierTitle))
+                            {
+                                <MudText Typo="Typo.caption" Style="@($"color:{e.TierColor ?? "#999"};")">
+                                    @e.TierTitle · @e.Level ур.
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Уровень @e.Level</MudText>
+                            }
+                        </MudStack>
+                        <MudText Typo="Typo.body2" Style="font-weight:700;">@XpDisplay(e) XP</MudText>
+                    </MudStack>
+                </MudPaper>
+            }
+        </MudStack>
+
+        @* My position if not in visible list *@
+        @if (_myPosition is not null && !_entries.Any(e => e.UserId == _myId))
+        {
+            <MudDivider />
+            <MudPaper Elevation="2" Style="border-radius:10px;padding:12px 14px;border:2px solid var(--mud-palette-primary);">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.body2" Style="font-weight:700;min-width:28px;color:#9e9e9e;">
+                        @_myPosition.Position
+                    </MudText>
+                    <MudAvatar Size="Size.Small" Color="Color.Primary">Я</MudAvatar>
+                    <MudStack Spacing="0" Style="flex:1;">
+                        <MudText Typo="Typo.body2" Style="font-weight:600;">Вы</MudText>
+                        @if (!string.IsNullOrEmpty(_myPosition.TierTitle))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_myPosition.TierTitle · @_myPosition.Level ур.</MudText>
+                        }
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Style="font-weight:700;">
+                        @(_period == "AllTime" ? _myPosition.TotalXp : _myPosition.PeriodXp) XP
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+        }
+    }
+
+</MudStack>
+
+@code {
+    private static readonly Dictionary<string, string> _periods = new()
+    {
+        ["AllTime"] = "За всё время",
+        ["Month"]   = "Этот месяц",
+        ["Week"]    = "Эта неделя",
+    };
+
+    private string _period = "AllTime";
+    private bool _loading = true;
+    private List<LeaderboardEntryResponse> _entries = [];
+    private MyLeaderboardPositionResponse? _myPosition;
+    private Guid _myId;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task ChangePeriodAsync(string period)
+    {
+        _period = period;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        var t1 = LeaderboardApi.GetLeaderboardAsync(_period, 50);
+        var t2 = LeaderboardApi.GetMyLeaderboardPositionAsync(_period);
+        await Task.WhenAll(t1, t2);
+        if (t1.Result.IsSuccess) _entries = t1.Result.Data!.Items;
+        if (t2.Result.IsSuccess)
+        {
+            _myPosition = t2.Result.Data;
+            _myId = _entries.FirstOrDefault(e => e.Position == _myPosition?.Position)?.UserId ?? Guid.Empty;
+        }
+        _loading = false;
+    }
+
+    private int XpDisplay(LeaderboardEntryResponse e) => _period == "AllTime" ? e.TotalXp : e.PeriodXp;
+    private static string TrimName(string n) => n.Length > 10 ? n[..10] + "…" : n;
+    private static string PosLabel(int pos) => pos switch { 1 => "🥇", 2 => "🥈", 3 => "🥉", _ => $"#{pos}" };
+}

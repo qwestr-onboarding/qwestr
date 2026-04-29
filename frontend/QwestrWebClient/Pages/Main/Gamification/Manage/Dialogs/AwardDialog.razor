@@ -1,0 +1,203 @@
+@using Qwestr.Shared.Contracts.ApiDto.Gamification.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Gamification.Responses
+
+<MudDialog Style="min-width:460px;">
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
+
+            @if (Existing is null)
+            {
+                <MudStack Row="true" Spacing="1">
+                    <MudChip T="string" Variant="@(_isAuto ? Variant.Filled : Variant.Outlined)"
+                             Color="@(_isAuto ? Color.Primary : Color.Default)"
+                             OnClick="@(() => { _isAuto = true; _trigger = "StepCompleted"; _condition = "Count"; })">
+                        Достижение (авто)
+                    </MudChip>
+                    <MudChip T="string" Variant="@(!_isAuto ? Variant.Filled : Variant.Outlined)"
+                             Color="@(!_isAuto ? Color.Primary : Color.Default)"
+                             OnClick="@(() => { _isAuto = false; })">
+                        Бейдж (вручную)
+                    </MudChip>
+                </MudStack>
+            }
+
+            <MudTextField @bind-Value="_code" Label="Код" Variant="Variant.Outlined"
+                          FullWidth="true" MaxLength="100" Disabled="@(Existing is not null)"
+                          Placeholder="master_onboarder" />
+            <MudTextField @bind-Value="_title" Label="Название" Variant="Variant.Outlined"
+                          FullWidth="true" MaxLength="200" Required="true" />
+            <MudTextField @bind-Value="_description" Label="Описание" Variant="Variant.Outlined"
+                          FullWidth="true" Lines="2" MaxLength="500" />
+            <MudTextField @bind-Value="_iconUrl" Label="URL иконки" Variant="Variant.Outlined"
+                          FullWidth="true" />
+
+            @if (_isAuto && Existing is null)
+            {
+                <MudDivider />
+                <MudText Typo="Typo.subtitle2" Style="font-weight:600;">Правило выдачи</MudText>
+
+                <MudSelect Value="@_trigger" Label="Триггер" Variant="Variant.Outlined" FullWidth="true"
+                           T="string" ValueChanged="OnTriggerChanged">
+                    @foreach (var kv in _triggerLabels)
+                    {
+                        <MudSelectItem Value="@kv.Key">@kv.Value</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudSelect @bind-Value="_condition" Label="Условие" Variant="Variant.Outlined" FullWidth="true" T="string">
+                    @foreach (var c in ValidConditions(_trigger))
+                    {
+                        <MudSelectItem Value="@c">@ConditionLabel(c)</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudNumericField @bind-Value="_targetValue" Label="Целевое значение" Variant="Variant.Outlined"
+                                 Min="1" FullWidth="true" />
+
+                @if (_condition == "CountWithFilter" && _trigger == "TestPassed")
+                {
+                    <MudNumericField @bind-Value="_minScore" Label="Минимальный балл (%)"
+                                     Variant="Variant.Outlined" Min="1" Max="100" FullWidth="true" />
+                }
+
+                @if (!string.IsNullOrEmpty(_trigger) && !string.IsNullOrEmpty(_condition))
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
+                        @RulePreview()
+                    </MudAlert>
+                }
+
+                <MudDivider />
+                <MudText Typo="Typo.subtitle2" Style="font-weight:600;">Бонусы при получении</MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudNumericField @bind-Value="_xpBonus" Label="XP" Variant="Variant.Outlined"
+                                         Min="0" FullWidth="true" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudNumericField @bind-Value="_coinsBonus" Label="Монеты" Variant="Variant.Outlined"
+                                         Min="0" FullWidth="true" />
+                    </MudItem>
+                </MudGrid>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Отмена</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">
+            @(Existing is null ? "Создать" : "Сохранить")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public AwardResponse? Existing { get; set; }
+
+    private bool _isAuto = true;
+    private string _code = "";
+    private string _title = "";
+    private string _description = "";
+    private string _iconUrl = "";
+    private string _trigger = "StepCompleted";
+    private string _condition = "Count";
+    private int _targetValue = 1;
+    private int _minScore = 70;
+    private int _xpBonus;
+    private int _coinsBonus;
+    private string? _error;
+
+    private static readonly Dictionary<string, string> _triggerLabels = new()
+    {
+        ["StepCompleted"]      = "Завершён шаг",
+        ["ScenarioCompleted"]  = "Завершён сценарий",
+        ["TestPassed"]         = "Пройден тест",
+        ["LevelReached"]       = "Достигнут уровень",
+        ["DailyActivity"]      = "Активность по дням",
+        ["PointsAccumulated"]  = "Накоплен опыт",
+    };
+
+    private static string[] ValidConditions(string trigger) => trigger switch
+    {
+        "StepCompleted"     => ["Count", "CountWithFilter"],
+        "ScenarioCompleted" => ["Count"],
+        "TestPassed"        => ["Count", "CountWithFilter"],
+        "LevelReached"      => ["Threshold"],
+        "DailyActivity"     => ["Count", "Streak"],
+        "PointsAccumulated" => ["Threshold"],
+        _                   => ["Count"],
+    };
+
+    private static string ConditionLabel(string c) => c switch
+    {
+        "Count"           => "Количество раз",
+        "CountWithFilter" => "С фильтром",
+        "Threshold"       => "Достичь значения",
+        "Streak"          => "Подряд",
+        _                 => c,
+    };
+
+    protected override void OnParametersSet()
+    {
+        if (Existing is null) return;
+        _code        = Existing.Code;
+        _title       = Existing.Title;
+        _description = Existing.Description;
+        _iconUrl     = Existing.IconUrl;
+    }
+
+    private void OnTriggerChanged(string trigger)
+    {
+        _trigger = trigger ?? "StepCompleted";
+        var valid = ValidConditions(_trigger);
+        if (!valid.Contains(_condition)) _condition = valid[0];
+    }
+
+    private string RulePreview()
+    {
+        var triggerText = _triggerLabels.GetValueOrDefault(_trigger, _trigger);
+        return _condition switch
+        {
+            "Count"           => $"Выдаётся когда событие «{triggerText}» произойдёт {_targetValue} раз",
+            "CountWithFilter" => $"Выдаётся когда «{triggerText}» произойдёт {_targetValue} раз с фильтром" +
+                                 (_trigger == "TestPassed" ? $" (балл ≥{_minScore}%)" : ""),
+            "Threshold"       => $"Выдаётся когда «{triggerText}» достигнет значения {_targetValue}",
+            "Streak"          => $"Выдаётся за {_targetValue} подряд: «{triggerText}»",
+            _                 => "",
+        };
+    }
+
+    private void Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_title)) { _error = "Введите название"; return; }
+        if (string.IsNullOrWhiteSpace(_code) && Existing is null) { _error = "Введите код"; return; }
+
+        if (Existing is not null)
+        {
+            MudDialog.Close(DialogResult.Ok(new UpdateAwardRequest(
+                _title.Trim(), _description.Trim(), _iconUrl.Trim())));
+            return;
+        }
+
+        if (_isAuto)
+        {
+            Dictionary<string, string>? filterParams = null;
+            if (_condition == "CountWithFilter" && _trigger == "TestPassed")
+                filterParams = new() { ["minScore"] = _minScore.ToString() };
+
+            MudDialog.Close(DialogResult.Ok<object>(new CreateAutomaticAwardRequest(
+                _code.Trim(), _title.Trim(), _description.Trim(), _iconUrl.Trim(),
+                _trigger, _condition, _targetValue, filterParams, _xpBonus, _coinsBonus)));
+        }
+        else
+        {
+            MudDialog.Close(DialogResult.Ok<object>(new CreateManualAwardRequest(
+                _code.Trim(), _title.Trim(), _description.Trim(), _iconUrl.Trim(),
+                _xpBonus, _coinsBonus)));
+        }
+    }
+}
