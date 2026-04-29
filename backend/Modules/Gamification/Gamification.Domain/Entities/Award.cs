@@ -11,7 +11,7 @@ public sealed class Award : AggregateRoot<Guid>, IAuditableEntity
     public string Code { get; private set; } = string.Empty;
     public string Title { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
-    public string IconUrl { get; private set; } = string.Empty;
+    public string? IconUrl { get; private set; } = string.Empty;
     public AwardIssuanceType IssuanceType { get; private set; }
     public AwardRule? Rule { get; private set; }  // только для Automatic
     public int XpBonus { get; private set; }
@@ -24,10 +24,10 @@ public sealed class Award : AggregateRoot<Guid>, IAuditableEntity
     private Award() { }
 
     public static ActionResult<Award> CreateAutomatic(
-        Guid? tenantId, string code, string title, string description, string iconUrl,
+        Guid? tenantId, string code, string title, string description, string? iconUrl,
         AwardRule rule, int xpBonus, int coinsBonus)
     {
-        var validation = ValidateBasics(code, title, iconUrl);
+        var validation = ValidateBasics(code, title);
         if (validation.IsFailure)
         {
             return ActionResult<Award>.Failure(validation.Error);
@@ -50,12 +50,17 @@ public sealed class Award : AggregateRoot<Guid>, IAuditableEntity
     }
 
     public static ActionResult<Award> CreateManual(
-        Guid tenantId, string code, string title, string description, string iconUrl)
+        Guid tenantId, string code, string title, string description, string? iconUrl,
+        int xpBonus, int coinsBonus)
     {
-        var validation = ValidateBasics(code, title, iconUrl);
+        var validation = ValidateBasics(code, title);
         if (validation.IsFailure)
         {
             return ActionResult<Award>.Failure(validation.Error);
+        }
+        if (xpBonus < 0 || coinsBonus < 0)
+        {
+            return ActionResult<Award>.Failure("Award.NegativeBonus");
         }
         return ActionResult<Award>.Success(new Award
         {
@@ -64,13 +69,13 @@ public sealed class Award : AggregateRoot<Guid>, IAuditableEntity
             Code = code, Title = title, Description = description, IconUrl = iconUrl,
             IssuanceType = AwardIssuanceType.Manual,
             Rule = null,
-            XpBonus = 0,
-            CoinsBonus = 0,
+            XpBonus = xpBonus,
+            CoinsBonus = coinsBonus,
             IsActive = true
         });
     }
 
-    private static ActionResult ValidateBasics(string code, string title, string iconUrl)
+    private static ActionResult ValidateBasics(string code, string title)
     {
         if (string.IsNullOrWhiteSpace(code))
         {
@@ -80,11 +85,14 @@ public sealed class Award : AggregateRoot<Guid>, IAuditableEntity
         {
             return ActionResult.Failure("Award.EmptyTitle");
         }
-        if (string.IsNullOrWhiteSpace(iconUrl))
-        {
-            return ActionResult.Failure("Award.EmptyIcon");
-        }
         return ActionResult.Success();
+    }
+
+    public void Update(string title, string description, string? iconUrl)
+    {
+        Title = title;
+        Description = description;
+        IconUrl = iconUrl;
     }
 
     public void Deactivate() => IsActive = false;

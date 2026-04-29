@@ -11,6 +11,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Folder Include="Api\Endpoints\Gamification\" />
         <Folder Include="Http\" />
         <Folder Include="Mapping\" />
         <Folder Include="Models\" />

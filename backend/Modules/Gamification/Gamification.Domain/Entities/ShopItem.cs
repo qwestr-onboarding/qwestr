@@ -34,7 +34,7 @@ public sealed class ShopItem : AggregateRoot<Guid>, IAuditableEntity
         {
             return ActionResult<ShopItem>.Failure("ShopItem.NegativePrice");
         }
-        if (requiredLevel.HasValue && requiredLevel.Value < 1)
+        if (requiredLevel.HasValue && requiredLevel.Value < 0)
         {
             return ActionResult<ShopItem>.Failure("ShopItem.InvalidLevel");
         }
@@ -57,6 +57,16 @@ public sealed class ShopItem : AggregateRoot<Guid>, IAuditableEntity
             StackingPolicy = stackingPolicy,
             IsActive = true
         });
+    }
+
+    public void Update(string name, string? description, string iconUrl, string assetData, int price, int? requiredLevel)
+    {
+        Name = name;
+        Description = description;
+        IconUrl = iconUrl;
+        AssetData = assetData;
+        Price = price;
+        RequiredLevel = requiredLevel;
     }
 
     public void Deactivate() => IsActive = false;

@@ -25,7 +25,17 @@ public sealed class CoinTransaction : Entity<Guid>, IAuditableEntity
         {
             throw new InvalidOperationException("Earned amount must be positive");
         }
-        return new CoinTransaction { /* ... */ };
+        return new CoinTransaction
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            ProfileId = profileId,
+            Amount = amount,
+            Source = source,
+            SourceEntityId = sourceEntityId,
+            Reason = reason,
+            OccurredAt = DateTime.UtcNow
+        };
     }
 
     public static CoinTransaction CreateSpent(Guid tenantId, Guid profileId, int amount, Guid shopItemId, string reason)

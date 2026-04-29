@@ -5,10 +5,12 @@ namespace Qwestr.Modules.Gamification.Domain.ValueObjects;
 
 public sealed class AwardRule
 {
-    public RuleTrigger Trigger { get; }
-    public RuleCondition Condition { get; }
-    public int TargetValue { get; }
-    public IReadOnlyDictionary<string, string> FilterParams { get; }
+    public RuleTrigger Trigger { get; private set; }
+    public RuleCondition Condition { get; private set; }
+    public int TargetValue { get; private set; }
+    public IReadOnlyDictionary<string, string> FilterParams { get; private set; } = new Dictionary<string, string>();
+
+    private AwardRule() { }
 
     private AwardRule(
         RuleTrigger trigger,

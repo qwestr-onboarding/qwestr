@@ -1,15 +1,17 @@
-﻿using Qwestr.Shared.Kernel.Enums.Gamification;
+using Qwestr.Shared.Kernel.Enums.Gamification;
 
 namespace Qwestr.Modules.Gamification.Domain.ValueObjects;
 
 public sealed class Equipment
 {
-    public Guid? ProfileColorItemId { get; }
-    public Guid? AvatarFrameItemId { get; }
-    public Guid? BackgroundItemId { get; }
-    public Guid? PetItemId { get; }
-    public Guid? ClassItemId { get; }
-    public Guid? WeaponItemId { get; }
+    public Guid? ProfileColorItemId { get; private set; }
+    public Guid? AvatarFrameItemId { get; private set; }
+    public Guid? BackgroundItemId { get; private set; }
+    public Guid? PetItemId { get; private set; }
+    public Guid? ClassItemId { get; private set; }
+    public Guid? WeaponItemId { get; private set; }
+
+    private Equipment() { }
 
     private Equipment(
         Guid? profileColor,

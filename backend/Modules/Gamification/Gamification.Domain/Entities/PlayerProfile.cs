@@ -9,6 +9,7 @@ public sealed class PlayerProfile : AggregateRoot<Guid>, IAuditableEntity
 {
     public Guid TenantId { get; private set; }
     public Guid UserId { get; private set; }
+    public string? Status { get; private set; }
     public int TotalXp { get; private set; }
     public int AvailableCoins { get; private set; }
     public int CurrentLevel { get; private set; }
@@ -25,6 +26,7 @@ public sealed class PlayerProfile : AggregateRoot<Guid>, IAuditableEntity
         return new PlayerProfile
         {
             Id = Guid.NewGuid(),
+            Status = "",
             TenantId = tenantId,
             UserId = userId,
             TotalXp = 0,
@@ -35,6 +37,11 @@ public sealed class PlayerProfile : AggregateRoot<Guid>, IAuditableEntity
         };
     }
 
+    public void SetStatus(string? status)
+    {
+        Status = status;
+    }
+    
     public void AddXp(int amount)
     {
         if (amount <= 0)
