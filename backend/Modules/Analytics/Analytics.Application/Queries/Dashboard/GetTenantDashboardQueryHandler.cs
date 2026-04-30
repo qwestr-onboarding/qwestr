@@ -48,10 +48,10 @@ public class GetTenantDashboardQueryHandler : IRequestHandler<GetTenantDashboard
             ? Math.Round((decimal)totalCompleted / totalAssigned, 4)
             : 0m;
 
-        var latestSnapshot = snapshots.MaxBy(s => s.Date);
-        var activeEmployees = latestSnapshot?.ActiveUsers ?? 0;
+        var activeEmployees = await _snapshotRepo.CountDistinctActiveUsersAsync(request.TenantId, today, ct);
+        var avgDuration = await _assignmentRepo.GetAvgCompletionDurationAsync(request.TenantId, ct);
 
-        var kpis = new DashboardKpisResponse(activeEmployees, avgCompletionRate, TimeSpan.Zero, atRisk);
+        var kpis = new DashboardKpisResponse(activeEmployees, avgCompletionRate, avgDuration, atRisk);
 
         var trend = snapshots
             .OrderBy(s => s.Date)

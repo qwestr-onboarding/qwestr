@@ -54,8 +54,17 @@ public class StepCompletedHandler : INotificationHandler<StepCompletedAnalyticsI
             return;
         }
 
+        var today = DateOnly.FromDateTime(notification.CompletedAt);
+        var isFirstActivityToday = !await _stepFactRepo.HasUserActivityOnDateAsync(
+            notification.TenantId, notification.UserId, today, ct);
+
         await _stepFactRepo.AddAsync(factResult.Value!, ct);
         await _stepFactRepo.SaveChangesAsync(ct);
+
+        if (isFirstActivityToday)
+        {
+            await _accumulator.IncrementAsync(notification.TenantId, DailyMetricKind.ActiveUsers, 1, ct);
+        }
 
         if (notification.WasSuccessful)
         {

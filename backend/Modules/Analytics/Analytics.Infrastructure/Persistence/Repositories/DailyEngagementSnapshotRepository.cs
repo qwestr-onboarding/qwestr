@@ -41,11 +41,21 @@ public class DailyEngagementSnapshotRepository : IDailyEngagementSnapshotReposit
 
     public async Task<IReadOnlyList<Guid>> GetActiveTenantIdsAsync(DateOnly since, CancellationToken ct)
     {
-        return await _db.DailyEngagementSnapshots
+        var sinceDt = since.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+
+        var fromSnapshots = await _db.DailyEngagementSnapshots
             .Where(s => s.Date >= since)
             .Select(s => s.TenantId)
             .Distinct()
             .ToListAsync(ct);
+
+        var fromFacts = await _db.StepCompletionFacts
+            .Where(f => f.CompletedAt >= sinceDt)
+            .Select(f => f.TenantId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        return fromSnapshots.Union(fromFacts).ToList();
     }
 
     public async Task<int> CountDistinctActiveUsersAsync(Guid tenantId, DateOnly date, CancellationToken ct)

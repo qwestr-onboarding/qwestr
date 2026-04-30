@@ -1,0 +1,325 @@
+@page "/analytics/insights"
+@layout MainLayout
+
+@using System.Net
+@using System.Security.Claims
+@using Client.Infrastructure.Api.Endpoints.Analytics
+@using Qwestr.Shared.Contracts.ApiDto.Analytics.Responses
+@using Qwestr.Shared.Kernel.Enums.Analytics
+@using Qwestr.Shared.Kernel.Enums.Identity
+
+@implements IDisposable
+
+@inject AnalyticsApi AnalyticsApi
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@inject SessionManager Session
+
+<PageTitle>AI Инсайты — Qwestr</PageTitle>
+
+@if (!_authorized)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <MudStack Spacing="4">
+
+        @* Header *@
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIconButton Icon="@Icons.Material.Outlined.ArrowBack" Size="Size.Small"
+                           OnClick='() => Nav.NavigateTo("/analytics")' />
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h6" Style="font-weight:700;">AI Инсайты</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Аналитика и рекомендации на основе данных</MudText>
+            </MudStack>
+        </MudStack>
+
+        @* Generate block *@
+        <MudCard Elevation="1" Style="border-radius:14px;">
+            <MudCardContent Class="pa-4">
+                <MudStack Spacing="3">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Outlined.AutoAwesome" Color="Color.Secondary" Size="Size.Small" />
+                        <MudText Typo="Typo.subtitle2" Style="font-weight:700;">Сгенерировать новый анализ</MudText>
+                    </MudStack>
+
+                    @* Provider selector *@
+                    <MudStack Row="true" Spacing="1">
+                        @foreach (var p in _providers)
+                        {
+                            var key = p.Key;
+                            <MudChip T="LlmProvider" Value="@key" Size="Size.Small"
+                                     Color="@(_selectedProvider == key ? Color.Primary : Color.Default)"
+                                     Variant="@(_selectedProvider == key ? Variant.Filled : Variant.Outlined)"
+                                     Disabled="@(_generating || IsCooldownActive)"
+                                     OnClick="@(() => _selectedProvider = key)">
+                                @p.Value
+                            </MudChip>
+                        }
+                    </MudStack>
+
+                    @* Generate button / cooldown / progress *@
+                    @if (_generating)
+                    {
+                        <MudStack Spacing="1">
+                            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center">
+                                Идёт анализ данных... это может занять до минуты
+                            </MudText>
+                        </MudStack>
+                    }
+                    else if (IsCooldownActive)
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Outlined.HourglassTop" Color="Color.Default" Size="Size.Small" />
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Следующая генерация через @FormatCountdown(_remainingSeconds)
+                            </MudText>
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Outlined.AutoAwesome"
+                                   OnClick="GenerateAsync" Disabled="@_generating">
+                            Сгенерировать
+                        </MudButton>
+                    }
+
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-style:italic;">
+                        ИИ помогает выявить закономерности, но итоговое решение всегда за вами
+                    </MudText>
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+
+        @if (_loadingInsights)
+        {
+            <MudStack Spacing="2">
+                @for (var i = 0; i < 3; i++)
+                {
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="80px" Style="border-radius:12px;" />
+                }
+            </MudStack>
+        }
+        else if (_insights is null)
+        {
+            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="pa-8">
+                <MudIcon Icon="@Icons.Material.Outlined.Lightbulb" Size="Size.Large" Color="Color.Default" />
+                <MudText Typo="Typo.body1" Color="Color.Secondary">Инсайтов пока нет</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Нажмите «Сгенерировать», чтобы запустить анализ</MudText>
+            </MudStack>
+        }
+        else
+        {
+            @* Metadata *@
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Style="flex-wrap:wrap;">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Сгенерировано @_insights.GeneratedAt.ToString("dd.MM.yyyy HH:mm")
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">·</MudText>
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Style="height:18px;">
+                    @ProviderLabel(_insights.Provider)
+                </MudChip>
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Style="height:18px;">
+                    @TriggerLabel(_insights.Trigger)
+                </MudChip>
+            </MudStack>
+
+            @* Insights *@
+            @if (_insights.Insights.Count > 0)
+            {
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:700;">Наблюдения</MudText>
+                    @foreach (var ins in _insights.Insights.OrderByDescending(i => (int)i.Severity))
+                    {
+                        var (sColor, sIcon, sLabel) = SeverityStyle(ins.Severity);
+                        <MudCard Elevation="1" Style="border-radius:12px;">
+                            <MudCardContent Class="pa-3">
+                                <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2">
+                                    <MudAvatar Size="Size.Small" Style="@($"background:{SeverityBg(ins.Severity)};flex-shrink:0;")">
+                                        <MudIcon Icon="@sIcon" Color="@sColor" Size="Size.Small" />
+                                    </MudAvatar>
+                                    <MudStack Spacing="1" Style="flex:1;min-width:0;">
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Style="flex-wrap:wrap;">
+                                            <MudText Typo="Typo.body2" Style="font-weight:700;">@ins.Title</MudText>
+                                            <MudChip T="string" Size="Size.Small" Color="@sColor" Style="height:18px;">@sLabel</MudChip>
+                                        </MudStack>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">@ins.Description</MudText>
+                                        @if (!string.IsNullOrEmpty(ins.MetricReference))
+                                        {
+                                            <MudText Typo="Typo.caption" Style="color:var(--mud-palette-primary);">
+                                                Метрика: @ins.MetricReference
+                                            </MudText>
+                                        }
+                                    </MudStack>
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+                    }
+                </MudStack>
+            }
+
+            @* Recommendations *@
+            @if (_insights.Recommendations.Count > 0)
+            {
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:700;">Рекомендации</MudText>
+                    @foreach (var rec in _insights.Recommendations.OrderBy(r => r.Priority))
+                    {
+                        var (cColor, cLabel) = CategoryStyle(rec.Category);
+                        <MudCard Elevation="1" Style="border-radius:12px;">
+                            <MudCardContent Class="pa-3">
+                                <MudStack Spacing="1">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Style="flex-wrap:wrap;">
+                                        <MudText Typo="Typo.body2" Style="font-weight:700;flex:1;">@rec.Title</MudText>
+                                        <MudChip T="string" Size="Size.Small" Color="@cColor" Style="height:18px;">@cLabel</MudChip>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            #@rec.Priority
+                                        </MudText>
+                                    </MudStack>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@rec.Description</MudText>
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+                    }
+                </MudStack>
+            }
+        }
+
+    </MudStack>
+}
+
+@code {
+    private bool _authorized;
+    private bool _loadingInsights = true;
+    private bool _generating;
+    private AnalyticsInsightSetResponse? _insights;
+    private CooldownStatusResponse? _cooldown;
+    private LlmProvider _selectedProvider = LlmProvider.YandexGpt;
+    private int _remainingSeconds;
+    private System.Threading.Timer? _timer;
+
+    private bool IsCooldownActive => _remainingSeconds > 0;
+
+    private static readonly Dictionary<LlmProvider, string> _providers = new()
+    {
+        [LlmProvider.YandexGpt] = "Яндекс GPT",
+        [LlmProvider.Gemini]    = "Google Gemini",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var roleStr = Session.GetClaimFromToken(ClaimTypes.Role);
+        var role = Enum.TryParse<UserRole>(roleStr, out var r) ? r : UserRole.Employee;
+        if (role < UserRole.Manager) { Nav.NavigateTo("/dashboard"); return; }
+        _authorized = true;
+
+        var insightsTask = AnalyticsApi.GetLatestInsightsAsync();
+        var cooldownTask = AnalyticsApi.GetCooldownStatusAsync();
+        await Task.WhenAll(insightsTask, cooldownTask);
+
+        if (insightsTask.Result.IsSuccess) _insights = insightsTask.Result.Data;
+        if (cooldownTask.Result.IsSuccess)
+        {
+            _cooldown = cooldownTask.Result.Data;
+            ApplyCooldown(_cooldown);
+        }
+
+        _loadingInsights = false;
+    }
+
+    private async Task GenerateAsync()
+    {
+        _generating = true;
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(65));
+        var result = await AnalyticsApi.GenerateInsightsAsync(_selectedProvider, cts.Token);
+        _generating = false;
+
+        if (result.IsSuccess)
+        {
+            _insights = result.Data;
+            Snackbar.Add("Анализ завершён", Severity.Success);
+            var cooldown = await AnalyticsApi.GetCooldownStatusAsync();
+            if (cooldown.IsSuccess) ApplyCooldown(cooldown.Data);
+        }
+        else if (result.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            Snackbar.Add("Генерация недоступна, подождите немного", Severity.Warning);
+            var cooldown = await AnalyticsApi.GetCooldownStatusAsync();
+            if (cooldown.IsSuccess) ApplyCooldown(cooldown.Data);
+        }
+        else
+        {
+            Snackbar.Add(result.Error ?? "Ошибка генерации", Severity.Error);
+        }
+    }
+
+    private void ApplyCooldown(CooldownStatusResponse? cd)
+    {
+        if (cd is { IsAvailable: false, RemainingSeconds: > 0 })
+        {
+            _remainingSeconds = cd.RemainingSeconds!.Value;
+            _timer?.Dispose();
+            _timer = new System.Threading.Timer(_ =>
+            {
+                if (_remainingSeconds > 0) _remainingSeconds--;
+                else _timer?.Dispose();
+                InvokeAsync(StateHasChanged);
+            }, null, 1000, 1000);
+        }
+        else
+        {
+            _remainingSeconds = 0;
+        }
+    }
+
+    public void Dispose() => _timer?.Dispose();
+
+    private static string FormatCountdown(int seconds)
+    {
+        var h = seconds / 3600;
+        var m = seconds % 3600 / 60;
+        var s = seconds % 60;
+        if (h > 0) return $"{h}ч {m:D2}м";
+        if (m > 0) return $"{m}м {s:D2}с";
+        return $"{s}с";
+    }
+
+    private static (Color color, string icon, string label) SeverityStyle(InsightSeverity s) => s switch
+    {
+        InsightSeverity.Critical => (Color.Error,   Icons.Material.Filled.Error,   "Критично"),
+        InsightSeverity.Warning  => (Color.Warning, Icons.Material.Filled.Warning, "Внимание"),
+        _                        => (Color.Info,    Icons.Material.Filled.Info,    "Инфо"),
+    };
+
+    private static string SeverityBg(InsightSeverity s) => s switch
+    {
+        InsightSeverity.Critical => "#fce4ec",
+        InsightSeverity.Warning  => "#fff8e1",
+        _                        => "#e3f2fd",
+    };
+
+    private static (Color color, string label) CategoryStyle(RecommendationCategory c) => c switch
+    {
+        RecommendationCategory.Content    => (Color.Secondary, "Контент"),
+        RecommendationCategory.Process    => (Color.Primary,   "Процесс"),
+        RecommendationCategory.Motivation => (Color.Warning,   "Мотивация"),
+        _                                 => (Color.Default,   c.ToString()),
+    };
+
+    private static string ProviderLabel(LlmProvider p) => p switch
+    {
+        LlmProvider.YandexGpt => "Яндекс GPT",
+        LlmProvider.Gemini    => "Google Gemini",
+        _                     => p.ToString(),
+    };
+
+    private static string TriggerLabel(InsightTrigger t) => t switch
+    {
+        InsightTrigger.Scheduled => "Автоматически",
+        InsightTrigger.Manual    => "Вручную",
+        _                        => t.ToString(),
+    };
+}

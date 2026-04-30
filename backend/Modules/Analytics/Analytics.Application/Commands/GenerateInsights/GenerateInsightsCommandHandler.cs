@@ -54,7 +54,7 @@ public class GenerateInsightsCommandHandler : IRequestHandler<GenerateInsightsCo
 
         if (cached is not null)
         {
-            return ActionResult<AnalyticsInsightSetResponse>.Success(MapToResponse(cached));
+            // return ActionResult<AnalyticsInsightSetResponse>.Success(MapToResponse(cached));
         }
 
         var client = _llmFactory.Create(request.Provider);

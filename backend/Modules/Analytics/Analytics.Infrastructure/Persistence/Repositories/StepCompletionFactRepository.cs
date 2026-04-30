@@ -28,6 +28,15 @@ public class StepCompletionFactRepository : IStepCompletionFactRepository
                  && f.AttemptNumber == attemptNumber, ct);
     }
 
+    public async Task<bool> HasUserActivityOnDateAsync(Guid tenantId, Guid userId, DateOnly date, CancellationToken ct)
+    {
+        var from = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var to = date.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+        return await _db.StepCompletionFacts.AnyAsync(
+            f => f.TenantId == tenantId && f.UserId == userId
+                 && f.CompletedAt >= from && f.CompletedAt <= to, ct);
+    }
+
     public async Task<IReadOnlyList<StepCompletionStats>> GetStepStatsAsync(
         Guid tenantId, Guid scenarioId, CancellationToken ct)
     {

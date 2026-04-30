@@ -97,6 +97,24 @@ public class ScenarioAssignmentFactRepository : IScenarioAssignmentFactRepositor
             .ToList();
     }
 
+    public async Task<TimeSpan> GetAvgCompletionDurationAsync(Guid tenantId, CancellationToken ct)
+    {
+        var completed = await _db.ScenarioAssignmentFacts
+            .Where(f => f.TenantId == tenantId
+                        && f.CurrentStatus == AssignmentStatus.Completed
+                        && f.CompletedAt != null)
+            .Select(f => new { f.AssignedAt, f.CompletedAt })
+            .ToListAsync(ct);
+
+        if (completed.Count == 0)
+        {
+            return TimeSpan.Zero;
+        }
+
+        var avgTicks = completed.Average(f => (f.CompletedAt!.Value - f.AssignedAt).Ticks);
+        return TimeSpan.FromTicks((long)avgTicks);
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct)
     {
         await _db.SaveChangesAsync(ct);

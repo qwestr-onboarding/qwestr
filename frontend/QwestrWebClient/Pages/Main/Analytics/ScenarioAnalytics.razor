@@ -1,0 +1,283 @@
+@page "/analytics/scenarios/{ScenarioId:guid}"
+@layout MainLayout
+
+@using System.Security.Claims
+@using Client.Infrastructure.Api.Endpoints.Analytics
+@using Qwestr.Shared.Contracts.ApiDto.Analytics.Responses
+@using Qwestr.Shared.Kernel.Enums.Identity
+@using Qwestr.Shared.Kernel.Enums.Onboarding
+@using QwestrWebClient.Pages.Main.Analytics.Dialogs
+
+@inject AnalyticsApi AnalyticsApi
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+@inject SessionManager Session
+
+<PageTitle>Аналитика сценария — Qwestr</PageTitle>
+
+@if (!_authorized)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <MudStack Spacing="3">
+
+        @* Header *@
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIconButton Icon="@Icons.Material.Outlined.ArrowBack" Size="Size.Small"
+                           OnClick='() => Nav.NavigateTo("/analytics")' />
+            <MudStack Spacing="0" Style="flex:1;min-width:0;">
+                <MudText Typo="Typo.h6" Style="font-weight:700;">
+                    @(_funnel?.ScenarioName ?? "Сценарий")
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Аналитика сценария</MudText>
+            </MudStack>
+            <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Download"
+                       OnClick="OpenExportAsync">
+                Экспорт
+            </MudButton>
+        </MudStack>
+
+        <MudTabs Rounded="true" ApplyEffectsToContainer="true"
+                 ActivePanelIndexChanged="OnTabChanged">
+
+            @* Воронка *@
+            <MudTabPanel Text="Воронка" Icon="@Icons.Material.Outlined.FilterAlt">
+                @if (_funnelLoading)
+                {
+                    <MudStack Spacing="2" Class="pt-3">
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="80px" Style="border-radius:12px;" />
+                        @for (var i = 0; i < 3; i++)
+                        {
+                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="56px" Style="border-radius:10px;" />
+                        }
+                    </MudStack>
+                }
+                else if (_funnel is null)
+                {
+                    <MudAlert Severity="Severity.Error" Class="mt-3">Не удалось загрузить данные воронки</MudAlert>
+                }
+                else
+                {
+                    <MudStack Spacing="3" Class="pt-3">
+
+                        @* Overall funnel *@
+                        <MudCard Elevation="1" Style="border-radius:14px;">
+                            <MudCardContent Class="pa-4">
+                                <MudStack Spacing="2">
+                                    <MudText Typo="Typo.subtitle2" Style="font-weight:700;">Общая конверсия</MudText>
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Style="flex-wrap:wrap;">
+                                        <MudPaper Elevation="0" Style="background:#f5f5f5;border-radius:12px;padding:12px 18px;text-align:center;min-width:90px;">
+                                            <MudStack Spacing="0" AlignItems="AlignItems.Center">
+                                                <MudText Typo="Typo.h5" Style="font-weight:700;">@_funnel.Assigned</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">Назначено</MudText>
+                                            </MudStack>
+                                        </MudPaper>
+                                        <MudIcon Icon="@Icons.Material.Outlined.ChevronRight" Color="Color.Default" />
+                                        @{ var startedRate = _funnel.Assigned > 0 ? (int)((double)_funnel.Started / _funnel.Assigned * 100) : 0; }
+                                        <MudPaper Elevation="0" Style="background:#f5f5f5;border-radius:12px;padding:12px 18px;text-align:center;min-width:90px;">
+                                            <MudStack Spacing="0" AlignItems="AlignItems.Center">
+                                                <MudText Typo="Typo.h5" Style="font-weight:700;">@_funnel.Started</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">Начали</MudText>
+                                                <MudText Typo="Typo.caption" Style="font-weight:700;color:var(--mud-palette-primary);">@startedRate%</MudText>
+                                            </MudStack>
+                                        </MudPaper>
+                                        <MudIcon Icon="@Icons.Material.Outlined.ChevronRight" Color="Color.Default" />
+                                        @{ var completedRate = _funnel.Assigned > 0 ? (int)((double)_funnel.Completed / _funnel.Assigned * 100) : 0; }
+                                        <MudPaper Elevation="0" Style="background:#f5f5f5;border-radius:12px;padding:12px 18px;text-align:center;min-width:90px;">
+                                            <MudStack Spacing="0" AlignItems="AlignItems.Center">
+                                                <MudText Typo="Typo.h5" Style="font-weight:700;">@_funnel.Completed</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">Завершили</MudText>
+                                                <MudText Typo="Typo.caption" Style="font-weight:700;color:var(--mud-palette-primary);">@completedRate%</MudText>
+                                            </MudStack>
+                                        </MudPaper>
+                                    </MudStack>
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+
+                        @* Stages *@
+                        <MudExpansionPanels MultiExpansion="true" Elevation="1">
+                            @foreach (var stage in _funnel.Stages)
+                            {
+                                var stageConv = stage.Reached > 0 ? (int)((double)stage.Completed / stage.Reached * 100) : 0;
+                                <MudExpansionPanel Style="border-radius:12px;">
+                                    <TitleContent>
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                            <MudText Typo="Typo.body2" Style="font-weight:700;flex:1;">@stage.StageName</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@stage.Completed / @stage.Reached</MudText>
+                                            <MudChip T="string" Size="Size.Small" Style="height:20px;"
+                                                     Color="@(stageConv >= 70 ? Color.Success : stageConv >= 40 ? Color.Warning : Color.Error)">
+                                                @stageConv%
+                                            </MudChip>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@FormatDuration(stage.AvgTimeSpent)</MudText>
+                                        </MudStack>
+                                    </TitleContent>
+                                    <ChildContent>
+                                        <MudStack Spacing="1" Class="pt-1">
+                                            @foreach (var step in stage.Steps)
+                                            {
+                                                var drop = (int)(step.DropOffRate * 100);
+                                                <MudPaper Elevation="0" Style="background:#fafafa;border-radius:8px;padding:8px 12px;">
+                                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                        <MudStack Spacing="0" Style="flex:1;min-width:0;">
+                                                            <MudText Typo="Typo.body2">@step.StepName</MudText>
+                                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                                @step.Completed / @step.Reached · @FormatDuration(step.AvgTimeSpent)
+                                                            </MudText>
+                                                        </MudStack>
+                                                        @if (drop > 0)
+                                                        {
+                                                            <MudChip T="string" Size="Size.Small" Style="height:18px;"
+                                                                     Color="@(drop >= 50 ? Color.Error : Color.Warning)">
+                                                                −@drop%
+                                                            </MudChip>
+                                                        }
+                                                    </MudStack>
+                                                </MudPaper>
+                                            }
+                                        </MudStack>
+                                    </ChildContent>
+                                </MudExpansionPanel>
+                            }
+                        </MudExpansionPanels>
+
+                    </MudStack>
+                }
+            </MudTabPanel>
+
+            @* Качество контента *@
+            <MudTabPanel Text="Качество" Icon="@Icons.Material.Outlined.Analytics">
+                @if (_qualityLoading)
+                {
+                    <MudStack Spacing="2" Class="pt-3">
+                        @for (var i = 0; i < 5; i++)
+                        {
+                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="52px" Style="border-radius:10px;" />
+                        }
+                    </MudStack>
+                }
+                else if (_quality is null)
+                {
+                    <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="LoadQualityAsync">Загрузить</MudButton>
+                }
+                else
+                {
+                    <MudStack Spacing="2" Class="pt-3">
+                        @foreach (var step in _quality.Steps.OrderByDescending(s => (int)s.Flag))
+                        {
+                            var (flagColor, flagLabel) = FlagStyle(step.Flag);
+                            <MudPaper Elevation="1" Style="border-radius:12px;padding:12px 16px;">
+                                <MudStack Spacing="1">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        <MudStack Spacing="0" Style="flex:1;min-width:0;">
+                                            <MudText Typo="Typo.body2" Style="font-weight:600;">@step.StepName</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@StepTypeLabel(step.StepType)</MudText>
+                                        </MudStack>
+                                        <MudChip T="string" Size="Size.Small" Color="@flagColor" Style="height:20px;flex-shrink:0;">
+                                            @flagLabel
+                                        </MudChip>
+                                    </MudStack>
+                                    <MudStack Row="true" Spacing="3" Style="flex-wrap:wrap;">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            Отток: <strong>@((int)(step.DropOffRate * 100))%</strong>
+                                        </MudText>
+                                        @if (step.FirstAttemptPassRate.HasValue)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                Сдали с 1 раза: <strong>@((int)(step.FirstAttemptPassRate.Value * 100))%</strong>
+                                            </MudText>
+                                        }
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            Попыток: <strong>@step.AvgAttemptsCount.ToString("F1")</strong>
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            Время: <strong>@FormatDuration(step.AvgTimeSpent)</strong>
+                                        </MudText>
+                                    </MudStack>
+                                </MudStack>
+                            </MudPaper>
+                        }
+                    </MudStack>
+                }
+            </MudTabPanel>
+
+        </MudTabs>
+
+    </MudStack>
+}
+
+@code {
+    [Parameter] public Guid ScenarioId { get; set; }
+
+    private bool _authorized;
+    private bool _funnelLoading = true;
+    private bool _qualityLoading;
+    private ScenarioFunnelResponse? _funnel;
+    private ContentQualityReportResponse? _quality;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var roleStr = Session.GetClaimFromToken(ClaimTypes.Role);
+        var role = Enum.TryParse<UserRole>(roleStr, out var r) ? r : UserRole.Employee;
+        if (role < UserRole.Manager) { Nav.NavigateTo("/dashboard"); return; }
+        _authorized = true;
+        await LoadFunnelAsync();
+    }
+
+    private async Task LoadFunnelAsync()
+    {
+        _funnelLoading = true;
+        var result = await AnalyticsApi.GetScenarioFunnelAsync(ScenarioId);
+        if (result.IsSuccess) _funnel = result.Data;
+        else Snackbar.Add(result.Error ?? "Ошибка загрузки воронки", Severity.Error);
+        _funnelLoading = false;
+    }
+
+    private async Task LoadQualityAsync()
+    {
+        _qualityLoading = true;
+        var result = await AnalyticsApi.GetContentQualityAsync(ScenarioId);
+        if (result.IsSuccess) _quality = result.Data;
+        else Snackbar.Add(result.Error ?? "Ошибка загрузки качества", Severity.Error);
+        _qualityLoading = false;
+    }
+
+    private async Task OnTabChanged(int index)
+    {
+        if (index == 1 && _quality is null && !_qualityLoading)
+            await LoadQualityAsync();
+    }
+
+    private async Task OpenExportAsync()
+    {
+        await DialogService.ShowAsync<ExportDialog>("Экспорт данных");
+    }
+
+    private static (Color color, string label) FlagStyle(QualityFlag f) => f switch
+    {
+        QualityFlag.Critical       => (Color.Error,   "Критично"),
+        QualityFlag.NeedsAttention => (Color.Warning, "Внимание"),
+        _                          => (Color.Success, "Норма"),
+    };
+
+    private static string StepTypeLabel(StepType t) => t switch
+    {
+        StepType.Information => "Инфо",
+        StepType.Question    => "Вопрос",
+        StepType.Test        => "Тест",
+        StepType.Task        => "Задача",
+        StepType.Checklist   => "Чеклист",
+        _                    => t.ToString(),
+    };
+
+    private static string FormatDuration(TimeSpan ts)
+    {
+        if (ts.TotalDays >= 1)  return $"{(int)ts.TotalDays} дн.";
+        if (ts.TotalHours >= 1) return $"{(int)ts.TotalHours} ч.";
+        return $"{(int)ts.TotalMinutes} мин.";
+    }
+}

@@ -1,0 +1,66 @@
+@using Client.Infrastructure.Api.Endpoints.Analytics
+@using Microsoft.JSInterop
+
+@inject AnalyticsApi AnalyticsApi
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<MudDialog Style="min-width:380px;">
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
+
+            <MudDatePicker @bind-Date="_from" Label="Дата начала" Variant="Variant.Outlined"
+                           MaxDate="@DateTime.Today" />
+            <MudDatePicker @bind-Date="_to" Label="Дата конца" Variant="Variant.Outlined"
+                           MaxDate="@DateTime.Today" />
+
+            @if (_from.HasValue && _to.HasValue && (_to.Value - _from.Value).TotalDays > 365)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    Период больше года — выгрузка может занять некоторое время
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Отмена</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   StartIcon="@Icons.Material.Outlined.Download"
+                   Disabled="@_downloading" OnClick="DownloadAsync">
+            @(_downloading ? "Загрузка..." : "Скачать CSV")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private DateTime? _from = DateTime.Today.AddDays(-30);
+    private DateTime? _to   = DateTime.Today;
+    private bool _downloading;
+    private string? _error;
+
+    private async Task DownloadAsync()
+    {
+        _error = null;
+        _downloading = true;
+        var result = await AnalyticsApi.ExportCsvAsync(_from, _to);
+        if (result.IsSuccess && result.Data is { Length: > 0 } bytes)
+        {
+            var from  = _from?.ToString("yyyy-MM-dd") ?? "start";
+            var to    = _to?.ToString("yyyy-MM-dd")   ?? "end";
+            var fname = $"qwestr-analytics-{from}-{to}.csv";
+            await JS.InvokeVoidAsync("downloadFileFromBytes", fname, "text/csv;charset=utf-8", bytes);
+            MudDialog.Close();
+        }
+        else
+        {
+            _error = result.Error ?? "Не удалось получить файл";
+        }
+        _downloading = false;
+    }
+}
