@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
@@ -9,15 +9,15 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="Services\" />
+        <PackageReference Include="FluentValidation" Version="11.9.2" />
+        <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.9.2" />
+        <PackageReference Include="MediatR" Version="12.2.0" />
+        <PackageReference Include="Serilog" Version="4.3.1" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Serilog" Version="4.3.1" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\Analytics.Domain\Analytics.Domain.csproj" />
+        <ProjectReference Include="..\..\..\Shared\Shared.Contracts\Shared.Contracts.csproj" />
+        <ProjectReference Include="..\Analytics.Domain\Analytics.Domain.csproj" />
     </ItemGroup>
 
 </Project>

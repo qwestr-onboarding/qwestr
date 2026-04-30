@@ -1,5 +1,6 @@
 ﻿using Client.Infrastructure.Api;
 using Client.Infrastructure.Api.Endpoints;
+using Client.Infrastructure.Api.Endpoints.Analytics;
 using Client.Infrastructure.Api.Endpoints.Gamification;
 using Client.Infrastructure.Auth;
 using Client.Infrastructure.Services;
@@ -34,6 +35,9 @@ public static class InfrastructureStartup
         services.AddScoped<OptionsApi>();
         services.AddScoped<AssignmentsApi>();
         services.AddScoped<OnboardingProgressApi>();
+
+        // --- Analytics ---
+        services.AddScoped<AnalyticsApi>();
 
         // --- Gamification ---
         services.AddScoped<GamificationProfileApi>();

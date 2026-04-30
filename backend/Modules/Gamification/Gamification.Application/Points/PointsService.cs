@@ -3,6 +3,7 @@ using Qwestr.Modules.Gamification.Application.Abstractions.Persistence;
 using Qwestr.Modules.Gamification.Application.Abstractions.Services;
 using Qwestr.Modules.Gamification.Domain.Entities;
 using Qwestr.Modules.Gamification.Domain.Events;
+using Qwestr.Shared.Contracts.Gamification.Events;
 using Qwestr.Shared.Kernel.Entities;
 using Qwestr.Shared.Kernel.Enums.Gamification;
 
@@ -71,6 +72,12 @@ public class PointsService : IPointsService
         var oldLevel = profile.RecalculateLevel(newLevel);
 
         await _profileRepository.SaveChangesAsync(ct);
+
+        if (xp > 0)
+        {
+            await _publisher.Publish(new PointsGrantedIntegrationEvent(
+                tenantId, profile.UserId, xp, DateTime.UtcNow), ct);
+        }
 
         if (oldLevel.HasValue)
         {

@@ -1,15 +1,24 @@
-﻿using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 
 namespace Qwestr.Modules.Analytics.Api.Endpoints;
 
-public static class AnalyticsEndpoints
+public static partial class AnalyticsEndpoints
 {
+    internal const string HrPolicy = "AnalyticsHrPolicy";
+
     public static IEndpointRouteBuilder MapAnalyticsEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/analytics").WithTags("Analytics");
-        
+        var analytics = app.MapGroup("/api/analytics");
+
+        analytics.MapDashboardEndpoints();
+        analytics.MapFunnelEndpoints();
+        analytics.MapContentEndpoints();
+        analytics.MapEngagementEndpoints();
+        analytics.MapRetentionEndpoints();
+        analytics.MapInsightsEndpoints();
+        analytics.MapExportEndpoints();
+
         return app;
     }
 }

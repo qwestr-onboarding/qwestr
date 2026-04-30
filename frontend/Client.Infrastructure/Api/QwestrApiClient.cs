@@ -99,6 +99,20 @@ public class QwestrApiClient
         return await ParseResponse<T>(response, ct);
     }
 
+    public async Task<ApiResult<byte[]>> GetBytesAsync(string url, CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        ApplyAuth(request);
+        var response = await _http.SendAsync(request, ct);
+        if (response.IsSuccessStatusCode)
+        {
+            var bytes = await response.Content.ReadAsByteArrayAsync(ct);
+            return ApiResult<byte[]>.Success(bytes);
+        }
+        var error = await ReadErrorAsync(response, ct);
+        return ApiResult<byte[]>.Failure(response.StatusCode, error);
+    }
+
     public async Task<ApiResult> DeleteAsync(string url, object body, CancellationToken ct = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Delete, url)

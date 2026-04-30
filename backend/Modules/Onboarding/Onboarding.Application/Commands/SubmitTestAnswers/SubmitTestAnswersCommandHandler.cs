@@ -126,6 +126,25 @@ public class SubmitTestAnswersCommandHandler : IRequestHandler<SubmitTestAnswers
 
         await _assignmentRepository.SaveChangesAsync(ct);
 
+        var testTimeSpent = stepProgress.StartedAt.HasValue && attempt.CompletedAt.HasValue
+            ? attempt.CompletedAt.Value - stepProgress.StartedAt.Value
+            : TimeSpan.Zero;
+
+        await _publisher.Publish(new StepCompletedAnalyticsIntegrationEvent(
+            request.TenantId,
+            request.UserId,
+            assignment.Id,
+            assignment.ScenarioId,
+            step.StageId,
+            stepProgress.StepId,
+            StepType.Test,
+            attempt.CompletedAt!.Value,
+            testTimeSpent,
+            WasSuccessful: isPassed,
+            Score: correctCount,
+            MaxScore: totalCount,
+            AttemptNumber: attempt.AttemptNumber), ct);
+
         if (isPassed)
         {
             await _publisher.Publish(new OnboardingStepCompletedIntegrationEvent(
