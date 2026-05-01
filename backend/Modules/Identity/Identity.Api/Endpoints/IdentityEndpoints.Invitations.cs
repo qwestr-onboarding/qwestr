@@ -3,13 +3,11 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.Options;
 using Qwestr.Modules.Identity.Application.Commands.AcceptInvitation;
 using Qwestr.Modules.Identity.Application.Commands.CancelInvitation;
 using Qwestr.Modules.Identity.Application.Commands.CreateInvitation;
 using Qwestr.Modules.Identity.Application.Queries.GetInvitationsList;
 using Qwestr.Modules.Identity.Application.Queries.ValidateInvitation;
-using Qwestr.Modules.Identity.Infrastructure.Services;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Invitations.Requests;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Invitations.Responses;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses;
@@ -71,8 +69,7 @@ public static partial class IdentityEndpoints
     }
 
     private static async Task<IResult> AcceptInvitationHandler(
-        AcceptInvitationRequest body, HttpContext ctx,
-        ISender sender, IOptions<JwtSettings> jwtOptions, CancellationToken ct)
+        AcceptInvitationRequest body, ISender sender, CancellationToken ct)
     {
         var command = new AcceptInvitationCommand(body.Token, body.Password, body.FirstName, body.LastName);
         var result = await sender.Send(command, ct);
@@ -82,8 +79,6 @@ public static partial class IdentityEndpoints
         }
 
         var data = result.Value!;
-        SetRefreshTokenCookie(ctx, data.RefreshToken, jwtOptions);
-
         return Results.Ok(new AcceptInvitationResponse(data.AccessToken, data.ExpiresAt));
     }
 

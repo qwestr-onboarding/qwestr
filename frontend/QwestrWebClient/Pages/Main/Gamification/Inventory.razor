@@ -59,9 +59,13 @@ else
                                         <MudCardContent>
                                             <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start">
                                                 <MudAvatar Size="Size.Large" Style="background:#f5f5f5;flex-shrink:0;">
-                                                    @if (!string.IsNullOrEmpty(item.IconUrl))
+                                                    @if (item.IconUrl?.StartsWith("#") == true)
                                                     {
-                                                        @((MarkupString)$"<img src=\"{item.IconUrl}\" style=\"width:36px;height:36px;object-fit:contain;\" alt=\"\" />")
+                                                        <MudPaper Style="@($"width:30px;height:30px;border-radius:50%;background:{item.IconUrl};")" Elevation="0" />
+                                                    }
+                                                    else if (!string.IsNullOrEmpty(item.IconUrl))
+                                                    {
+                                                        @((MarkupString)$"<img src=\"{ProfileApi.ResolveAssetUrl(item.IconUrl) ?? item.IconUrl}\" style=\"width:36px;height:36px;object-fit:contain;\" alt=\"\" />")
                                                     }
                                                     else
                                                     {

@@ -11,5 +11,6 @@ public record UserProfileResponse(
     UserRole Role,
     bool IsActive,
     bool TwoFactorEnabled,
+    string? AvatarUrl,
     DateTime? LastLoginAt,
     DateTime CreatedAt);

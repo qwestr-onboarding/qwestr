@@ -32,6 +32,7 @@ public class GetCurrentUserQueryHandler : IRequestHandler<GetCurrentUserQuery, A
             user.Role,
             user.IsActive,
             user.TwoFactorEnabled,
+            user.AvatarUrl,
             user.LastLoginAt,
             user.CreatedAt);
 

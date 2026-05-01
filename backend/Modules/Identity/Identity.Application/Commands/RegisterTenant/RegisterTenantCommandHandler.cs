@@ -7,7 +7,6 @@ using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses;
 using Qwestr.Shared.Contracts.Identity.Events;
 using Qwestr.Shared.Kernel.Entities;
 using Qwestr.Shared.Kernel.Enums.Identity;
-using DomainRefreshToken = Qwestr.Modules.Identity.Domain.Entities.RefreshToken;
 
 namespace Qwestr.Modules.Identity.Application.Commands.RegisterTenant;
 
@@ -15,7 +14,6 @@ public class RegisterTenantCommandHandler : IRequestHandler<RegisterTenantComman
 {
     private readonly ITenantRepository _tenantRepository;
     private readonly IUserRepository _userRepository;
-    private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenService _tokenService;
     private readonly IPublisher _publisher;
@@ -23,14 +21,12 @@ public class RegisterTenantCommandHandler : IRequestHandler<RegisterTenantComman
     public RegisterTenantCommandHandler(
         ITenantRepository tenantRepository,
         IUserRepository userRepository,
-        IRefreshTokenRepository refreshTokenRepository,
         IPasswordHasher passwordHasher,
         ITokenService tokenService,
         IPublisher publisher)
     {
         _tenantRepository = tenantRepository;
         _userRepository = userRepository;
-        _refreshTokenRepository = refreshTokenRepository;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
         _publisher = publisher;
@@ -54,11 +50,6 @@ public class RegisterTenantCommandHandler : IRequestHandler<RegisterTenantComman
         await _tenantRepository.SaveChangesAsync(ct);
 
         var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(owner, tenant.Subdomain);
-        var (refreshTokenValue, refreshExpiresAt) = _tokenService.GenerateRefreshToken();
-
-        var refreshToken = DomainRefreshToken.Create(owner.Id, refreshTokenValue, refreshExpiresAt);
-        await _refreshTokenRepository.AddAsync(refreshToken, ct);
-        await _refreshTokenRepository.SaveChangesAsync(ct);
 
         await _publisher.Publish(new TenantRegisteredEvent(tenant.Id, tenant.Name), ct);
         await _publisher.Publish(new UserRegisteredEvent(owner.Id, tenant.Id, owner.Email, $"{owner.FirstName} {owner.LastName}"), ct);
@@ -66,6 +57,6 @@ public class RegisterTenantCommandHandler : IRequestHandler<RegisterTenantComman
             owner.Id, owner.TenantId, owner.Email, owner.FirstName, owner.LastName, null, owner.Role), ct);
 
         return ActionResult<TenantRegisteredResponse>.Success(
-            new TenantRegisteredResponse(tenant.Id, accessToken, refreshTokenValue, expiresAt));
+            new TenantRegisteredResponse(tenant.Id, accessToken, expiresAt));
     }
 }

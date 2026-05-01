@@ -7,7 +7,6 @@ using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses;
 using Qwestr.Shared.Contracts.Identity.Events;
 using Qwestr.Shared.Kernel.Entities;
 using Qwestr.Shared.Kernel.Enums.Identity;
-using DomainRefreshToken = Qwestr.Modules.Identity.Domain.Entities.RefreshToken;
 
 namespace Qwestr.Modules.Identity.Application.Commands.AcceptInvitation;
 
@@ -16,7 +15,6 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
     private readonly IInvitationRepository _invitationRepository;
     private readonly IUserRepository _userRepository;
     private readonly ITenantRepository _tenantRepository;
-    private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenService _tokenService;
     private readonly IPublisher _publisher;
@@ -25,7 +23,6 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
         IInvitationRepository invitationRepository,
         IUserRepository userRepository,
         ITenantRepository tenantRepository,
-        IRefreshTokenRepository refreshTokenRepository,
         IPasswordHasher passwordHasher,
         ITokenService tokenService,
         IPublisher publisher)
@@ -33,7 +30,6 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
         _invitationRepository = invitationRepository;
         _userRepository = userRepository;
         _tenantRepository = tenantRepository;
-        _refreshTokenRepository = refreshTokenRepository;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
         _publisher = publisher;
@@ -69,11 +65,6 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
 
         var tenant = await _tenantRepository.GetByIdAsync(user.TenantId, ct);
         var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user, tenant?.Subdomain);
-        var (refreshTokenValue, refreshExpiresAt) = _tokenService.GenerateRefreshToken();
-
-        var refreshToken = DomainRefreshToken.Create(user.Id, refreshTokenValue, refreshExpiresAt);
-        await _refreshTokenRepository.AddAsync(refreshToken, ct);
-        await _refreshTokenRepository.SaveChangesAsync(ct);
 
         await _publisher.Publish(new UserRegisteredEvent(user.Id, user.TenantId, user.Email, $"{user.FirstName} {user.LastName}"), ct);
         await _publisher.Publish(new UserRegisteredIntegrationEvent(
@@ -81,6 +72,6 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
         await _publisher.Publish(new UserActivatedIntegrationEvent(
             user.TenantId, user.Id, user.Email, user.FirstName, user.LastName, tenant?.Name ?? string.Empty), ct);
 
-        return ActionResult<TokenResponse>.Success(new TokenResponse(accessToken, refreshTokenValue, expiresAt));
+        return ActionResult<TokenResponse>.Success(new TokenResponse(accessToken, expiresAt));
     }
 }

@@ -24,6 +24,7 @@ public class GetShopItemsForManagementQueryHandler : IRequestHandler<GetShopItem
             item.Name,
             item.Description,
             item.IconUrl,
+            item.AssetData,
             item.Price,
             item.RequiredLevel,
             item.StackingPolicy.ToString(),

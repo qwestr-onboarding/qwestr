@@ -39,6 +39,9 @@ public static class InfrastructureStartup
         // --- Analytics ---
         services.AddScoped<AnalyticsApi>();
 
+        // --- Notifications ---
+        services.AddScoped<NotificationsApi>();
+
         // --- Gamification ---
         services.AddScoped<GamificationProfileApi>();
         services.AddScoped<GamificationLevelTiersApi>();

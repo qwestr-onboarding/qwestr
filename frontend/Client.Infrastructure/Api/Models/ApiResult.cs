@@ -3,6 +3,7 @@
 namespace Client.Infrastructure.Api.Models;
 
 public record IdResponse(Guid Id);
+public record UploadUrlResponse(string Url);
 
 public class ApiResult
 {

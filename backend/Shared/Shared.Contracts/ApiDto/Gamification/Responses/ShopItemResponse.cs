@@ -19,6 +19,7 @@ public record ShopItemManagementResponse(
     string Name,
     string? Description,
     string IconUrl,
+    string AssetData,
     int Price,
     int? RequiredLevel,
     string StackingPolicy,

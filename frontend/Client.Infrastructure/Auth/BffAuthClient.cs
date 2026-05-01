@@ -4,7 +4,6 @@ using Qwestr.Shared.Contracts.ApiDto.Identity.Auth.Requests;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Auth.Responses;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Invitations.Requests;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Invitations.Responses;
-using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses;
 
 namespace Client.Infrastructure.Auth;
 
@@ -34,15 +33,10 @@ public class BffAuthClient(IJSRuntime Js, TokenStorageService TokenStorage)
         return Parse<RegisterResponse>(js);
     }
 
-    public async Task<BffResponse<RefreshResponse>> RefreshAsync(CancellationToken ct = default)
-    {
-        var js = await Invoke("bffAuth.post", ct, "/bff/auth/refresh", null);
-        return Parse<RefreshResponse>(js);
-    }
-
     public async Task<BffResponse> LogoutAsync(CancellationToken ct = default)
     {
         var js = await Js.InvokeAsync<JsonElement>("bffAuth.post", ct, "/bff/auth/logout", null, TokenStorage.AccessToken);
+        await ClearStoredTokenAsync();
         return ParseNoData(js);
     }
 
@@ -65,6 +59,12 @@ public class BffAuthClient(IJSRuntime Js, TokenStorageService TokenStorage)
     {
         var js = await Invoke("bffAuth.post", ct, "/bff/auth/invitations/accept", request);
         return Parse<AcceptInvitationResponse>(js);
+    }
+
+    public async Task ClearStoredTokenAsync()
+    {
+        try { await Js.InvokeVoidAsync("bffAuth.clearStoredToken"); }
+        catch { }
     }
 
     // --- helpers ---

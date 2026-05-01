@@ -43,10 +43,10 @@ public class GetScenarioFunnelQueryHandler : IRequestHandler<GetScenarioFunnelQu
             {
                 var stepResponses = new List<StepFunnelResponse>();
                 var stageReached = 0;
-                var stageCompleted = 0;
                 var stageTotalTime = TimeSpan.Zero;
+                var orderedSteps = stage.Steps.OrderBy(s => s.Order).ToList();
 
-                foreach (var step in stage.Steps.OrderBy(s => s.Order))
+                foreach (var step in orderedSteps)
                 {
                     var stat = statsByStep.GetValueOrDefault(step.StepId);
                     var reached = stat?.UniqueUsers ?? 0;
@@ -55,11 +55,16 @@ public class GetScenarioFunnelQueryHandler : IRequestHandler<GetScenarioFunnelQu
                     var avgTime = stat?.AvgTimeSpent ?? TimeSpan.Zero;
 
                     stageReached = Math.Max(stageReached, reached);
-                    stageCompleted += completed;
                     stageTotalTime += avgTime;
 
                     stepResponses.Add(new StepFunnelResponse(step.StepId, step.StepName, reached, completed, dropOff, avgTime));
                 }
+
+                // stageCompleted = UniqueUsers последнего шага: сколько пользователей дошло до конца этапа
+                var lastStepStat = orderedSteps.Count > 0
+                    ? statsByStep.GetValueOrDefault(orderedSteps[^1].StepId)
+                    : null;
+                var stageCompleted = lastStepStat?.UniqueUsers ?? 0;
 
                 var stageAvgTime = stepResponses.Count > 0
                     ? TimeSpan.FromTicks(stageTotalTime.Ticks / stepResponses.Count)

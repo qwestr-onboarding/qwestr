@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Qwestr.Modules.Gamification.Application.Shop.Commands.CreateShopItem;
 using Qwestr.Modules.Gamification.Application.Shop.Commands.DeactivateShopItem;
+using Qwestr.Modules.Gamification.Application.Shop.Commands.DeleteShopItem;
 using Qwestr.Modules.Gamification.Application.Shop.Commands.PurchaseShopItem;
 using Qwestr.Modules.Gamification.Application.Shop.Commands.UpdateShopItem;
+using Qwestr.Modules.Gamification.Application.Shop.Commands.UploadShopAsset;
 using Qwestr.Modules.Gamification.Application.Shop.Queries.GetShopItemById;
 using Qwestr.Modules.Gamification.Application.Shop.Queries.GetShopItems;
 using Qwestr.Modules.Gamification.Application.Shop.Queries.GetShopItemsForManagement;
@@ -26,8 +28,10 @@ public static partial class GamificationEndpoints
         shop.MapGet("/{id:guid}", GetShopItemByIdHandler).RequireAuthorization();
         shop.MapGet("/manage", GetShopItemsForManagementHandler).RequireAuthorization(HrPolicy);
         shop.MapPost("/", CreateShopItemHandler).RequireAuthorization(HrPolicy);
+        shop.MapPost("/assets/upload", UploadShopAssetHandler).RequireAuthorization(HrPolicy).DisableAntiforgery();
         shop.MapPut("/{id:guid}", UpdateShopItemHandler).RequireAuthorization(HrPolicy);
         shop.MapPost("/{id:guid}/deactivate", DeactivateShopItemHandler).RequireAuthorization(HrPolicy);
+        shop.MapDelete("/{id:guid}", DeleteShopItemHandler).RequireAuthorization(HrPolicy);
         shop.MapPost("/{id:guid}/purchase", PurchaseShopItemHandler).RequireAuthorization();
 
         return gamification;
@@ -98,6 +102,25 @@ public static partial class GamificationEndpoints
         Guid id, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
     {
         var result = await sender.Send(new DeactivateShopItemCommand(currentUser.TenantId, id), ct);
+        return result.IsSuccess
+            ? Results.NoContent()
+            : Results.BadRequest(new ErrorResponse(result.Error));
+    }
+
+    private static async Task<IResult> UploadShopAssetHandler(
+        IFormFile file, ISender sender, CancellationToken ct)
+    {
+        await using var stream = file.OpenReadStream();
+        var result = await sender.Send(new UploadShopAssetCommand(file.FileName, stream), ct);
+        return result.IsSuccess
+            ? Results.Ok(new { url = result.Value })
+            : Results.BadRequest(new ErrorResponse(result.Error));
+    }
+
+    private static async Task<IResult> DeleteShopItemHandler(
+        Guid id, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new DeleteShopItemCommand(currentUser.TenantId, id), ct);
         return result.IsSuccess
             ? Results.NoContent()
             : Results.BadRequest(new ErrorResponse(result.Error));

@@ -87,6 +87,25 @@ public class AnswerQuestionStepCommandHandler : IRequestHandler<AnswerQuestionSt
             StepType.Question,
             stepProgress.CompletedAt!.Value), ct);
 
+        var timeSpent = stepProgress.StartedAt.HasValue
+            ? stepProgress.CompletedAt!.Value - stepProgress.StartedAt.Value
+            : TimeSpan.Zero;
+
+        await _publisher.Publish(new StepCompletedAnalyticsIntegrationEvent(
+            request.TenantId,
+            request.UserId,
+            assignment.Id,
+            assignment.ScenarioId,
+            step.StageId,
+            stepProgress.StepId,
+            StepType.Question,
+            stepProgress.CompletedAt!.Value,
+            timeSpent,
+            WasSuccessful: isCorrect,
+            Score: null,
+            MaxScore: null,
+            AttemptNumber: 1), ct);
+
         var allCompleted = assignment.StepProgresses.All(sp => sp.Status == StepProgressStatus.Completed);
         if (allCompleted)
         {

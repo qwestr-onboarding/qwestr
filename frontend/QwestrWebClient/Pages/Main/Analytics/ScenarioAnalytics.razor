@@ -108,11 +108,18 @@ else
                                     <TitleContent>
                                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                                             <MudText Typo="Typo.body2" Style="font-weight:700;flex:1;">@stage.StageName</MudText>
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@stage.Completed / @stage.Reached</MudText>
-                                            <MudChip T="string" Size="Size.Small" Style="height:20px;"
-                                                     Color="@(stageConv >= 70 ? Color.Success : stageConv >= 40 ? Color.Warning : Color.Error)">
-                                                @stageConv%
-                                            </MudChip>
+                                            @if (stage.Reached > 0)
+                                            {
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@stage.Completed из @stage.Reached чел.</MudText>
+                                                <MudChip T="string" Size="Size.Small" Style="height:20px;"
+                                                         Color="@(stageConv >= 70 ? Color.Success : stageConv >= 40 ? Color.Warning : Color.Error)">
+                                                    @stageConv%
+                                                </MudChip>
+                                            }
+                                            else
+                                            {
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">нет данных</MudText>
+                                            }
                                             <MudText Typo="Typo.caption" Color="Color.Secondary">@FormatDuration(stage.AvgTimeSpent)</MudText>
                                         </MudStack>
                                     </TitleContent>
@@ -126,7 +133,14 @@ else
                                                         <MudStack Spacing="0" Style="flex:1;min-width:0;">
                                                             <MudText Typo="Typo.body2">@step.StepName</MudText>
                                                             <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                                @step.Completed / @step.Reached · @FormatDuration(step.AvgTimeSpent)
+                                                                @if (step.Reached > 0)
+                                                                {
+                                                                    @($"{step.Reached} чел. · {FormatDuration(step.AvgTimeSpent)}")
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span>нет данных</span>
+                                                                }
                                                             </MudText>
                                                         </MudStack>
                                                         @if (drop > 0)

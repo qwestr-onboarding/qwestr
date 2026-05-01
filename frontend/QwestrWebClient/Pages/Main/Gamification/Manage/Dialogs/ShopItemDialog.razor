@@ -1,7 +1,12 @@
+@using System.Text.Json
+@using Client.Infrastructure.Api.Endpoints.Gamification
+@using Microsoft.AspNetCore.Components.Forms
 @using Qwestr.Shared.Contracts.ApiDto.Gamification.Requests
 @using Qwestr.Shared.Contracts.ApiDto.Gamification.Responses
 
-<MudDialog Style="min-width:460px;">
+@inject GamificationShopApi ShopApi
+
+<MudDialog Style="min-width:480px;max-width:560px;">
     <DialogContent>
         <MudStack Spacing="3">
             @if (_error is not null)
@@ -9,6 +14,7 @@
                 <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
             }
 
+            @* Слот *@
             <MudSelect Value="@_slot" Label="Слот" Variant="Variant.Outlined" FullWidth="true" T="string"
                        Disabled="@(Existing is not null)"
                        ValueChanged="OnSlotChanged">
@@ -18,11 +24,37 @@
                 }
             </MudSelect>
 
+            @* Основные поля *@
             <MudTextField @bind-Value="_name" Label="Название" Variant="Variant.Outlined"
                           FullWidth="true" MaxLength="200" Required="true" />
             <MudTextField @bind-Value="_description" Label="Описание (опционально)" Variant="Variant.Outlined"
                           FullWidth="true" Lines="2" MaxLength="500" />
-            <MudTextField @bind-Value="_iconUrl" Label="URL иконки" Variant="Variant.Outlined" FullWidth="true" />
+
+            @* Иконка предмета — для Pet, Weapon, Consumable (AvatarFrame и Background используют слотовые поля) *@
+            @if (_slot != "ProfileColor" && _slot != "AvatarFrame" && _slot != "Background")
+            {
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Иконка предмета</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        @if (!string.IsNullOrEmpty(_iconUrl))
+                        {
+                            <MudAvatar Style="background:#f5f5f5;border-radius:8px;width:48px;height:48px;flex-shrink:0;">
+                                <MudImage Src="@(ShopApi.ResolveAssetUrl(_iconUrl) ?? _iconUrl)"
+                                          Style="width:36px;height:36px;object-fit:contain;" />
+                            </MudAvatar>
+                        }
+                        <MudFileUpload T="IBrowserFile" Accept="image/*" FilesChanged="UploadIconAsync">
+                            <ActivatorContent>
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.Upload"
+                                           Disabled="@_uploading">
+                                    @(_uploading ? "Загрузка..." : (string.IsNullOrEmpty(_iconUrl) ? "Выбрать файл" : "Заменить"))
+                                </MudButton>
+                            </ActivatorContent>
+                        </MudFileUpload>
+                    </MudStack>
+                </MudStack>
+            }
 
             <MudGrid Spacing="2">
                 <MudItem xs="6">
@@ -35,23 +67,143 @@
                 </MudItem>
             </MudGrid>
 
-            <MudSelect @bind-Value="_stackingPolicy" Label="Политика стака" Variant="Variant.Outlined"
-                       FullWidth="true" T="string" Disabled="@(_slot == "Consumable")">
-                <MudSelectItem Value="@("Unique")">Unique — один экземпляр</MudSelectItem>
-                <MudSelectItem Value="@("Stackable")">Stackable — накапливается</MudSelectItem>
-            </MudSelect>
+            @if (_slot != "Consumable")
+            {
+                <MudSelect @bind-Value="_stackingPolicy" Label="Политика стака" Variant="Variant.Outlined"
+                           FullWidth="true" T="string">
+                    <MudSelectItem Value="@("Unique")">Уникальный — один экземпляр на игрока</MudSelectItem>
+                    <MudSelectItem Value="@("Stackable")">Накапливаемый — можно купить несколько</MudSelectItem>
+                </MudSelect>
+            }
 
-            <MudExpansionPanels Dense="true">
-                <MudExpansionPanel Text="Расширенные данные (AssetData JSON)">
-                    <MudTextField @bind-Value="_assetData" Label="AssetData" Variant="Variant.Outlined"
-                                  FullWidth="true" Lines="3" Placeholder="{}" />
-                </MudExpansionPanel>
-            </MudExpansionPanels>
+            <MudDivider />
+
+            @* ── Слотозависимые параметры ── *@
+            @if (_slot == "ProfileColor")
+            {
+                <MudText Typo="Typo.subtitle2">Параметры цвета</MudText>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudPaper Style="@($"width:40px;height:40px;border-radius:8px;background:{_profileColor};border:1px solid #ddd;flex-shrink:0;")"
+                              Elevation="0" />
+                    <MudTextField @bind-Value="_profileColor" Label="Цвет (hex)" Variant="Variant.Outlined"
+                                  FullWidth="true" Placeholder="#6C3FC5" MaxLength="9" />
+                </MudStack>
+                <MudStack Row="true" Spacing="1" Style="flex-wrap:wrap;">
+                    @foreach (var preset in _colorPresets)
+                    {
+                        var c = preset;
+                        <MudPaper Style="@($"width:28px;height:28px;border-radius:6px;background:{c};cursor:pointer;border:2px solid {(_profileColor == c ? "#333" : "transparent")}")"
+                                  Elevation="0" @onclick="() => _profileColor = c" />
+                    }
+                </MudStack>
+            }
+            else if (_slot == "AvatarFrame")
+            {
+                <MudText Typo="Typo.subtitle2">Параметры рамки</MudText>
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Изображение рамки (PNG/WebP с прозрачностью)</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        @if (!string.IsNullOrEmpty(_iconUrl))
+                        {
+                            <MudAvatar Style="background:#f5f5f5;border-radius:8px;width:48px;height:48px;flex-shrink:0;">
+                                <MudImage Src="@(ShopApi.ResolveAssetUrl(_iconUrl) ?? _iconUrl)"
+                                          Style="width:44px;height:44px;object-fit:contain;" />
+                            </MudAvatar>
+                        }
+                        <MudFileUpload T="IBrowserFile" Accept="image/*" FilesChanged="UploadIconAsync">
+                            <ActivatorContent>
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.Upload"
+                                           Disabled="@_uploading">
+                                    @(_uploading ? "Загрузка..." : (string.IsNullOrEmpty(_iconUrl) ? "Выбрать файл" : "Заменить"))
+                                </MudButton>
+                            </ActivatorContent>
+                        </MudFileUpload>
+                    </MudStack>
+                </MudStack>
+                <MudNumericField @bind-Value="_scale" Label="Масштаб (1.0 = стандартный)" Variant="Variant.Outlined"
+                                 FullWidth="true" Min="0.5" Max="2.0" Step="0.1" Format="F1" />
+                <MudCheckBox @bind-Value="_animated" Label="Анимированная рамка (GIF/WebP)" Dense="true" />
+            }
+            else if (_slot == "Background")
+            {
+                <MudText Typo="Typo.subtitle2">Параметры фона</MudText>
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Фоновое изображение</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        @if (!string.IsNullOrEmpty(_bgUrl))
+                        {
+                            <MudAvatar Style="background:#f5f5f5;border-radius:8px;width:48px;height:48px;flex-shrink:0;">
+                                <MudImage Src="@(ShopApi.ResolveAssetUrl(_bgUrl) ?? _bgUrl)"
+                                          Style="width:48px;height:48px;object-fit:cover;border-radius:8px;" />
+                            </MudAvatar>
+                        }
+                        <MudFileUpload T="IBrowserFile" Accept="image/*" FilesChanged="UploadBgAsync">
+                            <ActivatorContent>
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.Upload"
+                                           Disabled="@_uploading">
+                                    @(_uploading ? "Загрузка..." : (string.IsNullOrEmpty(_bgUrl) ? "Выбрать файл" : "Заменить"))
+                                </MudButton>
+                            </ActivatorContent>
+                        </MudFileUpload>
+                    </MudStack>
+                </MudStack>
+                <MudSelect @bind-Value="_bgFit" Label="Режим отображения" Variant="Variant.Outlined" FullWidth="true" T="string">
+                    <MudSelectItem Value="@("cover")">Cover — заполнить область</MudSelectItem>
+                    <MudSelectItem Value="@("contain")">Contain — вписать целиком</MudSelectItem>
+                    <MudSelectItem Value="@("repeat")">Repeat — тайлинг</MudSelectItem>
+                </MudSelect>
+                <MudNumericField @bind-Value="_bgBlur" Label="Размытие (px, 0 = нет)" Variant="Variant.Outlined"
+                                 FullWidth="true" Min="0" Max="20" />
+            }
+            else if (_slot == "Pet")
+            {
+                <MudText Typo="Typo.subtitle2">Параметры питомца</MudText>
+                <MudNumericField @bind-Value="_scale" Label="Масштаб (1.0 = стандартный)" Variant="Variant.Outlined"
+                                 FullWidth="true" Min="0.5" Max="2.0" Step="0.1" Format="F1" />
+                <MudSelect @bind-Value="_petPosition" Label="Позиция" Variant="Variant.Outlined" FullWidth="true" T="string">
+                    <MudSelectItem Value="@("right")">Справа от аватара</MudSelectItem>
+                    <MudSelectItem Value="@("left")">Слева от аватара</MudSelectItem>
+                </MudSelect>
+                <MudCheckBox @bind-Value="_animated" Label="Анимированный питомец (GIF/WebP)" Dense="true" />
+            }
+            else if (_slot == "Weapon")
+            {
+                <MudText Typo="Typo.subtitle2">Параметры оружия</MudText>
+                <MudNumericField @bind-Value="_scale" Label="Масштаб (1.0 = стандартный)" Variant="Variant.Outlined"
+                                 FullWidth="true" Min="0.5" Max="2.0" Step="0.1" Format="F1" />
+                <MudCheckBox @bind-Value="_flipX" Label="Отразить горизонтально" Dense="true" />
+            }
+            else if (_slot == "Consumable")
+            {
+                <MudText Typo="Typo.subtitle2">Параметры эффекта</MudText>
+                <MudSelect @bind-Value="_consumableEffect" Label="Тип эффекта" Variant="Variant.Outlined" FullWidth="true" T="string">
+                    <MudSelectItem Value="@("xpBoost")">Буст опыта (XP)</MudSelectItem>
+                    <MudSelectItem Value="@("coinBoost")">Буст монет</MudSelectItem>
+                    <MudSelectItem Value="@("xpInstant")">Мгновенный опыт</MudSelectItem>
+                    <MudSelectItem Value="@("coinInstant")">Мгновенные монеты</MudSelectItem>
+                    <MudSelectItem Value="@("shield")">Защита от понижения</MudSelectItem>
+                </MudSelect>
+                @if (_consumableEffect is "xpBoost" or "coinBoost")
+                {
+                    <MudNumericField @bind-Value="_consumableMultiplier" Label="Множитель (например 2.0 = ×2)"
+                                     Variant="Variant.Outlined" FullWidth="true" Min="1.1" Max="10.0" Step="0.1" Format="F1" />
+                    <MudNumericField @bind-Value="_consumableDuration" Label="Длительность (минут)"
+                                     Variant="Variant.Outlined" FullWidth="true" Min="1" Max="1440" />
+                }
+                else if (_consumableEffect is "xpInstant" or "coinInstant")
+                {
+                    <MudNumericField @bind-Value="_consumableAmount" Label="Количество (XP или монет)"
+                                     Variant="Variant.Outlined" FullWidth="true" Min="1" Max="100000" />
+                }
+            }
+
         </MudStack>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="() => MudDialog.Cancel()">Отмена</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@_uploading">
             @(Existing is null ? "Создать" : "Сохранить")
         </MudButton>
     </DialogActions>
@@ -63,15 +215,22 @@
 
     private static readonly Dictionary<string, string> _slotLabels = new()
     {
-        ["ProfileColor"] = "Цвет профиля",
         ["AvatarFrame"]  = "Рамка аватара",
-        ["Background"]   = "Фон",
+        ["Background"]   = "Фон профиля",
         ["Pet"]          = "Питомец",
-        ["Class"]        = "Класс",
         ["Weapon"]       = "Оружие",
-        ["Consumable"]   = "Расходники",
+        ["ProfileColor"] = "Цвет профиля",
+        ["Consumable"]   = "Расходник",
     };
 
+    private static readonly string[] _colorPresets =
+    [
+        "#6C3FC5", "#2196F3", "#4CAF50", "#FF9800", "#F44336",
+        "#E91E63", "#00BCD4", "#FF5722", "#795548", "#607D8B",
+        "#9C27B0", "#3F51B5", "#009688", "#FFEB3B", "#212121",
+    ];
+
+    // Base fields
     private string _slot = "AvatarFrame";
     private string _name = "";
     private string? _description;
@@ -79,12 +238,35 @@
     private int _price;
     private int _requiredLevel;
     private string _stackingPolicy = "Unique";
-    private string _assetData = "{}";
     private string? _error;
+    private bool _uploading;
+
+    // ProfileColor
+    private string _profileColor = "#6C3FC5";
+
+    // AvatarFrame / Pet / Weapon shared
+    private double _scale = 1.0;
+    private bool _animated;
+    private bool _flipX;
+
+    // Background
+    private string _bgUrl = "";
+    private string _bgFit = "cover";
+    private int _bgBlur;
+
+    // Pet
+    private string _petPosition = "right";
+
+    // Consumable
+    private string _consumableEffect = "xpBoost";
+    private double _consumableMultiplier = 2.0;
+    private int _consumableDuration = 60;
+    private int _consumableAmount = 100;
 
     protected override void OnParametersSet()
     {
         if (Existing is null) return;
+
         _slot           = Existing.Slot;
         _name           = Existing.Name;
         _description    = Existing.Description;
@@ -92,6 +274,8 @@
         _price          = Existing.Price;
         _requiredLevel  = Existing.RequiredLevel ?? 0;
         _stackingPolicy = Existing.StackingPolicy;
+
+        ParseAssetData(Existing.AssetData);
     }
 
     private void OnSlotChanged(string slot)
@@ -100,20 +284,96 @@
         if (slot == "Consumable") _stackingPolicy = "Stackable";
     }
 
+    private async Task UploadAsync(IBrowserFile? file, Action<string> setUrl)
+    {
+        if (file is null) return;
+        _uploading = true;
+        _error = null;
+        StateHasChanged();
+        try
+        {
+            var result = await ShopApi.UploadShopAssetAsync(file);
+            if (result.IsSuccess)
+            {
+                setUrl(result.Data!);
+            }
+            else
+            {
+                _error = result.Error ?? "Ошибка загрузки файла";
+            }
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private Task UploadIconAsync(IBrowserFile file) => UploadAsync(file, url => _iconUrl = url);
+
+    private Task UploadBgAsync(IBrowserFile file) => UploadAsync(file, url =>
+    {
+        _bgUrl = url;
+        if (string.IsNullOrEmpty(_iconUrl)) _iconUrl = url;
+    });
+
+    private void ParseAssetData(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json) || json == "{}") return;
+        try
+        {
+            var doc = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+            if (doc is null) return;
+
+            if (doc.TryGetValue("color",            out var v)) _profileColor        = v.GetString() ?? _profileColor;
+            if (doc.TryGetValue("scale",            out v))     _scale               = v.GetDouble();
+            if (doc.TryGetValue("animated",         out v))     _animated            = v.GetBoolean();
+            if (doc.TryGetValue("flipX",            out v))     _flipX               = v.GetBoolean();
+            if (doc.TryGetValue("url",              out v))     _bgUrl               = v.GetString() ?? "";
+            if (doc.TryGetValue("fit",              out v))     _bgFit               = v.GetString() ?? "cover";
+            if (doc.TryGetValue("blur",             out v))     _bgBlur              = v.GetInt32();
+            if (doc.TryGetValue("position",         out v))     _petPosition         = v.GetString() ?? "right";
+            if (doc.TryGetValue("effect",           out v))     _consumableEffect    = v.GetString() ?? "xpBoost";
+            if (doc.TryGetValue("multiplier",       out v))     _consumableMultiplier = v.GetDouble();
+            if (doc.TryGetValue("durationMinutes",  out v))     _consumableDuration  = v.GetInt32();
+            if (doc.TryGetValue("amount",           out v))     _consumableAmount    = v.GetInt32();
+        }
+        catch { }
+    }
+
+    private string BuildAssetData() => _slot switch
+    {
+        "ProfileColor" => JsonSerializer.Serialize(new { color = _profileColor }),
+        "AvatarFrame"  => JsonSerializer.Serialize(new { scale = _scale, animated = _animated }),
+        "Background"   => JsonSerializer.Serialize(new { url = _bgUrl, fit = _bgFit, blur = _bgBlur }),
+        "Pet"          => JsonSerializer.Serialize(new { scale = _scale, animated = _animated, position = _petPosition }),
+        "Weapon"       => JsonSerializer.Serialize(new { scale = _scale, flipX = _flipX }),
+        "Consumable"   when _consumableEffect is "xpBoost" or "coinBoost"
+                       => JsonSerializer.Serialize(new { effect = _consumableEffect, multiplier = _consumableMultiplier, durationMinutes = _consumableDuration }),
+        "Consumable"   when _consumableEffect is "xpInstant" or "coinInstant"
+                       => JsonSerializer.Serialize(new { effect = _consumableEffect, amount = _consumableAmount }),
+        "Consumable"   => JsonSerializer.Serialize(new { effect = _consumableEffect }),
+        _              => "{}"
+    };
+
     private void Submit()
     {
         if (string.IsNullOrWhiteSpace(_name)) { _error = "Введите название"; return; }
-        if (string.IsNullOrWhiteSpace(_assetData)) _assetData = "{}";
 
-        var reqLevel = _requiredLevel > 0 ? (int?)_requiredLevel : null;
+        var assetData = BuildAssetData();
+        var reqLevel  = _requiredLevel > 0 ? (int?)_requiredLevel : null;
+        var iconUrl   = _slot == "ProfileColor" ? _profileColor : _iconUrl.Trim();
 
         if (Existing is null)
+        {
             MudDialog.Close(DialogResult.Ok(new CreateShopItemRequest(
-                _slot, _name.Trim(), _description?.Trim(), _iconUrl.Trim(),
-                _assetData.Trim(), _price, reqLevel, _stackingPolicy)));
+                _slot, _name.Trim(), _description?.Trim(), iconUrl,
+                assetData, _price, reqLevel, _stackingPolicy)));
+        }
         else
+        {
             MudDialog.Close(DialogResult.Ok(new UpdateShopItemRequest(
-                _name.Trim(), _description?.Trim(), _iconUrl.Trim(),
-                _assetData.Trim(), _price, reqLevel)));
+                _name.Trim(), _description?.Trim(), iconUrl,
+                assetData, _price, reqLevel)));
+        }
     }
 }

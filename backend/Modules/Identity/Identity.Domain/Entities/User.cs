@@ -33,6 +33,9 @@ public sealed class User : AggregateRoot<Guid>, IAuditableEntity
     public UserRole Role { get; set; }
     public bool IsActive { get; set; }
 
+    [MaxLength(512)]
+    public string? AvatarUrl { get; set; }
+
     [MaxLength(128)]
     public string? TwoFactorSecret { get; set; }
 
@@ -79,6 +82,11 @@ public sealed class User : AggregateRoot<Guid>, IAuditableEntity
     {
         FirstName = firstName;
         LastName = lastName;
+    }
+
+    public void UpdateAvatar(string? avatarUrl)
+    {
+        AvatarUrl = avatarUrl;
     }
 
     public void ChangePassword(string newPasswordHash)

@@ -33,6 +33,11 @@ public class SubmitTestAnswersCommandHandler : IRequestHandler<SubmitTestAnswers
             return ActionResult<TestResultResponse>.Failure("Test attempt not found.");
         }
 
+        if (attempt.CompletedAt != null)
+        {
+            return ActionResult<TestResultResponse>.Failure("Test attempt already completed.");
+        }
+
         var stepProgress = await _assignmentRepository.GetStepProgressByIdAsync(attempt.StepProgressId, ct);
         if (stepProgress is null)
         {
@@ -106,7 +111,7 @@ public class SubmitTestAnswersCommandHandler : IRequestHandler<SubmitTestAnswers
         if (!string.IsNullOrEmpty(step.Settings))
         {
             var settings = JsonSerializer.Deserialize<JsonElement>(step.Settings);
-            if (settings.TryGetProperty("passingScore", out var passingScoreEl) && passingScoreEl.TryGetInt32(out var parsed))
+            if (settings.TryGetProperty("passingThreshold", out var passingScoreEl) && passingScoreEl.TryGetInt32(out var parsed))
             {
                 passingScore = parsed;
             }
@@ -126,8 +131,8 @@ public class SubmitTestAnswersCommandHandler : IRequestHandler<SubmitTestAnswers
 
         await _assignmentRepository.SaveChangesAsync(ct);
 
-        var testTimeSpent = stepProgress.StartedAt.HasValue && attempt.CompletedAt.HasValue
-            ? attempt.CompletedAt.Value - stepProgress.StartedAt.Value
+        var testTimeSpent = attempt.CompletedAt.HasValue
+            ? attempt.CompletedAt.Value - attempt.StartedAt
             : TimeSpan.Zero;
 
         await _publisher.Publish(new StepCompletedAnalyticsIntegrationEvent(

@@ -110,7 +110,7 @@ else
                                         <MudAvatar Size="Size.Medium" Style="background:#f5f5f5;flex-shrink:0;">
                                             @if (!string.IsNullOrEmpty(a.IconUrl))
                                             {
-                                                @((MarkupString)$"<img src=\"{a.IconUrl}\" style=\"width:28px;height:28px;object-fit:contain;\" alt=\"\" />")
+                                                @((MarkupString)$"<img src=\"{ProfileApi.ResolveAssetUrl(a.IconUrl) ?? a.IconUrl}\" style=\"width:28px;height:28px;object-fit:contain;\" alt=\"\" />")
                                             }
                                             else if (a.IsManual)
                                             {
@@ -156,7 +156,7 @@ else
                                 <MudAvatar Size="Size.Medium" Style="background:#f5f5f5;opacity:0.65;flex-shrink:0;">
                                     @if (!string.IsNullOrEmpty(p.IconUrl))
                                     {
-                                        @((MarkupString)$"<img src=\"{p.IconUrl}\" style=\"width:28px;height:28px;object-fit:contain;opacity:0.5;\" alt=\"\" />")
+                                        @((MarkupString)$"<img src=\"{ProfileApi.ResolveAssetUrl(p.IconUrl) ?? p.IconUrl}\" style=\"width:28px;height:28px;object-fit:contain;opacity:0.5;\" alt=\"\" />")
                                     }
                                     else
                                     {

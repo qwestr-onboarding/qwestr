@@ -31,6 +31,7 @@ public static class GamificationStartup
 
         services.AddScoped<ILevelCalculator, LevelCalculator>();
         services.AddScoped<ITenantConfigurationProvider, TenantConfigurationProvider>();
+        services.AddScoped<IFileStorageService, GamificationFileStorageService>();
 
         services.AddGamificationApplication();
 

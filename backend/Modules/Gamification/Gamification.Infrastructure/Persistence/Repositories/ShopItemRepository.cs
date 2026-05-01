@@ -39,6 +39,8 @@ public class ShopItemRepository : IShopItemRepository
     public async Task AddAsync(ShopItem item, CancellationToken ct = default)
         => await _context.ShopItems.AddAsync(item, ct);
 
+    public void Delete(ShopItem item) => _context.ShopItems.Remove(item);
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await _context.SaveChangesAsync(ct);
 }

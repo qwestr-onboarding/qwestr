@@ -17,11 +17,18 @@ window.bffAuth = {
         const text = await response.text();
         let data = null;
         try { data = JSON.parse(text); } catch {}
+
         return {
             status: response.status,
             isSuccess: response.ok,
             data: data,
             error: response.ok ? null : text
         };
+    },
+
+    clearStoredToken: async function () {
+        try {
+            await fetch('/bff/auth/clear-token', { method: 'POST', credentials: 'include' });
+        } catch {}
     }
 };

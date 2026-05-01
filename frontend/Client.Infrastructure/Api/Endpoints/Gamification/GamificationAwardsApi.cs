@@ -30,4 +30,6 @@ public class GamificationAwardsApi(QwestrApiClient api)
     public Task<ApiResult> IssueManualAwardAsync(
         Guid id, IssueManualAwardRequest request, CancellationToken ct = default)
         => api.PostAsync($"/api/gamification/awards/{id}/issue", request, ct);
+
+    public string? ResolveAssetUrl(string? path) => api.ResolveAssetUrl(path);
 }

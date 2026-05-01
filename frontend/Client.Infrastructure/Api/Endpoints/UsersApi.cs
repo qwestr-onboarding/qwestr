@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using Client.Infrastructure.Api.Models;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Requests;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses;
@@ -51,4 +52,19 @@ public class UsersApi(QwestrApiClient api)
     public Task<ApiResult> ChangeUserRoleAsync(
         Guid userId, ChangeUserRoleRequest request, CancellationToken ct = default)
         => api.PutAsync($"/api/identity/users/{userId}/role", request, ct);
+
+    public async Task<ApiResult<UploadAvatarResponse>> UploadAvatarAsync(
+        Stream stream, string fileName, string contentType, CancellationToken ct = default)
+    {
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(stream);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        content.Add(fileContent, "file", fileName);
+        return await api.PostContentAsync<UploadAvatarResponse>("/api/identity/users/me/avatar", content, ct);
+    }
+
+    public Task<ApiResult> DeleteAvatarAsync(CancellationToken ct = default)
+        => api.DeleteAsync("/api/identity/users/me/avatar", ct);
+
+    public string? ResolveAssetUrl(string? path) => api.ResolveAssetUrl(path);
 }

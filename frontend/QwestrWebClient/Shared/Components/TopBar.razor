@@ -84,10 +84,19 @@
         <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Variant="Variant.Outlined">
             <ActivatorContent>
                 <MudStack Style="position:relative;display:inline-flex;cursor:pointer;">
-                    <MudAvatar Style="@AvatarStyle()">@_initials</MudAvatar>
+                    <MudAvatar Style="@AvatarStyle()">
+                        @if (_avatarUrl is not null)
+                        {
+                            <MudImage Src="@_avatarUrl" Style="width:100%;height:100%;object-fit:cover;" />
+                        }
+                        else
+                        {
+                            @_initials
+                        }
+                    </MudAvatar>
                     @if (_profile?.Equipment?.AvatarFrame?.IconUrl is { Length: > 0 } frameUrl)
                     {
-                        @((MarkupString)$"<img src=\"{frameUrl}\" style=\"position:absolute;inset:-3px;width:calc(100%+6px);height:calc(100%+6px);object-fit:contain;pointer-events:none;\" alt=\"\" />")
+                        @((MarkupString)$"<img src=\"{ProfileApi.ResolveAssetUrl(frameUrl) ?? frameUrl}\" style=\"position:absolute;inset:-3px;width:calc(100% + 6px);height:calc(100% + 6px);object-fit:contain;pointer-events:none;\" alt=\"\" />")
                     }
                 </MudStack>
             </ActivatorContent>
@@ -119,7 +128,7 @@
                             <MudText>Профиль</MudText>
                         </MudStack>
                     </MudMenuItem>
-                    <MudMenuItem Href="/gamification" Class="border-rounded">
+                    <MudMenuItem Href="/achievements" Class="border-rounded">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                             <MudIcon Icon="@QwestrIcons.Navigation.Trophy" Size="Size.Small" />
                             <MudText>Моя статистика</MudText>
@@ -152,6 +161,7 @@
     private PlayerProfileResponse? _profile;
     private UserProfileResponse? _user;
     private string _initials = "?";
+    private string? _avatarUrl;
 
     protected override async Task OnInitializedAsync()
     {
@@ -166,6 +176,7 @@
             var name = $"{u.FirstName} {u.LastName}".Trim();
             var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             _initials = string.Join("", parts.Take(2).Select(p => char.ToUpper(p[0])));
+            _avatarUrl = UsersApi.ResolveAssetUrl(u.AvatarUrl);
         }
     }
 

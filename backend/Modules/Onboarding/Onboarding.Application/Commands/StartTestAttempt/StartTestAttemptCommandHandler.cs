@@ -40,23 +40,31 @@ public class StartTestAttemptCommandHandler : IRequestHandler<StartTestAttemptCo
             return ActionResult<Guid>.Failure("This step is not a Test step.");
         }
 
+        if (stepProgress.Status == StepProgressStatus.Completed)
+        {
+            return ActionResult<Guid>.Failure("Test has already been passed.");
+        }
+
         var incompleteAttemptId = await _assignmentRepository.GetLatestIncompleteAttemptIdAsync(request.StepProgressId, ct);
         if (incompleteAttemptId.HasValue)
         {
             return ActionResult<Guid>.Failure("A test attempt is already in progress.");
         }
 
+        var maxAttempts = 3;
         if (!string.IsNullOrEmpty(step.Settings))
         {
             var settings = JsonSerializer.Deserialize<JsonElement>(step.Settings);
-            if (settings.TryGetProperty("maxAttempts", out var maxAttemptsEl) && maxAttemptsEl.TryGetInt32(out var maxAttempts))
+            if (settings.TryGetProperty("maxAttempts", out var maxAttemptsEl) && maxAttemptsEl.TryGetInt32(out var parsedMax) && parsedMax > 0)
             {
-                var usedAttempts = await _assignmentRepository.CountTestAttemptsAsync(request.StepProgressId, ct);
-                if (usedAttempts >= maxAttempts)
-                {
-                    return ActionResult<Guid>.Failure("Maximum number of test attempts reached.");
-                }
+                maxAttempts = parsedMax;
             }
+        }
+
+        var usedAttempts = await _assignmentRepository.CountTestAttemptsAsync(request.StepProgressId, ct);
+        if (usedAttempts >= maxAttempts)
+        {
+            return ActionResult<Guid>.Failure("Maximum number of test attempts reached.");
         }
 
         var lastAttemptNumber = await _assignmentRepository.GetLastAttemptNumberAsync(request.StepProgressId, ct);

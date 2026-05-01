@@ -32,6 +32,7 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, ActionR
             user.Role,
             user.IsActive,
             user.TwoFactorEnabled,
+            user.AvatarUrl,
             user.LastLoginAt,
             user.CreatedAt);
 

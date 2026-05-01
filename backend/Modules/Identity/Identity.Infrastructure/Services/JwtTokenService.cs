@@ -1,6 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -22,7 +21,7 @@ public class JwtTokenService : ITokenService
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var expiresAt = DateTime.UtcNow.AddMinutes(_settings.AccessTokenExpiryMinutes);
+        var expiresAt = DateTime.UtcNow.AddDays(_settings.AccessTokenExpiryDays);
 
         var claims = new List<Claim>
         {
@@ -46,13 +45,6 @@ public class JwtTokenService : ITokenService
             signingCredentials: credentials);
 
         return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
-    }
-
-    public (string Token, DateTime ExpiresAt) GenerateRefreshToken()
-    {
-        var bytes = new byte[64];
-        RandomNumberGenerator.Fill(bytes);
-        return (Convert.ToBase64String(bytes), DateTime.UtcNow.AddDays(_settings.RefreshTokenExpiryDays));
     }
 
     public (string Token, DateTime ExpiresAt) GenerateTwoFactorToken(Guid userId)
@@ -111,38 +103,6 @@ public class JwtTokenService : ITokenService
 
             var sub = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             return Guid.TryParse(sub, out var userId) ? userId : null;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
-    {
-        var validationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidIssuer = _settings.Issuer,
-            ValidateAudience = true,
-            ValidAudience = _settings.Audience,
-            ValidateLifetime = false,
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Secret))
-        };
-
-        try
-        {
-            var principal = new JwtSecurityTokenHandler()
-                .ValidateToken(token, validationParameters, out var securityToken);
-
-            if (securityToken is not JwtSecurityToken jwtToken ||
-                !jwtToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.OrdinalIgnoreCase))
-            {
-                return null;
-            }
-
-            return principal;
         }
         catch
         {

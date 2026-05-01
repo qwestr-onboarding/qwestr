@@ -28,7 +28,8 @@ public class QwestrApiClient
     {
         if (string.IsNullOrEmpty(path)) return null;
         if (path.StartsWith("http://") || path.StartsWith("https://")) return path;
-        return $"{_publicBaseUrl}{path}";
+        if (path.StartsWith("/")) return $"{_publicBaseUrl}{path}";
+        return null;
     }
 
     public async Task<ApiResult<T>> GetAsync<T>(string url, CancellationToken ct = default)

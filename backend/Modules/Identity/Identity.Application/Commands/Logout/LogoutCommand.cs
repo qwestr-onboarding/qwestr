@@ -3,4 +3,4 @@ using Qwestr.Shared.Kernel.Entities;
 
 namespace Qwestr.Modules.Identity.Application.Commands.Logout;
 
-public record LogoutCommand(string RefreshToken) : IRequest<ActionResult>;
+public record LogoutCommand : IRequest<ActionResult>;

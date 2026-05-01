@@ -8,5 +8,6 @@ public interface IShopItemRepository
     Task<List<ShopItem>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
     Task<List<ShopItem>> GetByTenantAsync(Guid tenantId, bool activeOnly, CancellationToken ct = default);
     Task AddAsync(ShopItem item, CancellationToken ct = default);
+    void Delete(ShopItem item);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

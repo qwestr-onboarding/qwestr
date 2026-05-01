@@ -3,7 +3,6 @@ using Qwestr.Modules.Identity.Application.Abstractions.Repositories;
 using Qwestr.Modules.Identity.Application.Abstractions.Services;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses;
 using Qwestr.Shared.Kernel.Entities;
-using DomainRefreshToken = Qwestr.Modules.Identity.Domain.Entities.RefreshToken;
 
 namespace Qwestr.Modules.Identity.Application.Commands.VerifyTwoFactor;
 
@@ -11,7 +10,6 @@ public class VerifyTwoFactorCommandHandler : IRequestHandler<VerifyTwoFactorComm
 {
     private readonly IUserRepository _userRepository;
     private readonly ITenantRepository _tenantRepository;
-    private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly ITotpService _totpService;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenService _tokenService;
@@ -19,14 +17,12 @@ public class VerifyTwoFactorCommandHandler : IRequestHandler<VerifyTwoFactorComm
     public VerifyTwoFactorCommandHandler(
         IUserRepository userRepository,
         ITenantRepository tenantRepository,
-        IRefreshTokenRepository refreshTokenRepository,
         ITotpService totpService,
         IPasswordHasher passwordHasher,
         ITokenService tokenService)
     {
         _userRepository = userRepository;
         _tenantRepository = tenantRepository;
-        _refreshTokenRepository = refreshTokenRepository;
         _totpService = totpService;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
@@ -72,15 +68,11 @@ public class VerifyTwoFactorCommandHandler : IRequestHandler<VerifyTwoFactorComm
         }
 
         user.RecordLogin();
+        await _userRepository.SaveChangesAsync(ct);
 
         var tenant = await _tenantRepository.GetByIdAsync(user.TenantId, ct);
         var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user, tenant?.Subdomain);
-        var (refreshTokenValue, refreshExpiresAt) = _tokenService.GenerateRefreshToken();
 
-        var refreshToken = DomainRefreshToken.Create(user.Id, refreshTokenValue, refreshExpiresAt);
-        await _refreshTokenRepository.AddAsync(refreshToken, ct);
-        await _userRepository.SaveChangesAsync(ct);
-
-        return ActionResult<TokenResponse>.Success(new TokenResponse(accessToken, refreshTokenValue, expiresAt));
+        return ActionResult<TokenResponse>.Success(new TokenResponse(accessToken, expiresAt));
     }
 }

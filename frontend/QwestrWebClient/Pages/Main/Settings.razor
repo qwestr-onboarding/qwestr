@@ -1,0 +1,507 @@
+@page "/settings"
+@layout MainLayout
+
+@using Client.Infrastructure.Api.Endpoints
+@using Client.Infrastructure.Api
+@using Microsoft.AspNetCore.Components.Forms
+@using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Identity.Users.Responses
+@using Qwestr.Shared.Contracts.ApiDto.Notifications.Requests
+@using Qwestr.Shared.Contracts.ApiDto.Notifications.Responses
+
+@inject UsersApi UsersApi
+@inject NotificationsApi NotificationsApi
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+
+<PageTitle>Настройки — Qwestr</PageTitle>
+
+@if (_loading)
+{
+    <MudStack AlignItems="AlignItems.Center" Class="pa-8">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    </MudStack>
+}
+else
+{
+    <MudStack Spacing="4">
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudIconButton Icon="@Icons.Material.Outlined.ArrowBack"
+                           OnClick='() => Nav.NavigateTo("/menu")' />
+            <MudText Typo="Typo.h6">Личные настройки</MudText>
+        </MudStack>
+
+        @* ── Профиль + Аватар ── *@
+        <MudPaper Elevation="1" Class="pa-4">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.subtitle1">Профиль</MudText>
+
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    @if (_avatarUrl is not null)
+                    {
+                        <MudAvatar Style="width:80px;height:80px;">
+                            <MudImage Src="@_avatarUrl" />
+                        </MudAvatar>
+                    }
+                    else
+                    {
+                        <MudAvatar Color="Color.Primary" Style="width:80px;height:80px;">
+                            <MudText Typo="Typo.h5">@(_firstName.Length > 0 ? _firstName[0].ToString().ToUpper() : "?")</MudText>
+                        </MudAvatar>
+                    }
+                    <MudStack Spacing="1">
+                        <MudFileUpload T="IBrowserFile" FilesChanged="OnAvatarSelected" Accept="image/jpeg,image/png,image/webp">
+                            <ActivatorContent>
+                                <MudButton Variant="Variant.Outlined"
+                                           StartIcon="@Icons.Material.Outlined.Upload"
+                                           Disabled="_avatarUploading">
+                                    @(_avatarUploading ? "Загрузка..." : "Загрузить фото")
+                                </MudButton>
+                            </ActivatorContent>
+                        </MudFileUpload>
+                        @if (_avatarUrl is not null)
+                        {
+                            <MudButton Variant="Variant.Text" Color="Color.Error"
+                                       StartIcon="@Icons.Material.Outlined.Delete"
+                                       OnClick="DeleteAvatar" Disabled="_avatarDeleting">
+                                Удалить
+                            </MudButton>
+                        }
+                    </MudStack>
+                </MudStack>
+
+                <MudTextField @bind-Value="_firstName" Label="Имя"
+                              Variant="Variant.Outlined" FullWidth="true" />
+                <MudTextField @bind-Value="_lastName" Label="Фамилия"
+                              Variant="Variant.Outlined" FullWidth="true" />
+
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           OnClick="SaveProfile" Disabled="_savingProfile">
+                    @(_savingProfile ? "Сохранение..." : "Сохранить")
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+
+        @* ── Смена пароля ── *@
+        <MudPaper Elevation="1" Class="pa-4">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.subtitle1">Смена пароля</MudText>
+
+                <MudTextField @bind-Value="_currentPassword" Label="Текущий пароль"
+                              InputType="InputType.Password" Variant="Variant.Outlined" FullWidth="true" />
+                <MudTextField @bind-Value="_newPassword" Label="Новый пароль"
+                              InputType="InputType.Password" Variant="Variant.Outlined" FullWidth="true" />
+                <MudTextField @bind-Value="_confirmPassword" Label="Повторите новый пароль"
+                              InputType="InputType.Password" Variant="Variant.Outlined" FullWidth="true" />
+
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           OnClick="ChangePassword" Disabled="_changingPassword">
+                    @(_changingPassword ? "Сохранение..." : "Изменить пароль")
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+
+        @* ── Двухфакторная аутентификация ── *@
+        <MudPaper Elevation="1" Class="pa-4">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.subtitle1">Двухфакторная аутентификация</MudText>
+
+                @if (_backupCodes is not null)
+                {
+                    <MudAlert Severity="Severity.Success" Dense="true">2FA успешно включена!</MudAlert>
+                    <MudAlert Severity="Severity.Warning" Dense="true">
+                        Сохраните резервные коды в надёжном месте. Каждый код можно использовать один раз.
+                    </MudAlert>
+                    <MudPaper Outlined="true" Class="pa-3">
+                        <MudStack Spacing="1">
+                            @foreach (var backupCode in _backupCodes)
+                            {
+                                <MudText Typo="Typo.body2" Style="font-family:monospace;">@backupCode</MudText>
+                            }
+                        </MudStack>
+                    </MudPaper>
+                    <MudButton Variant="Variant.Outlined" OnClick="() => { _backupCodes = null; _twoFactorEnabled = true; }">
+                        Готово
+                    </MudButton>
+                }
+                else if (_twoFactorEnabled)
+                {
+                    <MudAlert Severity="Severity.Success" Dense="true">2FA включена</MudAlert>
+                    @if (!_disabling2fa)
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                                   OnClick="() => _disabling2fa = true">
+                            Отключить 2FA
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudTextField @bind-Value="_disableCode"
+                                      Label="Код из приложения или резервный код"
+                                      Variant="Variant.Outlined" FullWidth="true" />
+                        <MudStack Row="true" Spacing="2">
+                            <MudButton Variant="Variant.Filled" Color="Color.Error"
+                                       OnClick="DisableTwoFactor" Disabled="_processingTwoFactor">
+                                @(_processingTwoFactor ? "Отключение..." : "Подтвердить")
+                            </MudButton>
+                            <MudButton Variant="Variant.Text"
+                                       OnClick="() => { _disabling2fa = false; _disableCode = string.Empty; }">
+                                Отмена
+                            </MudButton>
+                        </MudStack>
+                    }
+                }
+                else if (_twoFactorSetupData is not null)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        Отсканируйте QR-код в приложении-аутентификаторе (например, Google Authenticator).
+                    </MudAlert>
+                    <MudStack AlignItems="AlignItems.Center">
+                        <MudImage Src="@_twoFactorSetupData.QrCodeUri" Style="max-width:200px;" />
+                    </MudStack>
+                    <MudTextField Label="Ключ для ручного ввода"
+                                  Value="@_twoFactorSetupData.Secret"
+                                  Variant="Variant.Outlined" FullWidth="true" ReadOnly="true" />
+                    <MudTextField @bind-Value="_setupCode" Label="Код подтверждения"
+                                  Variant="Variant.Outlined" FullWidth="true"
+                                  Placeholder="Введите код из приложения" />
+                    <MudStack Row="true" Spacing="2">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   OnClick="ConfirmTwoFactor" Disabled="_processingTwoFactor">
+                            @(_processingTwoFactor ? "Проверка..." : "Подтвердить")
+                        </MudButton>
+                        <MudButton Variant="Variant.Text"
+                                   OnClick="() => { _twoFactorSetupData = null; _setupCode = string.Empty; }">
+                            Отмена
+                        </MudButton>
+                    </MudStack>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">2FA не включена</MudAlert>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                               OnClick="SetupTwoFactor" Disabled="_processingTwoFactor">
+                        @(_processingTwoFactor ? "Загрузка..." : "Включить 2FA")
+                    </MudButton>
+                }
+            </MudStack>
+        </MudPaper>
+
+        @* ── Уведомления ── *@
+        @if (_preferences is not null)
+        {
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.subtitle1">Уведомления</MudText>
+
+                    <MudSimpleTable Dense="true">
+                        <thead>
+                            <tr>
+                                <th>Событие</th>
+                                <th style="text-align:center">В приложении</th>
+                                <th style="text-align:center">Email</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var pref in _preferences)
+                            {
+                                <tr>
+                                    <td>@GetNotificationLabel(pref.Type)</td>
+                                    <td style="text-align:center">
+                                        <MudCheckBox @bind-Value="pref.InAppEnabled" Dense="true" />
+                                    </td>
+                                    <td style="text-align:center">
+                                        <MudCheckBox @bind-Value="pref.EmailEnabled" Dense="true" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="SavePreferences" Disabled="_savingPreferences">
+                        @(_savingPreferences ? "Сохранение..." : "Сохранить")
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        }
+
+    </MudStack>
+}
+
+@code {
+    private sealed class PrefVm
+    {
+        public int Type { get; init; }
+        public bool InAppEnabled { get; set; }
+        public bool EmailEnabled { get; set; }
+    }
+
+    private bool _loading = true;
+
+    // Profile
+    private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+    private string? _avatarUrl;
+    private bool _savingProfile;
+    private bool _avatarUploading;
+    private bool _avatarDeleting;
+
+    // Password
+    private string _currentPassword = string.Empty;
+    private string _newPassword = string.Empty;
+    private string _confirmPassword = string.Empty;
+    private bool _changingPassword;
+
+    // 2FA
+    private bool _twoFactorEnabled;
+    private TwoFactorSetupResponse? _twoFactorSetupData;
+    private List<string>? _backupCodes;
+    private string _setupCode = string.Empty;
+    private bool _disabling2fa;
+    private string _disableCode = string.Empty;
+    private bool _processingTwoFactor;
+
+    // Notifications
+    private List<PrefVm>? _preferences;
+    private bool _savingPreferences;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var userTask = UsersApi.GetCurrentUserAsync();
+        var prefsTask = NotificationsApi.GetPreferencesAsync();
+        await Task.WhenAll(userTask, prefsTask);
+
+        if (userTask.Result.IsSuccess && userTask.Result.Data is { } user)
+        {
+            _firstName = user.FirstName;
+            _lastName = user.LastName;
+            _avatarUrl = UsersApi.ResolveAssetUrl(user.AvatarUrl);
+            _twoFactorEnabled = user.TwoFactorEnabled;
+        }
+
+        if (prefsTask.Result.IsSuccess && prefsTask.Result.Data is { } prefs)
+        {
+            _preferences = prefs
+                .Where(p => p.Type != 100 && p.Type != 101)
+                .Select(p => new PrefVm
+                {
+                    Type = p.Type,
+                    InAppEnabled = p.InAppEnabled,
+                    EmailEnabled = p.EmailEnabled
+                }).ToList();
+        }
+
+        _loading = false;
+    }
+
+    private async Task SaveProfile()
+    {
+        _savingProfile = true;
+        try
+        {
+            var result = await UsersApi.UpdateProfileAsync(new UpdateProfileRequest(_firstName, _lastName));
+            if (result.IsSuccess)
+            {
+                Snackbar.Add("Профиль обновлён", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.Error ?? "Ошибка сохранения", Severity.Error);
+            }
+        }
+        finally
+        {
+            _savingProfile = false;
+        }
+    }
+
+    private async Task OnAvatarSelected(IBrowserFile? file)
+    {
+        if (file is null) return;
+        _avatarUploading = true;
+        try
+        {
+            await using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            var result = await UsersApi.UploadAvatarAsync(stream, file.Name, file.ContentType);
+            if (result.IsSuccess)
+            {
+                _avatarUrl = UsersApi.ResolveAssetUrl(result.Data!.AvatarUrl);
+                Snackbar.Add("Фото обновлено", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.Error ?? "Ошибка загрузки фото", Severity.Error);
+            }
+        }
+        finally
+        {
+            _avatarUploading = false;
+        }
+    }
+
+    private async Task DeleteAvatar()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Удалить фото", "Удалить фото профиля?",
+            yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed != true) return;
+
+        _avatarDeleting = true;
+        try
+        {
+            var result = await UsersApi.DeleteAvatarAsync();
+            if (result.IsSuccess)
+            {
+                _avatarUrl = null;
+                Snackbar.Add("Фото удалено", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.Error ?? "Ошибка удаления", Severity.Error);
+            }
+        }
+        finally
+        {
+            _avatarDeleting = false;
+        }
+    }
+
+    private async Task ChangePassword()
+    {
+        if (_newPassword != _confirmPassword)
+        {
+            Snackbar.Add("Пароли не совпадают", Severity.Warning);
+            return;
+        }
+
+        _changingPassword = true;
+        try
+        {
+            var result = await UsersApi.ChangePasswordAsync(
+                new ChangePasswordRequest(_currentPassword, _newPassword));
+            if (result.IsSuccess)
+            {
+                _currentPassword = string.Empty;
+                _newPassword = string.Empty;
+                _confirmPassword = string.Empty;
+                Snackbar.Add("Пароль изменён", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.Error ?? "Ошибка смены пароля", Severity.Error);
+            }
+        }
+        finally
+        {
+            _changingPassword = false;
+        }
+    }
+
+    private async Task SetupTwoFactor()
+    {
+        _processingTwoFactor = true;
+        try
+        {
+            var result = await UsersApi.SetupTwoFactorAsync();
+            if (result.IsSuccess)
+            {
+                _twoFactorSetupData = result.Data;
+            }
+            else
+            {
+                Snackbar.Add(result.Error ?? "Ошибка настройки 2FA", Severity.Error);
+            }
+        }
+        finally
+        {
+            _processingTwoFactor = false;
+        }
+    }
+
+    private async Task ConfirmTwoFactor()
+    {
+        _processingTwoFactor = true;
+        try
+        {
+            var result = await UsersApi.ConfirmTwoFactorAsync(new ConfirmTwoFactorRequest(_setupCode));
+            if (result.IsSuccess)
+            {
+                _twoFactorSetupData = null;
+                _setupCode = string.Empty;
+                _backupCodes = result.Data!.Codes;
+            }
+            else
+            {
+                Snackbar.Add(result.Error ?? "Неверный код", Severity.Error);
+            }
+        }
+        finally
+        {
+            _processingTwoFactor = false;
+        }
+    }
+
+    private async Task DisableTwoFactor()
+    {
+        _processingTwoFactor = true;
+        try
+        {
+            var result = await UsersApi.DisableTwoFactorAsync(new DisableTwoFactorRequest(_disableCode));
+            if (result.IsSuccess)
+            {
+                _twoFactorEnabled = false;
+                _disabling2fa = false;
+                _disableCode = string.Empty;
+                Snackbar.Add("2FA отключена", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.Error ?? "Ошибка отключения 2FA", Severity.Error);
+            }
+        }
+        finally
+        {
+            _processingTwoFactor = false;
+        }
+    }
+
+    private async Task SavePreferences()
+    {
+        if (_preferences is null) return;
+        _savingPreferences = true;
+        try
+        {
+            var items = _preferences
+                .Select(p => new UpdatePreferenceItemRequest(p.Type, p.InAppEnabled, p.EmailEnabled))
+                .ToList();
+            var result = await NotificationsApi.UpdatePreferencesAsync(new UpdatePreferencesRequest(items));
+            if (result.IsSuccess)
+            {
+                Snackbar.Add("Настройки уведомлений сохранены", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.Error ?? "Ошибка сохранения", Severity.Error);
+            }
+        }
+        finally
+        {
+            _savingPreferences = false;
+        }
+    }
+
+    private static string GetNotificationLabel(int type) => type switch
+    {
+        200 => "Назначен сценарий онбординга",
+        201 => "Сценарий онбординга завершён",
+        202 => "Этап онбординга завершён",
+        203 => "Напоминание о неактивном онбординге",
+        300 => "Получен бейдж",
+        301 => "Повышение уровня",
+        302 => "Изменение позиции в лидерборде",
+        _   => $"Уведомление #{type}"
+    };
+}

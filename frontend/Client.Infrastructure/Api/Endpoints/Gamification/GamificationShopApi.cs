@@ -1,4 +1,7 @@
+using System.Net;
+using System.Net.Http.Headers;
 using Client.Infrastructure.Api.Models;
+using Microsoft.AspNetCore.Components.Forms;
 using Qwestr.Shared.Contracts.ApiDto.Gamification.Requests;
 using Qwestr.Shared.Contracts.ApiDto.Gamification.Responses;
 
@@ -28,4 +31,21 @@ public class GamificationShopApi(QwestrApiClient api)
 
     public Task<ApiResult> PurchaseShopItemAsync(Guid id, CancellationToken ct = default)
         => api.PostAsync($"/api/gamification/shop/{id}/purchase", new { }, ct);
+
+    public async Task<ApiResult<string>> UploadShopAssetAsync(IBrowserFile file, CancellationToken ct = default)
+    {
+        using var content = new MultipartFormDataContent();
+        var stream = file.OpenReadStream(maxAllowedSize: 10_000_000, ct);
+        var fileContent = new StreamContent(stream);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+        content.Add(fileContent, "file", file.Name);
+        var result = await api.PostContentAsync<UploadUrlResponse>("/api/gamification/shop/assets/upload", content, ct);
+        if (!result.IsSuccess) { return ApiResult<string>.Failure(result.StatusCode, result.Error ?? "Upload failed"); }
+        return ApiResult<string>.Success(result.Data!.Url);
+    }
+
+    public Task<ApiResult> DeleteShopItemAsync(Guid id, CancellationToken ct = default)
+        => api.DeleteAsync($"/api/gamification/shop/{id}", ct);
+
+    public string? ResolveAssetUrl(string? path) => api.ResolveAssetUrl(path);
 }

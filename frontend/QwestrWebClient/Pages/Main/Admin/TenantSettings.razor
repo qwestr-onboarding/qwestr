@@ -269,13 +269,9 @@ else
 
             if (_subdomain != _originalSubdomain)
             {
-                var refresh = await BffAuth.RefreshAsync();
-                if (refresh.IsSuccess && refresh.Data is not null)
-                {
-                    TokenStorage.SetToken(refresh.Data.AccessToken, refresh.Data.ExpiresAt);
-                    AuthStateProvider.NotifyAuthStateChanged();
-                }
-                Nav.NavigateTo($"https://{_subdomain}.{TenantResolver.BaseDomain}/tenant-settings", forceLoad: true);
+                await BffAuth.ClearStoredTokenAsync();
+                Session.ClearSession();
+                Nav.NavigateTo($"https://{_subdomain}.{TenantResolver.BaseDomain}/login", forceLoad: true);
                 return;
             }
 

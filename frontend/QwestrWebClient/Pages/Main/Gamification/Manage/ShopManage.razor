@@ -86,9 +86,13 @@ else
                                 <MudCardContent>
                                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start">
                                         <MudAvatar Size="Size.Medium" Style="background:#f5f5f5;flex-shrink:0;">
-                                            @if (!string.IsNullOrEmpty(item.IconUrl))
+                                            @if (item.IconUrl?.StartsWith("#") == true)
                                             {
-                                                @((MarkupString)$"<img src=\"{item.IconUrl}\" style=\"width:28px;height:28px;object-fit:contain;\" alt=\"\" />")
+                                                <MudPaper Style="@($"width:26px;height:26px;border-radius:50%;background:{item.IconUrl};")" Elevation="0" />
+                                            }
+                                            else if (!string.IsNullOrEmpty(item.IconUrl))
+                                            {
+                                                @((MarkupString)$"<img src=\"{ShopApi.ResolveAssetUrl(item.IconUrl) ?? item.IconUrl}\" style=\"width:28px;height:28px;object-fit:contain;\" alt=\"\" />")
                                             }
                                             else
                                             {
@@ -129,6 +133,11 @@ else
                                                        title="Деактивировать"
                                                        OnClick="@(() => DeactivateAsync(item))" />
                                     }
+                                    <MudSpacer />
+                                    <MudIconButton Icon="@Icons.Material.Outlined.DeleteForever"
+                                                   Size="Size.Small" Color="Color.Error"
+                                                   title="Удалить"
+                                                   OnClick="@(() => DeleteAsync(item))" />
                                 </MudCardActions>
                             </MudCard>
                         </MudItem>
@@ -220,6 +229,18 @@ else
         if (confirmed != true) return;
         var res = await ShopApi.DeactivateShopItemAsync(item.Id);
         if (res.IsSuccess) { Snackbar.Add("Деактивировано", Severity.Normal); await LoadAsync(); }
+        else Snackbar.Add(res.Error ?? "Ошибка", Severity.Error);
+    }
+
+    private async Task DeleteAsync(ShopItemManagementResponse item)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Удалить предмет",
+            $"Удалить «{item.Name}» навсегда? Все купленные копии этого предмета исчезнут у сотрудников, а предмет будет скрыт из инвентарей.",
+            yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed != true) return;
+        var res = await ShopApi.DeleteShopItemAsync(item.Id);
+        if (res.IsSuccess) { Snackbar.Add("Предмет удалён", Severity.Normal); await LoadAsync(); }
         else Snackbar.Add(res.Error ?? "Ошибка", Severity.Error);
     }
 

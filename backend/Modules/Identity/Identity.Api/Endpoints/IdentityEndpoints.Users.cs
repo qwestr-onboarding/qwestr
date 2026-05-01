@@ -9,9 +9,11 @@ using Qwestr.Modules.Identity.Application.Commands.ChangePassword;
 using Qwestr.Modules.Identity.Application.Commands.ChangeUserRole;
 using Qwestr.Modules.Identity.Application.Commands.ConfirmTwoFactor;
 using Qwestr.Modules.Identity.Application.Commands.DeactivateUser;
+using Qwestr.Modules.Identity.Application.Commands.DeleteAvatar;
 using Qwestr.Modules.Identity.Application.Commands.DisableTwoFactor;
 using Qwestr.Modules.Identity.Application.Commands.SetupTwoFactor;
 using Qwestr.Modules.Identity.Application.Commands.UpdateProfile;
+using Qwestr.Modules.Identity.Application.Commands.UploadAvatar;
 using Qwestr.Modules.Identity.Application.Queries.GetCurrentUser;
 using Qwestr.Modules.Identity.Application.Queries.GetUserById;
 using Qwestr.Modules.Identity.Application.Queries.GetUsersList;
@@ -31,6 +33,8 @@ public static partial class IdentityEndpoints
         users.MapGet("/me", GetCurrentUserHandler);
         users.MapPut("/me", UpdateProfileHandler);
         users.MapPut("/me/password", ChangePasswordHandler);
+        users.MapPost("/me/avatar", UploadAvatarHandler).DisableAntiforgery();
+        users.MapDelete("/me/avatar", DeleteAvatarHandler);
         users.MapPost("/me/2fa/setup", SetupTwoFactorHandler);
         users.MapPost("/me/2fa/confirm", ConfirmTwoFactorHandler);
         users.MapDelete("/me/2fa", DisableTwoFactorHandler);
@@ -73,6 +77,26 @@ public static partial class IdentityEndpoints
     {
         var result = await sender.Send(
             new ChangePasswordCommand(currentUser.UserId, body.CurrentPassword, body.NewPassword), ct);
+        return result.IsSuccess
+            ? Results.NoContent()
+            : Results.BadRequest(new ErrorResponse(result.Error));
+    }
+
+    private static async Task<IResult> UploadAvatarHandler(
+        IFormFile file, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
+    {
+        await using var stream = file.OpenReadStream();
+        var result = await sender.Send(
+            new UploadAvatarCommand(currentUser.UserId, stream, file.Length, file.ContentType), ct);
+        return result.IsSuccess
+            ? Results.Ok(new UploadAvatarResponse(result.Value!))
+            : Results.BadRequest(new ErrorResponse(result.Error));
+    }
+
+    private static async Task<IResult> DeleteAvatarHandler(
+        ICurrentUserService currentUser, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new DeleteAvatarCommand(currentUser.UserId), ct);
         return result.IsSuccess
             ? Results.NoContent()
             : Results.BadRequest(new ErrorResponse(result.Error));

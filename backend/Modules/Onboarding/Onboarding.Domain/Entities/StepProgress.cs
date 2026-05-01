@@ -35,10 +35,13 @@ public sealed class StepProgress : Entity<Guid>
 
     public void Start()
     {
-        if (Status == StepProgressStatus.NotStarted)
+        if (Status is StepProgressStatus.NotStarted or StepProgressStatus.Failed)
         {
+            if (!StartedAt.HasValue)
+            {
+                StartedAt = DateTime.UtcNow;
+            }
             Status = StepProgressStatus.InProgress;
-            StartedAt = DateTime.UtcNow;
         }
     }
 

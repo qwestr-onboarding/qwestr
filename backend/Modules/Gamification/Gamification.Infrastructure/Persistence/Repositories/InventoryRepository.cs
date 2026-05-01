@@ -22,6 +22,14 @@ public class InventoryRepository : IInventoryRepository
     public async Task AddAsync(InventoryItem item, CancellationToken ct = default)
         => await _context.InventoryItems.AddAsync(item, ct);
 
+    public async Task DeleteAllByShopItemAsync(Guid shopItemId, CancellationToken ct = default)
+    {
+        var items = await _context.InventoryItems
+            .Where(i => i.ShopItemId == shopItemId)
+            .ToListAsync(ct);
+        _context.InventoryItems.RemoveRange(items);
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await _context.SaveChangesAsync(ct);
 }

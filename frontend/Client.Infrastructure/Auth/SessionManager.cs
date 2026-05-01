@@ -1,99 +1,72 @@
 using System.Net;
+using System.Text.Json;
 using Client.Infrastructure.Api.Models;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Http;
 
 namespace Client.Infrastructure.Auth;
 
 public class SessionManager
 {
+    private const string CookieName = "qwestr_at";
+
     private readonly TokenStorageService _tokenStorage;
     private readonly BffAuthClient _bffAuth;
     private readonly JwtAuthStateProvider _authState;
     private readonly NavigationManager _nav;
-    private readonly SemaphoreSlim _refreshLock = new(1, 1);
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public SessionManager(
         TokenStorageService tokenStorage,
         BffAuthClient bffAuth,
         JwtAuthStateProvider authState,
-        NavigationManager nav)
+        NavigationManager nav,
+        IHttpContextAccessor httpContextAccessor)
     {
         _tokenStorage = tokenStorage;
         _bffAuth = bffAuth;
         _authState = authState;
         _nav = nav;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     /// <summary>
-    /// Гарантирует валидность access token. Делает refresh если нужно.
-    /// Возвращает false и редиректит на /login если сессия потеряна.
+    /// Пытается восстановить сессию из HttpOnly cookie через HttpContext.
+    /// НЕ редиректит на /login при неудаче — используется на auth-страницах.
+    /// </summary>
+    public Task<bool> TryRestoreSessionAsync(CancellationToken ct = default)
+    {
+        if (!string.IsNullOrEmpty(_tokenStorage.AccessToken) && !_tokenStorage.IsExpired)
+            return Task.FromResult(true);
+
+        var stored = ReadTokenFromCookie();
+        if (stored is null)
+            return Task.FromResult(false);
+
+        _tokenStorage.SetToken(stored.Value.Token, stored.Value.ExpiresAt);
+        _authState.NotifyAuthStateChanged();
+        return Task.FromResult(true);
+    }
+
+    /// <summary>
+    /// Гарантирует валидный токен. Редиректит на /login если сессия потеряна.
     /// </summary>
     public async Task<bool> EnsureValidTokenAsync(CancellationToken ct = default)
     {
         if (!string.IsNullOrEmpty(_tokenStorage.AccessToken) && !_tokenStorage.IsExpired)
             return true;
 
-        await _refreshLock.WaitAsync(ct);
-        try
-        {
-            // Повторная проверка — другой вызов мог уже обновить токен
-            if (!string.IsNullOrEmpty(_tokenStorage.AccessToken) && !_tokenStorage.IsExpired)
-                return true;
-
-            var result = await _bffAuth.RefreshAsync(ct);
-            if (result.IsSuccess && result.Data is not null)
-            {
-                _tokenStorage.SetToken(result.Data.AccessToken, result.Data.ExpiresAt);
-                _authState.NotifyAuthStateChanged();
-                return true;
-            }
-
-            _tokenStorage.Clear();
-            _authState.NotifyAuthStateChanged();
-            _nav.NavigateTo("/login");
-            return false;
-        }
-        finally
-        {
-            _refreshLock.Release();
-        }
-    }
-
-    /// <summary>
-    /// Пытается восстановить сессию через refresh cookie.
-    /// В отличие от EnsureValidTokenAsync — НЕ редиректит на /login при неудаче.
-    /// Используется на auth-страницах: если сессия жива — перенаправить на /dashboard.
-    /// </summary>
-    public async Task<bool> TryRestoreSessionAsync(CancellationToken ct = default)
-    {
-        if (!string.IsNullOrEmpty(_tokenStorage.AccessToken) && !_tokenStorage.IsExpired)
+        if (await TryRestoreSessionAsync(ct))
             return true;
 
-        await _refreshLock.WaitAsync(ct);
-        try
-        {
-            if (!string.IsNullOrEmpty(_tokenStorage.AccessToken) && !_tokenStorage.IsExpired)
-                return true;
-
-            var result = await _bffAuth.RefreshAsync(ct);
-            if (result.IsSuccess && result.Data is not null)
-            {
-                _tokenStorage.SetToken(result.Data.AccessToken, result.Data.ExpiresAt);
-                _authState.NotifyAuthStateChanged();
-                return true;
-            }
-
-            _tokenStorage.Clear();
-            return false;
-        }
-        finally
-        {
-            _refreshLock.Release();
-        }
+        _tokenStorage.Clear();
+        _authState.NotifyAuthStateChanged();
+        _nav.NavigateTo("/login");
+        return false;
     }
 
     /// <summary>
-    /// Выполняет авторизованный API-вызов. При 401 — делает refresh и повторяет.
+    /// Выполняет авторизованный API-вызов. При 401 — очищает сессию и редиректит.
     /// </summary>
     public async Task<ApiResult<T>> ExecuteWithAuthAsync<T>(
         Func<Task<ApiResult<T>>> apiCall, CancellationToken ct = default)
@@ -103,20 +76,41 @@ public class SessionManager
 
         var result = await apiCall();
 
-        if (result.StatusCode != HttpStatusCode.Unauthorized)
-            return result;
+        if (result.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            _tokenStorage.Clear();
+            await _bffAuth.ClearStoredTokenAsync();
+            _authState.NotifyAuthStateChanged();
+            _nav.NavigateTo("/login");
+        }
 
-        // Токен был "живой" по нашим данным, но backend отклонил (рассинхрон / отзыв)
-        _tokenStorage.Clear();
-
-        if (!await EnsureValidTokenAsync(ct))
-            return ApiResult<T>.Failure(HttpStatusCode.Unauthorized, "Session expired");
-
-        return await apiCall();
+        return result;
     }
 
     /// <summary>
-    /// Сбрасывает текущую сессию (токен + состояние аутентификации).
+    /// Перегрузка для API-вызовов без тела ответа.
+    /// </summary>
+    public async Task<ApiResult> ExecuteWithAuthAsync(
+        Func<Task<ApiResult>> apiCall, CancellationToken ct = default)
+    {
+        if (!await EnsureValidTokenAsync(ct))
+            return ApiResult.Failure(HttpStatusCode.Unauthorized, "Session expired");
+
+        var result = await apiCall();
+
+        if (result.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            _tokenStorage.Clear();
+            await _bffAuth.ClearStoredTokenAsync();
+            _authState.NotifyAuthStateChanged();
+            _nav.NavigateTo("/login");
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Сбрасывает текущую сессию.
     /// </summary>
     public void ClearSession()
     {
@@ -135,25 +129,23 @@ public class SessionManager
             .FirstOrDefault(c => c.Type == claimType)?.Value;
     }
 
-    /// <summary>
-    /// Перегрузка для API-вызовов без тела ответа.
-    /// </summary>
-    public async Task<ApiResult> ExecuteWithAuthAsync(
-        Func<Task<ApiResult>> apiCall, CancellationToken ct = default)
+    private (string Token, DateTime ExpiresAt)? ReadTokenFromCookie()
     {
-        if (!await EnsureValidTokenAsync(ct))
-            return ApiResult.Failure(HttpStatusCode.Unauthorized, "Session expired");
+        var token = _httpContextAccessor.HttpContext?.Request.Cookies[CookieName];
+        if (string.IsNullOrEmpty(token)) return null;
 
-        var result = await apiCall();
-
-        if (result.StatusCode != HttpStatusCode.Unauthorized)
-            return result;
-
-        _tokenStorage.Clear();
-
-        if (!await EnsureValidTokenAsync(ct))
-            return ApiResult.Failure(HttpStatusCode.Unauthorized, "Session expired");
-
-        return await apiCall();
+        try
+        {
+            var parts = token.Split('.');
+            if (parts.Length < 2) return null;
+            var payload = parts[1].Replace('-', '+').Replace('_', '/');
+            var padded = payload.PadRight((payload.Length + 3) & ~3, '=');
+            using var doc = JsonDocument.Parse(Convert.FromBase64String(padded));
+            var exp = doc.RootElement.GetProperty("exp").GetInt64();
+            var expiresAt = DateTimeOffset.FromUnixTimeSeconds(exp).UtcDateTime;
+            if (expiresAt <= DateTime.UtcNow) return null;
+            return (token, expiresAt);
+        }
+        catch { return null; }
     }
 }

@@ -9,18 +9,15 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
 {
     private readonly IPasswordResetTokenRepository _passwordResetTokenRepository;
     private readonly IUserRepository _userRepository;
-    private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IPasswordHasher _passwordHasher;
 
     public ResetPasswordCommandHandler(
         IPasswordResetTokenRepository passwordResetTokenRepository,
         IUserRepository userRepository,
-        IRefreshTokenRepository refreshTokenRepository,
         IPasswordHasher passwordHasher)
     {
         _passwordResetTokenRepository = passwordResetTokenRepository;
         _userRepository = userRepository;
-        _refreshTokenRepository = refreshTokenRepository;
         _passwordHasher = passwordHasher;
     }
 
@@ -43,7 +40,6 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
         user.ChangePassword(newHash);
         resetToken.MarkAsUsed();
 
-        await _refreshTokenRepository.RevokeAllByUserIdAsync(user.Id, ct);
         await _userRepository.SaveChangesAsync(ct);
 
         return ActionResult.Success();
