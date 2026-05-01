@@ -423,3 +423,4 @@ FodyWeavers.xsd
 /backend/Modules/Onboarding/OnboardingSpec.md
 /frontend/CLAUDE.md
 *.md
+/backend/QwestrAPI/Properties/launchSettings.json
