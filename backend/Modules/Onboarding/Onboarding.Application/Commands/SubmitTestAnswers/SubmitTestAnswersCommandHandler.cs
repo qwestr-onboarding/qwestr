@@ -163,11 +163,16 @@ public class SubmitTestAnswersCommandHandler : IRequestHandler<SubmitTestAnswers
                 assignment.Complete();
                 await _assignmentRepository.SaveChangesAsync(ct);
 
+                var scenario = await _scenarioRepository.GetWithStagesAndStepsAsync(assignment.ScenarioId, ct);
+                var totalPoints = scenario?.Stages.SelectMany(s => s.Steps).Sum(s => s.Points) ?? 0;
+
                 await _publisher.Publish(new OnboardingScenarioCompletedIntegrationEvent(
                     request.UserId,
                     request.TenantId,
                     assignment.Id,
                     assignment.ScenarioId,
+                    scenario?.Title ?? string.Empty,
+                    totalPoints,
                     assignment.CompletedAt!.Value), ct);
             }
         }

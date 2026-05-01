@@ -70,7 +70,7 @@ public class IssueManualAwardCommandHandler : IRequestHandler<IssueManualAwardCo
         }
 
         await _publisher.Publish(new AwardEarnedEvent(request.TenantId, request.ProfileId, profile.UserId, request.AwardId, AwardIssuanceType.Manual), ct);
-        await _publisher.Publish(new AwardEarnedIntegrationEvent(request.TenantId, profile.UserId, request.AwardId, award.Code, earnedAward.EarnedAt), ct);
+        await _publisher.Publish(new AwardEarnedIntegrationEvent(request.TenantId, profile.UserId, request.AwardId, award.Code, award.Title, award.Description, earnedAward.EarnedAt), ct);
 
         return ActionResult.Success();
     }

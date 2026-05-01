@@ -2,6 +2,7 @@ using MediatR;
 using Qwestr.Modules.Identity.Application.Abstractions.Repositories;
 using Qwestr.Modules.Identity.Domain.Entities;
 using Qwestr.Modules.Identity.Domain.Events;
+using Qwestr.Shared.Contracts.Identity.Events;
 using Qwestr.Shared.Kernel.Entities;
 
 namespace Qwestr.Modules.Identity.Application.Commands.CreateInvitation;
@@ -9,11 +10,19 @@ namespace Qwestr.Modules.Identity.Application.Commands.CreateInvitation;
 public class CreateInvitationCommandHandler : IRequestHandler<CreateInvitationCommand, ActionResult<Guid>>
 {
     private readonly IInvitationRepository _invitationRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly ITenantRepository _tenantRepository;
     private readonly IPublisher _publisher;
 
-    public CreateInvitationCommandHandler(IInvitationRepository invitationRepository, IPublisher publisher)
+    public CreateInvitationCommandHandler(
+        IInvitationRepository invitationRepository,
+        IUserRepository userRepository,
+        ITenantRepository tenantRepository,
+        IPublisher publisher)
     {
         _invitationRepository = invitationRepository;
+        _userRepository = userRepository;
+        _tenantRepository = tenantRepository;
         _publisher = publisher;
     }
 
@@ -34,6 +43,21 @@ public class CreateInvitationCommandHandler : IRequestHandler<CreateInvitationCo
         await _invitationRepository.SaveChangesAsync(ct);
 
         await _publisher.Publish(new InvitationCreatedEvent(invitation.Id, invitation.TenantId, invitation.Email, invitation.Token), ct);
+
+        var inviter = await _userRepository.GetByIdAsync(request.InvitedByUserId, ct);
+        var tenant = await _tenantRepository.GetByIdAsync(request.TenantId, ct);
+
+        var inviterName = inviter is not null
+            ? $"{inviter.FirstName} {inviter.LastName}".Trim()
+            : string.Empty;
+        var companyName = tenant?.Name ?? string.Empty;
+
+        await _publisher.Publish(new UserInvitedIntegrationEvent(
+            invitation.TenantId,
+            invitation.Email,
+            inviterName,
+            companyName,
+            invitation.Token), ct);
 
         return ActionResult<Guid>.Success(invitation.Id);
     }

@@ -10,6 +10,7 @@
 
     <ItemGroup>
       <Folder Include="ApiDto\Analytics\" />
+      <Folder Include="ApiDto\Notifications\" />
       <Folder Include="ApiDto\Shared\Requests\" />
       <Folder Include="Interfaces\" />
       <Folder Include="Services\" />

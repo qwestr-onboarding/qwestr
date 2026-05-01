@@ -7,4 +7,6 @@ public record OnboardingScenarioCompletedIntegrationEvent(
     Guid TenantId,
     Guid AssignmentId,
     Guid ScenarioId,
+    string ScenarioTitle,
+    int TotalPoints,
     DateTime CompletedAt) : INotification;

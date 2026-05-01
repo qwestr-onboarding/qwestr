@@ -6,6 +6,7 @@ using Qwestr.Modules.Gamification.Application.Awarding.Models;
 using Qwestr.Modules.Gamification.Application.Points;
 using Qwestr.Modules.Gamification.Domain.Entities;
 using Qwestr.Modules.Gamification.Domain.Events;
+using Qwestr.Shared.Contracts.Gamification.Events;
 using Qwestr.Shared.Kernel.Enums.Gamification;
 
 namespace Qwestr.Modules.Gamification.Application.Awarding;
@@ -104,6 +105,8 @@ public class AwardEvaluator : IAwardEvaluator
 
                 await _publisher.Publish(
                     new AwardEarnedEvent(context.TenantId, context.ProfileId, profile?.UserId ?? Guid.Empty, award.Id, AwardIssuanceType.Automatic), ct);
+                await _publisher.Publish(
+                    new AwardEarnedIntegrationEvent(context.TenantId, profile?.UserId ?? Guid.Empty, award.Id, award.Code, award.Title, award.Description, earnedAward.EarnedAt), ct);
             }
         }
 

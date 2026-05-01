@@ -7,4 +7,6 @@ public sealed record AwardEarnedIntegrationEvent(
     Guid UserId,
     Guid AwardId,
     string AwardCode,
+    string AwardTitle,
+    string? AwardDescription,
     DateTime EarnedAt) : INotification;

@@ -78,6 +78,8 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
         await _publisher.Publish(new UserRegisteredEvent(user.Id, user.TenantId, user.Email, $"{user.FirstName} {user.LastName}"), ct);
         await _publisher.Publish(new UserRegisteredIntegrationEvent(
             user.Id, user.TenantId, user.Email, user.FirstName, user.LastName, null, user.Role), ct);
+        await _publisher.Publish(new UserActivatedIntegrationEvent(
+            user.TenantId, user.Id, user.Email, user.FirstName, user.LastName, tenant?.Name ?? string.Empty), ct);
 
         return ActionResult<TokenResponse>.Success(new TokenResponse(accessToken, refreshTokenValue, expiresAt));
     }
