@@ -64,7 +64,7 @@ public sealed class PlayerProfile : AggregateRoot<Guid>, IAuditableEntity
 
     public ActionResult SpendCoins(int amount)
     {
-        if (amount <= 0)
+        if (amount < 0)
         {
             return ActionResult.Failure("PlayerProfile.InvalidAmount");
         }

@@ -13,7 +13,15 @@ public record StepContentResponse(
     StepProgressStatus ProgressStatus,
     List<QuestionContentResponse> Questions,
     Guid? CurrentTestAttemptId = null,
-    string? CurrentTestDraftAnswersJson = null);
+    string? CurrentTestDraftAnswersJson = null,
+    int? TestAttemptsUsed = null,
+    List<TestAttemptSummaryResponse>? TestAttemptHistory = null);
+
+public record TestAttemptSummaryResponse(
+    int AttemptNumber,
+    int Score,
+    bool IsPassed,
+    DateTime CompletedAt);
 
 public record TestDraftAnswerResponse(
     Guid QuestionId,

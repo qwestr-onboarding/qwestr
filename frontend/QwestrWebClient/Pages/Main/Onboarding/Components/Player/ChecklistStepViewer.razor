@@ -57,6 +57,12 @@
             <MudAlert Severity="Severity.Success" Dense="true">
                 Чеклист выполнен
             </MudAlert>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                       EndIcon="@Icons.Material.Outlined.ArrowForward"
+                       FullWidth="true"
+                       OnClick="@(() => OnCompleted.InvokeAsync())">
+                Далее
+            </MudButton>
         }
     }
 

@@ -99,7 +99,7 @@ public class AwardEvaluator : IAwardEvaluator
                         award.CoinsBonus,
                         PointsSourceType.AwardBonus,
                         award.Id,
-                        $"Bonus for award: {award.Code}",
+                        $"Получено достижение: {award.Title}",
                         ct);
                 }
 

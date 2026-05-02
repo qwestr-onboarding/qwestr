@@ -1,11 +1,13 @@
 @using System.Text.Json
 @using System.Text.Json.Serialization
 @using Client.Infrastructure.Api.Endpoints
+@using Client.Infrastructure.Auth
 @using Qwestr.Shared.Contracts.ApiDto.Onboarding.Requests
 @using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
 @using Qwestr.Shared.Kernel.Enums.Onboarding
 
 @inject OnboardingProgressApi ProgressApi
+@inject TokenStorageService TokenStorage
 @inject ISnackbar Snackbar
 
 @switch (_screen)
@@ -25,15 +27,58 @@
                 <MudStack Row="true" Justify="Justify.SpaceBetween">
                     <MudText Typo="Typo.body2" Color="Color.Secondary">Попыток</MudText>
                     <MudText Typo="Typo.body2" Style="font-weight:600;">
-                        @(_settings.MaxAttempts == 0 ? "Неограниченно" : _settings.MaxAttempts.ToString())
+                        @(_settings.MaxAttempts == 0 ? "Неограниченно" : $"{_attemptsUsed} / {_settings.MaxAttempts}")
                     </MudText>
                 </MudStack>
             </MudStack>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                       FullWidth="true" Disabled="_starting"
-                       OnClick="StartTestAsync">
-                @(_starting ? "Начало..." : "Начать тест")
-            </MudButton>
+            @if (Step.TestAttemptHistory is { Count: > 0 })
+            {
+                <MudStack Spacing="1" Style="width:100%;">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight:600;">
+                        История попыток
+                    </MudText>
+                    @foreach (var attempt in Step.TestAttemptHistory)
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2"
+                                  Style="border-radius:8px; padding:6px 8px; background:var(--mud-palette-background-grey);">
+                            <MudIcon Icon="@(attempt.IsPassed ? Icons.Material.Outlined.CheckCircle : Icons.Material.Outlined.Cancel)"
+                                     Color="@(attempt.IsPassed ? Color.Success : Color.Error)"
+                                     Size="Size.Small" />
+                            <MudText Typo="Typo.caption" Style="flex:1;">
+                                Попытка @attempt.AttemptNumber
+                            </MudText>
+                            <MudChip T="string" Size="Size.Small"
+                                     Color="@(attempt.IsPassed ? Color.Success : Color.Error)">
+                                @attempt.Score%
+                            </MudChip>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @ToLocalTime(attempt.CompletedAt, TenantTimezone).ToString("dd.MM HH:mm")
+                            </MudText>
+                        </MudStack>
+                    }
+                </MudStack>
+            }
+
+            @if (AttemptsExhausted)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="align-self-stretch">
+                    Все попытки исчерпаны
+                </MudAlert>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           EndIcon="@Icons.Material.Outlined.ArrowForward"
+                           FullWidth="true"
+                           OnClick="@(() => OnCompleted.InvokeAsync())">
+                    Продолжить
+                </MudButton>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           FullWidth="true" Disabled="_starting"
+                           OnClick="StartTestAsync">
+                    @(_starting ? "Начало..." : Step.ProgressStatus == StepProgressStatus.Failed ? "Попробовать снова" : "Начать тест")
+                </MudButton>
+            }
         </MudStack>
         break;
 
@@ -124,6 +169,7 @@
     case TestScreen.Result:
         @if (_result is not null)
         {
+            var hasMoreAttempts = _settings.MaxAttempts == 0 || _result.AttemptNumber < _settings.MaxAttempts;
             <MudStack Spacing="3" AlignItems="AlignItems.Center">
                 <MudIcon Icon="@(_result.IsPassed ? Icons.Material.Outlined.EmojiEvents : Icons.Material.Outlined.SentimentDissatisfied)"
                          Size="Size.Large"
@@ -138,8 +184,9 @@
                         @(_result.IsPassed ? "Тест пройден" : "Тест не пройден")
                     </MudChip>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">
-                        Попытка @_result.AttemptNumber ·
-                        Порог @_settings.PassingThreshold%
+                        Попытка @_result.AttemptNumber
+                        @if (_settings.MaxAttempts > 0) { <text> из @_settings.MaxAttempts</text> }
+                        · Порог @_settings.PassingThreshold%
                     </MudText>
                 </MudStack>
 
@@ -155,8 +202,33 @@
                     }
                 </MudStack>
 
-                <MudButton Variant="Variant.Filled"
-                           Color="@(_result.IsPassed ? Color.Primary : Color.Default)"
+                @if (!_result.IsPassed && hasMoreAttempts)
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                               FullWidth="true"
+                               OnClick="RetryTest">
+                        Попробовать снова
+                    </MudButton>
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               EndIcon="@Icons.Material.Outlined.ArrowForward"
+                               FullWidth="true"
+                               OnClick="@(() => OnCompleted.InvokeAsync())">
+                        Продолжить
+                    </MudButton>
+                }
+            </MudStack>
+        }
+        else
+        {
+            @* Navigated back to an already-passed step *@
+            <MudStack Spacing="3" AlignItems="AlignItems.Center">
+                <MudAlert Severity="Severity.Success" Dense="true" Class="align-self-stretch">
+                    Тест пройден
+                </MudAlert>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
                            EndIcon="@Icons.Material.Outlined.ArrowForward"
                            FullWidth="true"
                            OnClick="@(() => OnCompleted.InvokeAsync())">
@@ -177,10 +249,13 @@
         [property: JsonPropertyName("passingThreshold")] int PassingThreshold = 70,
         [property: JsonPropertyName("maxAttempts")] int MaxAttempts = 3);
 
+    private string TenantTimezone => TokenStorage.TenantTimezone;
+
     private TestScreen _screen = TestScreen.Intro;
     private TestSettings _settings = new();
     private Guid _attemptId;
     private int _currentQuestionIdx;
+    private int _attemptsUsed;
     private bool _starting;
     private bool _submitting;
     private TestResultResponse? _result;
@@ -188,6 +263,9 @@
     // answers: questionId → (optionIds, textAnswer)
     private Dictionary<Guid, List<Guid>> _optionAnswers = new();
     private Dictionary<Guid, string?> _textAnswers = new();
+
+    private bool AttemptsExhausted =>
+        _settings.MaxAttempts > 0 && _attemptsUsed >= _settings.MaxAttempts;
 
     private QuestionContentResponse? CurrentQuestion =>
         _currentQuestionIdx < Step.Questions.Count ? Step.Questions[_currentQuestionIdx] : null;
@@ -204,6 +282,8 @@
             try { _settings = JsonSerializer.Deserialize<TestSettings>(Step.Settings) ?? new(); }
             catch { }
         }
+
+        _attemptsUsed = Step.TestAttemptsUsed ?? 0;
 
         if (Step.ProgressStatus == StepProgressStatus.Completed)
         {
@@ -277,11 +357,21 @@
         if (result.IsSuccess)
         {
             _result = result.Data;
+            _attemptsUsed = _result!.AttemptNumber;
             _screen = TestScreen.Result;
         }
         else
             Snackbar.Add(result.Error ?? "Ошибка отправки", Severity.Error);
         _submitting = false;
+    }
+
+    private void RetryTest()
+    {
+        _result = null;
+        _optionAnswers.Clear();
+        _textAnswers.Clear();
+        _currentQuestionIdx = 0;
+        _screen = TestScreen.Intro;
     }
 
     private async Task PrevQuestion() { await SaveDraftAsync(); _currentQuestionIdx--; }
@@ -321,4 +411,16 @@
 
     private void SetTextAnswer(Guid questionId, string? text) =>
         _textAnswers[questionId] = text;
+
+    private static DateTime ToLocalTime(DateTime utcDt, string? tzId)
+    {
+        if (string.IsNullOrEmpty(tzId)) return utcDt;
+        try
+        {
+            var tz = TimeZoneInfo.FindSystemTimeZoneById(tzId);
+            var utc = utcDt.Kind == DateTimeKind.Utc ? utcDt : DateTime.SpecifyKind(utcDt, DateTimeKind.Utc);
+            return TimeZoneInfo.ConvertTimeFromUtc(utc, tz);
+        }
+        catch { return utcDt; }
+    }
 }

@@ -63,8 +63,8 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
         invitation.Accept();
         await _invitationRepository.SaveChangesAsync(ct);
 
-        var tenant = await _tenantRepository.GetByIdAsync(user.TenantId, ct);
-        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user, tenant?.Subdomain);
+        var tenant = await _tenantRepository.GetWithSettingsAsync(user.TenantId, ct);
+        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user, tenant?.Subdomain, tenant?.Settings?.Timezone);
 
         await _publisher.Publish(new UserRegisteredEvent(user.Id, user.TenantId, user.Email, $"{user.FirstName} {user.LastName}"), ct);
         await _publisher.Publish(new UserRegisteredIntegrationEvent(

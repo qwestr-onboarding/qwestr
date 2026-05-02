@@ -55,6 +55,12 @@ public class AwardRepository : IAwardRepository
     public async Task AddAsync(Award award, CancellationToken ct = default)
         => await _context.Awards.AddAsync(award, ct);
 
+    public Task RemoveAsync(Award award, CancellationToken ct = default)
+    {
+        _context.Awards.Remove(award);
+        return Task.CompletedTask;
+    }
+
     public async Task AddEarnedAwardAsync(EarnedAward earnedAward, CancellationToken ct = default)
         => await _context.EarnedAwards.AddAsync(earnedAward, ct);
 

@@ -97,6 +97,22 @@ public class ScenarioAssignmentFactRepository : IScenarioAssignmentFactRepositor
             .ToList();
     }
 
+    public async Task<int> CountActiveEmployeesAsync(Guid tenantId, CancellationToken ct)
+    {
+        return await _db.ScenarioAssignmentFacts
+            .Where(f => f.TenantId == tenantId && f.CurrentStatus != AssignmentStatus.Completed)
+            .Select(f => f.UserId)
+            .Distinct()
+            .CountAsync(ct);
+    }
+
+    public async Task DeleteByScenarioIdAsync(Guid tenantId, Guid scenarioId, CancellationToken ct)
+    {
+        await _db.ScenarioAssignmentFacts
+            .Where(f => f.TenantId == tenantId && f.ScenarioId == scenarioId)
+            .ExecuteDeleteAsync(ct);
+    }
+
     public async Task<TimeSpan> GetAvgCompletionDurationAsync(Guid tenantId, CancellationToken ct)
     {
         var completed = await _db.ScenarioAssignmentFacts

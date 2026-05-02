@@ -70,7 +70,10 @@
                         @RulePreview()
                     </MudAlert>
                 }
+            }
 
+            @if (Existing is null)
+            {
                 <MudDivider />
                 <MudText Typo="Typo.subtitle2" Style="font-weight:600;">Бонусы при получении</MudText>
                 <MudGrid Spacing="2">

@@ -27,6 +27,7 @@ public class LlmClientFactory : ILlmClientFactory
         {
             LlmProvider.YandexGpt => (ILlmClient)_sp.GetService(typeof(YandexGptClient))!,
             LlmProvider.Gemini => (ILlmClient)_sp.GetService(typeof(GeminiClient))!,
+            LlmProvider.Qwen => (ILlmClient)_sp.GetService(typeof(QwenClient))!,
             _ => throw new InvalidOperationException($"Unknown LLM provider: {provider}")
         };
     }

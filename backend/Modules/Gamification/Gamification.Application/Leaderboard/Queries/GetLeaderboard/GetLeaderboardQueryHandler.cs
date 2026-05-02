@@ -12,17 +12,20 @@ public class GetLeaderboardQueryHandler : IRequestHandler<GetLeaderboardQuery, A
     private readonly IPointsTransactionRepository _transactionRepository;
     private readonly ILevelTierRepository _levelTierRepository;
     private readonly IUserProvider _userProvider;
+    private readonly IShopItemRepository _shopItemRepository;
 
     public GetLeaderboardQueryHandler(
         IPlayerProfileRepository profileRepository,
         IPointsTransactionRepository transactionRepository,
         ILevelTierRepository levelTierRepository,
-        IUserProvider userProvider)
+        IUserProvider userProvider,
+        IShopItemRepository shopItemRepository)
     {
         _profileRepository = profileRepository;
         _transactionRepository = transactionRepository;
         _levelTierRepository = levelTierRepository;
         _userProvider = userProvider;
+        _shopItemRepository = shopItemRepository;
     }
 
     public async Task<ActionResult<LeaderboardListResponse>> Handle(GetLeaderboardQuery request, CancellationToken ct)
@@ -60,6 +63,17 @@ public class GetLeaderboardQueryHandler : IRequestHandler<GetLeaderboardQuery, A
         var users = await _userProvider.GetByIdsAsync(userIds, ct);
         var userDict = users.ToDictionary(u => u.Id);
 
+        var frameItemIds = allProfiles
+            .Where(p => p.Equipment.AvatarFrameItemId.HasValue)
+            .Select(p => p.Equipment.AvatarFrameItemId!.Value)
+            .Distinct();
+        var frameItems = await _shopItemRepository.GetByIdsAsync(frameItemIds, ct);
+        var frameIconDict = frameItems.ToDictionary(i => i.Id, i => i.IconUrl);
+        var profileFrameDict = allProfiles
+            .Where(p => p.Equipment.AvatarFrameItemId.HasValue
+                        && frameIconDict.ContainsKey(p.Equipment.AvatarFrameItemId!.Value))
+            .ToDictionary(p => p.Id, p => frameIconDict[p.Equipment.AvatarFrameItemId!.Value]);
+
         var result = ranked.Select((r, index) =>
         {
             var profile = profilesByIdDict.GetValueOrDefault(r.ProfileId);
@@ -68,6 +82,8 @@ public class GetLeaderboardQueryHandler : IRequestHandler<GetLeaderboardQuery, A
             var displayName = user != null ? $"{user.FirstName} {user.LastName}".Trim() : "Unknown";
             var level = profile?.CurrentLevel ?? 1;
             var tier = tiers.FirstOrDefault(t => level >= t.FromLevel && level <= t.ToLevel);
+            var avatarUrl = user?.AvatarUrl;
+            var frameUrl = profile != null && profileFrameDict.TryGetValue(profile.Id, out var fu) ? fu : null;
 
             return new LeaderboardEntryResponse(
                 index + 1,
@@ -77,7 +93,9 @@ public class GetLeaderboardQueryHandler : IRequestHandler<GetLeaderboardQuery, A
                 tier?.Title,
                 tier?.Color,
                 r.TotalXp,
-                r.PeriodXp);
+                r.PeriodXp,
+                avatarUrl,
+                frameUrl);
         }).ToList();
 
         return ActionResult<LeaderboardListResponse>.Success(new LeaderboardListResponse(result));

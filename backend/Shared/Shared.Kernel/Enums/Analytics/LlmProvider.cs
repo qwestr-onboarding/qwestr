@@ -15,5 +15,10 @@ public enum LlmProvider
     /// <summary>
     /// Google Gemini – альтернативный провайдер для сравнения качества инсайтов.
     /// </summary>
-    Gemini = 1
+    Gemini = 1,
+
+    /// <summary>
+    /// Qwen – альтернативный провайдер через OpenAI-совместимый прокси-API.
+    /// </summary>
+    Qwen = 2
 }

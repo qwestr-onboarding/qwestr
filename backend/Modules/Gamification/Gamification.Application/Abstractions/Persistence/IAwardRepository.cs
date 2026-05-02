@@ -13,6 +13,7 @@ public interface IAwardRepository
     Task<AchievementProgress?> GetProgressAsync(Guid profileId, Guid awardId, CancellationToken ct = default);
     Task<List<AchievementProgress>> GetAllProgressByProfileAsync(Guid profileId, CancellationToken ct = default);
     Task AddAsync(Award award, CancellationToken ct = default);
+    Task RemoveAsync(Award award, CancellationToken ct = default);
     Task AddEarnedAwardAsync(EarnedAward earnedAward, CancellationToken ct = default);
     Task AddProgressAsync(AchievementProgress progress, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);

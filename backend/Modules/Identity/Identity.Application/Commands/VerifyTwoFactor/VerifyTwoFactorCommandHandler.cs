@@ -70,8 +70,8 @@ public class VerifyTwoFactorCommandHandler : IRequestHandler<VerifyTwoFactorComm
         user.RecordLogin();
         await _userRepository.SaveChangesAsync(ct);
 
-        var tenant = await _tenantRepository.GetByIdAsync(user.TenantId, ct);
-        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user, tenant?.Subdomain);
+        var tenant = await _tenantRepository.GetWithSettingsAsync(user.TenantId, ct);
+        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user, tenant?.Subdomain, tenant?.Settings?.Timezone);
 
         return ActionResult<TokenResponse>.Success(new TokenResponse(accessToken, expiresAt));
     }

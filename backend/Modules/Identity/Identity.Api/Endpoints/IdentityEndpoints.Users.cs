@@ -41,8 +41,7 @@ public static partial class IdentityEndpoints
 
         users.MapGet("/", GetUsersListHandler)
             .RequireAuthorization(p => p.RequireRole("Manager", "Admin", "Owner"));
-        users.MapGet("/{id:guid}", GetUserByIdHandler)
-            .RequireAuthorization(p => p.RequireRole("Manager", "Admin", "Owner"));
+        users.MapGet("/{id:guid}", GetUserByIdHandler);
         users.MapPut("/{id:guid}/deactivate", DeactivateUserHandler)
             .RequireAuthorization(p => p.RequireRole("Admin", "Owner"));
         users.MapPut("/{id:guid}/activate", ActivateUserHandler)

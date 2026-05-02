@@ -40,7 +40,7 @@ public sealed class CoinTransaction : Entity<Guid>, IAuditableEntity
 
     public static CoinTransaction CreateSpent(Guid tenantId, Guid profileId, int amount, Guid shopItemId, string reason)
     {
-        if (amount <= 0)
+        if (amount < 0)
         {
             throw new InvalidOperationException("Spent amount must be positive (will be stored as negative)");
         }

@@ -144,6 +144,10 @@ else
                                                        title="Деактивировать"
                                                        OnClick="@(() => DeactivateAsync(a))" />
                                     }
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                                   Size="Size.Small" Color="Color.Error"
+                                                   title="Удалить"
+                                                   OnClick="@(() => DeleteAsync(a))" />
                                 </MudStack>
                             </MudStack>
                         </MudPaper>
@@ -224,6 +228,18 @@ else
         if (confirmed != true) return;
         var res = await AwardsApi.DeactivateAwardAsync(award.Id);
         if (res.IsSuccess) { Snackbar.Add("Деактивировано", Severity.Normal); await LoadAsync(); }
+        else Snackbar.Add(res.Error ?? "Ошибка", Severity.Error);
+    }
+
+    private async Task DeleteAsync(AwardResponse award)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Удалить награду",
+            $"Удалить «{award.Title}» безвозвратно? Вся история выдачи этой награды также будет удалена.",
+            yesText: "Удалить", cancelText: "Отмена");
+        if (confirmed != true) return;
+        var res = await AwardsApi.DeleteAwardAsync(award.Id);
+        if (res.IsSuccess) { Snackbar.Add("Награда удалена", Severity.Normal); await LoadAsync(); }
         else Snackbar.Add(res.Error ?? "Ошибка", Severity.Error);
     }
 

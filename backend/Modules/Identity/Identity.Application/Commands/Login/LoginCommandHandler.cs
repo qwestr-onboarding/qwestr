@@ -27,7 +27,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, ActionResult<To
 
     public async Task<ActionResult<TokenResponse>> Handle(LoginCommand request, CancellationToken ct)
     {
-        var tenant = await _tenantRepository.GetBySubdomainAsync(request.Subdomain, ct);
+        var tenant = await _tenantRepository.GetWithSettingsBySubdomainAsync(request.Subdomain, ct);
         if (tenant is null || !tenant.IsActive)
         {
             return ActionResult<TokenResponse>.Failure("Неверные данные для входа.");
@@ -54,7 +54,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, ActionResult<To
         user.RecordLogin();
         await _userRepository.SaveChangesAsync(ct);
 
-        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user, tenant.Subdomain);
+        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user, tenant.Subdomain, tenant.Settings?.Timezone);
         return ActionResult<TokenResponse>.Success(new TokenResponse(accessToken, expiresAt));
     }
 }

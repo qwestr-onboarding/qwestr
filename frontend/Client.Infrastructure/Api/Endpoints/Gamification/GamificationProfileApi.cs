@@ -27,5 +27,13 @@ public class GamificationProfileApi(QwestrApiClient api)
     public Task<ApiResult<AchievementProgressListResponse>> GetMyAchievementProgressAsync(CancellationToken ct = default)
         => api.GetAsync<AchievementProgressListResponse>("/api/gamification/profiles/me/progress", ct);
 
+    public Task<ApiResult<EarnedAwardListResponse>> GetEarnedAwardsByUserIdAsync(
+        Guid userId, CancellationToken ct = default)
+        => api.GetAsync<EarnedAwardListResponse>($"/api/gamification/profiles/{userId}/earned-awards", ct);
+
+    public Task<ApiResult<AchievementProgressListResponse>> GetAchievementProgressByUserIdAsync(
+        Guid userId, CancellationToken ct = default)
+        => api.GetAsync<AchievementProgressListResponse>($"/api/gamification/profiles/{userId}/progress", ct);
+
     public string? ResolveAssetUrl(string? path) => api.ResolveAssetUrl(path);
 }

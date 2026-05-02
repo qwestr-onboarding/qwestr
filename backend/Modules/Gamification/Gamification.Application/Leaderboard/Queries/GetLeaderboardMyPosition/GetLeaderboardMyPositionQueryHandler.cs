@@ -52,6 +52,7 @@ public class GetLeaderboardMyPositionQueryHandler : IRequestHandler<GetLeaderboa
         }
 
         var response = new MyLeaderboardPositionResponse(
+            request.UserId,
             position,
             profile.TotalXp,
             periodXp,

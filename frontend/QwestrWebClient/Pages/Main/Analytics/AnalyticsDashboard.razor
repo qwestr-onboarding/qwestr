@@ -2,6 +2,7 @@
 @layout MainLayout
 
 @using System.Security.Claims
+@using Client.Infrastructure.Api.Endpoints
 @using Client.Infrastructure.Api.Endpoints.Analytics
 @using Qwestr.Shared.Contracts.ApiDto.Analytics.Responses
 @using Qwestr.Shared.Kernel.Enums.Analytics
@@ -197,7 +198,7 @@ else
                         <MudStack Spacing="2">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                                 <MudIcon Icon="@Icons.Material.Outlined.TrendingDown" Color="Color.Error" Size="Size.Small" />
-                                <MudText Typo="Typo.subtitle2" Style="font-weight:700;">Проблемные шаги</MudText>
+                                <MudText Typo="Typo.subtitle2" Style="font-weight:700;">Сложные шаги</MudText>
                             </MudStack>
                             @if (_dashboard.TopProblemSteps.Count == 0)
                             {
@@ -290,7 +291,7 @@ else
                             <MudIcon Icon="@QwestrIcons.Gamification.Sparkles" Color="Color.Secondary" Size="Size.Small" />
                             <MudText Typo="Typo.subtitle2" Style="font-weight:700;">AI Инсайты</MudText>
                             <MudChip T="string" Size="Size.Small" Color="Color.Default" Style="height:18px;">
-                                @_dashboard.LatestInsights.GeneratedAt.ToString("dd.MM HH:mm")
+                                @ToLocalTime(_dashboard.LatestInsights.GeneratedAt, TenantTimezone).ToString("dd.MM HH:mm")
                             </MudChip>
                             <MudSpacer />
                             <MudButton Variant="Variant.Text" Size="Size.Small"
@@ -330,6 +331,7 @@ else
     private DashboardResponse? _dashboard;
     private List<EngagementPointResponse> _trendPoints = [];
     private int _trendDays = 30;
+    private string TenantTimezone => Session.TenantTimezone;
 
     private static readonly Dictionary<int, string> _periodOptions = new()
     {
@@ -344,6 +346,7 @@ else
         var role = Enum.TryParse<UserRole>(roleStr, out var r) ? r : UserRole.Employee;
         if (role < UserRole.Manager) { Nav.NavigateTo("/dashboard"); return; }
         _authorized = true;
+
         await LoadAsync();
     }
 
@@ -420,4 +423,16 @@ else
         InsightSeverity.Warning  => (Color.Warning, Icons.Material.Filled.Warning),
         _                        => (Color.Info,    Icons.Material.Filled.Info),
     };
+
+    private static DateTime ToLocalTime(DateTime utcDt, string? tzId)
+    {
+        if (string.IsNullOrEmpty(tzId)) return utcDt;
+        try
+        {
+            var tz = TimeZoneInfo.FindSystemTimeZoneById(tzId);
+            var utc = utcDt.Kind == DateTimeKind.Utc ? utcDt : DateTime.SpecifyKind(utcDt, DateTimeKind.Utc);
+            return TimeZoneInfo.ConvertTimeFromUtc(utc, tz);
+        }
+        catch { return utcDt; }
+    }
 }

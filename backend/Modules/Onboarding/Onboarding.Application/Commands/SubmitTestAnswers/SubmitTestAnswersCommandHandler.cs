@@ -73,7 +73,7 @@ public class SubmitTestAnswersCommandHandler : IRequestHandler<SubmitTestAnswers
 
             if (question.Type == QuestionType.OpenText)
             {
-                isCorrect = true;
+                isCorrect = !string.IsNullOrWhiteSpace(answerDto.TextAnswer);
                 correctOptionIds = [];
             }
             else
@@ -108,12 +108,17 @@ public class SubmitTestAnswersCommandHandler : IRequestHandler<SubmitTestAnswers
         var score = totalCount > 0 ? (correctCount * 100) / totalCount : 0;
 
         var passingScore = 70;
+        var maxAttempts = 3;
         if (!string.IsNullOrEmpty(step.Settings))
         {
             var settings = JsonSerializer.Deserialize<JsonElement>(step.Settings);
             if (settings.TryGetProperty("passingThreshold", out var passingScoreEl) && passingScoreEl.TryGetInt32(out var parsed))
             {
                 passingScore = parsed;
+            }
+            if (settings.TryGetProperty("maxAttempts", out var maxAttemptsEl) && maxAttemptsEl.TryGetInt32(out var parsedMax))
+            {
+                maxAttempts = parsedMax;
             }
         }
 
@@ -178,7 +183,35 @@ public class SubmitTestAnswersCommandHandler : IRequestHandler<SubmitTestAnswers
                     assignment.ScenarioId,
                     scenario?.Title ?? string.Empty,
                     totalPoints,
-                    assignment.CompletedAt!.Value), ct);
+                    assignment.CompletedAt!.Value,
+                    assignment.AssignedAt), ct);
+            }
+        }
+        else
+        {
+            var attemptsExhausted = maxAttempts > 0 && attempt.AttemptNumber >= maxAttempts;
+            if (attemptsExhausted)
+            {
+                var allDone = assignment.StepProgresses.All(sp =>
+                    sp.Status == StepProgressStatus.Completed || sp.Status == StepProgressStatus.Failed);
+                if (allDone)
+                {
+                    assignment.Complete();
+                    await _assignmentRepository.SaveChangesAsync(ct);
+
+                    var scenario = await _scenarioRepository.GetWithStagesAndStepsAsync(assignment.ScenarioId, ct);
+                    var totalPoints = scenario?.Stages.SelectMany(s => s.Steps).Sum(s => s.Points) ?? 0;
+
+                    await _publisher.Publish(new OnboardingScenarioCompletedIntegrationEvent(
+                        request.UserId,
+                        request.TenantId,
+                        assignment.Id,
+                        assignment.ScenarioId,
+                        scenario?.Title ?? string.Empty,
+                        totalPoints,
+                        assignment.CompletedAt!.Value,
+                        assignment.AssignedAt), ct);
+                }
             }
         }
 

@@ -10,4 +10,5 @@ public record UserDto(
     string LastName,
     string? Username,
     UserRole Role,
-    bool IsActive);
+    bool IsActive,
+    string? AvatarUrl = null);

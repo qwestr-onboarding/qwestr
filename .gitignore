@@ -424,3 +424,4 @@ FodyWeavers.xsd
 /frontend/CLAUDE.md
 *.md
 /backend/QwestrAPI/Properties/launchSettings.json
+/backend/QwestrAPI/wwwroot/uploads/*

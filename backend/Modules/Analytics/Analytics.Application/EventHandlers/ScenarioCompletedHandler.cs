@@ -1,6 +1,7 @@
 using MediatR;
 using Qwestr.Modules.Analytics.Application.Abstractions.Persistence;
 using Qwestr.Modules.Analytics.Application.Services;
+using Qwestr.Modules.Analytics.Domain.Entities.Facts;
 using Qwestr.Shared.Contracts.Onboarding.Events;
 using Serilog;
 
@@ -21,9 +22,25 @@ public class ScenarioCompletedHandler : INotificationHandler<OnboardingScenarioC
     public async Task Handle(OnboardingScenarioCompletedIntegrationEvent notification, CancellationToken ct)
     {
         var fact = await _repo.FindByAssignmentIdAsync(notification.TenantId, notification.AssignmentId, ct);
+
         if (fact is null)
         {
-            return;
+            var createResult = ScenarioAssignmentFact.Create(
+                notification.TenantId,
+                notification.AssignmentId,
+                notification.ScenarioId,
+                notification.UserId,
+                notification.AssignedAt);
+
+            if (createResult.IsFailure)
+            {
+                _logger.Warning("ScenarioCompletedHandler: failed to create fallback fact: {Error}", createResult.Error);
+                return;
+            }
+
+            fact = createResult.Value!;
+            await _repo.AddAsync(fact, ct);
+            await _repo.SaveChangesAsync(ct);
         }
 
         if (fact.CurrentStatus == Qwestr.Shared.Kernel.Enums.Onboarding.AssignmentStatus.Completed)

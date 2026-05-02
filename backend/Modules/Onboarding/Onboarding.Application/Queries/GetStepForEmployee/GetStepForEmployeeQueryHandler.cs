@@ -53,11 +53,21 @@ public class GetStepForEmployeeQueryHandler : IRequestHandler<GetStepForEmployee
 
         Guid? currentTestAttemptId = null;
         string? currentTestDraftAnswersJson = null;
-        if (step.Type == StepType.Test && stepProgress.Status == StepProgressStatus.InProgress)
+        int? testAttemptsUsed = null;
+        List<TestAttemptSummaryResponse>? testAttemptHistory = null;
+        if (step.Type == StepType.Test)
         {
-            currentTestAttemptId = await _assignmentRepository.GetLatestIncompleteAttemptIdAsync(stepProgress.Id, ct);
-            if (currentTestAttemptId.HasValue)
-                currentTestDraftAnswersJson = await _assignmentRepository.GetTestAttemptDraftAsync(currentTestAttemptId.Value, ct);
+            testAttemptsUsed = await _assignmentRepository.CountTestAttemptsAsync(stepProgress.Id, ct);
+            var completedAttempts = await _assignmentRepository.GetCompletedTestAttemptsAsync(stepProgress.Id, ct);
+            testAttemptHistory = completedAttempts
+                .Select(a => new TestAttemptSummaryResponse(a.AttemptNumber, a.Score!.Value, a.IsPassed!.Value, a.CompletedAt!.Value))
+                .ToList();
+            if (stepProgress.Status == StepProgressStatus.InProgress)
+            {
+                currentTestAttemptId = await _assignmentRepository.GetLatestIncompleteAttemptIdAsync(stepProgress.Id, ct);
+                if (currentTestAttemptId.HasValue)
+                    currentTestDraftAnswersJson = await _assignmentRepository.GetTestAttemptDraftAsync(currentTestAttemptId.Value, ct);
+            }
         }
 
         var response = new StepContentResponse(
@@ -71,7 +81,9 @@ public class GetStepForEmployeeQueryHandler : IRequestHandler<GetStepForEmployee
             stepProgress.Status,
             questions,
             currentTestAttemptId,
-            currentTestDraftAnswersJson);
+            currentTestDraftAnswersJson,
+            testAttemptsUsed,
+            testAttemptHistory);
 
         return ActionResult<StepContentResponse>.Success(response);
     }

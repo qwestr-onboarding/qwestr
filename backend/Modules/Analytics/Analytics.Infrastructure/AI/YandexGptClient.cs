@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Qwestr.Modules.Analytics.Application.AI.Abstractions;
@@ -20,6 +21,12 @@ public class YandexGptClient : ILlmClient
     private readonly YandexGptOptions _options;
     private readonly ILogger _logger = Log.ForContext<YandexGptClient>();
 
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = false,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+
     public LlmProvider Provider => LlmProvider.YandexGpt;
 
     public YandexGptClient(HttpClient http, ILlmResponseParser parser, IOptions<AnalyticsLlmOptions> options)
@@ -33,7 +40,7 @@ public class YandexGptClient : ILlmClient
     public async Task<ActionResult<LlmInsightResponse>> GenerateInsightsAsync(
         AnalyticsSnapshot snapshot, CancellationToken ct)
     {
-        var snapshotJson = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = false });
+        var snapshotJson = JsonSerializer.Serialize(snapshot, JsonOptions);
         var userContent = $"Данные:\n{snapshotJson}\n\nВерни JSON по схеме:\n{InsightSystemPrompt.ResponseSchema}";
 
         var requestBody = new

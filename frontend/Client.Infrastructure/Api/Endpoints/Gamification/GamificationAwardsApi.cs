@@ -27,6 +27,9 @@ public class GamificationAwardsApi(QwestrApiClient api)
     public Task<ApiResult> DeactivateAwardAsync(Guid id, CancellationToken ct = default)
         => api.PostAsync($"/api/gamification/awards/{id}/deactivate", new { }, ct);
 
+    public Task<ApiResult> DeleteAwardAsync(Guid id, CancellationToken ct = default)
+        => api.DeleteAsync($"/api/gamification/awards/{id}", ct);
+
     public Task<ApiResult> IssueManualAwardAsync(
         Guid id, IssueManualAwardRequest request, CancellationToken ct = default)
         => api.PostAsync($"/api/gamification/awards/{id}/issue", request, ct);

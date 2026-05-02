@@ -43,6 +43,7 @@ public static class AnalyticsInfrastructureExtensions
         services.AddScoped<FakeLlmClient>();
         services.AddHttpClient<YandexGptClient>();
         services.AddScoped<GeminiClient>();
+        services.AddHttpClient<QwenClient>();
         services.AddScoped<ILlmClientFactory, LlmClientFactory>();
 
         services.AddScoped<IAnalyticsSnapshotBuilder, AnalyticsSnapshotBuilder>();

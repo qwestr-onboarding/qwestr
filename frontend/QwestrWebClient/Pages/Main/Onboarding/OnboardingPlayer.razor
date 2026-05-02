@@ -182,6 +182,7 @@ else
     private bool _loading = true;
     private bool _loadingStep;
     private bool _allCompleted;
+    private bool _currentStepWasAlreadyDone;
     private MyAssignmentProgressResponse? _progress;
     private StepContentResponse? _currentStep;
     private Guid _selectedStageId;
@@ -239,6 +240,7 @@ else
         _loadingStep = true;
         _currentStep = null;
         _selectedStepId = stepInfo.StepId;
+        _currentStepWasAlreadyDone = stepInfo.Status is StepProgressStatus.Completed or StepProgressStatus.Failed;
         StateHasChanged();
 
         if (stepInfo.Status == StepProgressStatus.NotStarted)
@@ -266,6 +268,20 @@ else
 
     private async Task OnStepCompleted()
     {
+        if (_currentStepWasAlreadyDone)
+        {
+            var afterStep = FindStepAfter(_selectedStepId!.Value);
+            if (afterStep is null)
+            {
+                _allCompleted = true;
+                _currentStep = null;
+                return;
+            }
+            SetSelectedStage(afterStep.StepId);
+            await LoadStepAsync(afterStep);
+            return;
+        }
+
         var result = await ProgressApi.GetMyAssignmentProgressAsync(AssignmentId);
         if (result.IsSuccess)
             _progress = result.Data!;
@@ -278,7 +294,7 @@ else
         }
 
         var nextStep = FindNextStep();
-        if (nextStep is null)
+        if (nextStep is null || nextStep.StepId == _selectedStepId)
         {
             _allCompleted = true;
             _currentStep = null;
@@ -305,6 +321,17 @@ else
             .OrderBy(s => s.Order)
             .SelectMany(s => s.Steps.OrderBy(step => step.Order))
             .FirstOrDefault(s => s.Status != StepProgressStatus.Completed);
+
+    private StepProgressStatusResponse? FindStepAfter(Guid stepId)
+    {
+        if (_progress is null) return null;
+        var allSteps = _progress.Stages
+            .OrderBy(s => s.Order)
+            .SelectMany(s => s.Steps.OrderBy(step => step.Order))
+            .ToList();
+        var idx = allSteps.FindIndex(s => s.StepId == stepId);
+        return idx >= 0 && idx + 1 < allSteps.Count ? allSteps[idx + 1] : null;
+    }
 
     private void SetSelectedStage(Guid stepId)
     {

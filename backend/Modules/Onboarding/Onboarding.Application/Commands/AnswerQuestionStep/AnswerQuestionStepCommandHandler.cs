@@ -122,7 +122,8 @@ public class AnswerQuestionStepCommandHandler : IRequestHandler<AnswerQuestionSt
                 assignment.ScenarioId,
                 scenario?.Title ?? string.Empty,
                 totalPoints,
-                assignment.CompletedAt!.Value), ct);
+                assignment.CompletedAt!.Value,
+                assignment.AssignedAt), ct);
         }
 
         return ActionResult<AnswerResultResponse>.Success(new AnswerResultResponse(isCorrect, correctOptionIds));

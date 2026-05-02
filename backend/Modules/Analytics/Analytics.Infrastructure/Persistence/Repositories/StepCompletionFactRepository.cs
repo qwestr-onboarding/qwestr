@@ -86,6 +86,13 @@ public class StepCompletionFactRepository : IStepCompletionFactRepository
             .ToList();
     }
 
+    public async Task DeleteByScenarioIdAsync(Guid tenantId, Guid scenarioId, CancellationToken ct)
+    {
+        await _db.StepCompletionFacts
+            .Where(f => f.TenantId == tenantId && f.ScenarioId == scenarioId)
+            .ExecuteDeleteAsync(ct);
+    }
+
     public async Task<int> CountAtRiskEmployeesAsync(Guid tenantId, TimeSpan inactivityThreshold, CancellationToken ct)
     {
         var threshold = DateTime.UtcNow - inactivityThreshold;

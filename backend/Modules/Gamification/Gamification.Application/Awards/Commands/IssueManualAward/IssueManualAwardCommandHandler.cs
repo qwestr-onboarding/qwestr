@@ -66,7 +66,7 @@ public class IssueManualAwardCommandHandler : IRequestHandler<IssueManualAwardCo
                 request.TenantId, request.ProfileId,
                 award.XpBonus, award.CoinsBonus,
                 PointsSourceType.AwardBonus, earnedAward.Id,
-                $"Award: {award.Code}", ct);
+                $"Получен бейдж: {award.Title}", ct);
         }
 
         await _publisher.Publish(new AwardEarnedEvent(request.TenantId, request.ProfileId, profile.UserId, request.AwardId, AwardIssuanceType.Manual), ct);

@@ -77,7 +77,7 @@ public class ScenarioAssignmentFact : Entity<Guid>
     {
         if (StartedAt is null)
         {
-            return ActionResult.Failure("analytics.assignment.not_started");
+            StartedAt = AssignedAt;
         }
 
         if (completedAt < StartedAt)

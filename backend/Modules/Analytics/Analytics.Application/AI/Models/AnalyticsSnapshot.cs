@@ -29,15 +29,15 @@ public sealed record ProblemStepSnapshot(
     string ScenarioName,
     string StepName,
     string StepType,
-    decimal DropOffRate,
+    decimal FailsRate,
     decimal? FirstAttemptPassRate,
     int Attempts);
 
 public sealed record CohortSnapshot(
     DateOnly WeekStart,
     int Size,
-    decimal RetentionWeek1,
-    decimal RetentionWeek4);
+    decimal? RetentionWeek1,    // null — прошло < 7 дней с начала когорты
+    decimal? RetentionWeek4);   // null — прошло < 28 дней с начала когорты
 
 public sealed record LlmInsightResponse(
     IReadOnlyList<InsightDraft> Insights,

@@ -32,6 +32,13 @@ public class ScenarioMetadataCacheRepository : IScenarioMetadataCacheRepository
         return Task.CompletedTask;
     }
 
+    public async Task DeleteByScenarioIdAsync(Guid tenantId, Guid scenarioId, CancellationToken ct)
+    {
+        await _db.ScenarioMetadataCaches
+            .Where(c => c.TenantId == tenantId && c.ScenarioId == scenarioId)
+            .ExecuteDeleteAsync(ct);
+    }
+
     public async Task<IReadOnlyDictionary<Guid, string>> GetStepNamesAsync(
         Guid tenantId, IEnumerable<Guid> stepIds, CancellationToken ct)
     {

@@ -20,10 +20,12 @@ public static partial class GamificationEndpoints
         var profiles = gamification.MapGroup("profiles").WithTags("Gamification.Profiles").RequireAuthorization();
 
         profiles.MapGet("/me", GetMyProfileHandler);
-        profiles.MapGet("/{userId:guid}", GetProfileByUserIdHandler).RequireAuthorization(HrPolicy);
+        profiles.MapGet("/{userId:guid}", GetProfileByUserIdHandler);
         profiles.MapGet("/me/transactions", GetMyTransactionsHandler);
         profiles.MapGet("/me/earned-awards", GetMyEarnedAwardsHandler);
         profiles.MapGet("/me/progress", GetMyAchievementProgressHandler);
+        profiles.MapGet("/{userId:guid}/earned-awards", GetEarnedAwardsByUserIdHandler);
+        profiles.MapGet("/{userId:guid}/progress", GetAchievementProgressByUserIdHandler);
 
         return gamification;
     }
@@ -73,5 +75,23 @@ public static partial class GamificationEndpoints
         return result.IsSuccess
             ? Results.Ok(result.Value)
             : Results.BadRequest(new ErrorResponse(result.Error));
+    }
+
+    private static async Task<IResult> GetEarnedAwardsByUserIdHandler(
+        Guid userId, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new GetMyEarnedAwardsQuery(currentUser.TenantId, userId), ct);
+        return result.IsSuccess
+            ? Results.Ok(result.Value)
+            : Results.NotFound(new ErrorResponse(result.Error));
+    }
+
+    private static async Task<IResult> GetAchievementProgressByUserIdHandler(
+        Guid userId, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new GetMyAchievementProgressQuery(currentUser.TenantId, userId), ct);
+        return result.IsSuccess
+            ? Results.Ok(result.Value)
+            : Results.NotFound(new ErrorResponse(result.Error));
     }
 }

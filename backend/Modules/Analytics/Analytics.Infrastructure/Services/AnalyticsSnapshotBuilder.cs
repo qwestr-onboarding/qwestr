@@ -36,12 +36,14 @@ public class AnalyticsSnapshotBuilder : IAnalyticsSnapshotBuilder
             : 0m;
 
         var atRisk = await _stepRepo.CountAtRiskEmployeesAsync(tenantId, TimeSpan.FromDays(7), ct);
+        var activeEmployees = await _assignmentRepo.CountActiveEmployeesAsync(tenantId, ct);
+        var avgDuration = await _assignmentRepo.GetAvgCompletionDurationAsync(tenantId, ct);
 
         var overall = new OverallMetrics(
-            ActiveEmployees: 0,
+            ActiveEmployees: activeEmployees,
             TotalAssignments: totalAssigned,
             AvgCompletionRate: avgCompletionRate,
-            AvgOnboardingDurationDays: 0,
+            AvgOnboardingDurationDays: (int)avgDuration.TotalDays,
             AtRiskEmployees: atRisk);
 
         var scenarioMetrics = scenarioSummaries.Select(s =>
@@ -81,8 +83,13 @@ public class AnalyticsSnapshotBuilder : IAnalyticsSnapshotBuilder
         var cohorts = await _assignmentRepo.GetCohortRetentionAsync(tenantId, 4, ct);
         var cohortSnapshots = cohorts.Select(c =>
         {
-            var r1 = c.CohortSize > 0 ? Math.Round((decimal)c.ActiveAfterWeek1 / c.CohortSize, 4) : 0m;
-            var r4 = c.CohortSize > 0 ? Math.Round((decimal)c.ActiveAfterWeek4 / c.CohortSize, 4) : 0m;
+            var ageInDays = today.DayNumber - c.CohortWeekStart.DayNumber;
+            var r1 = ageInDays >= 7 && c.CohortSize > 0
+                ? Math.Round((decimal)c.ActiveAfterWeek1 / c.CohortSize, 4)
+                : (decimal?)null;
+            var r4 = ageInDays >= 28 && c.CohortSize > 0
+                ? Math.Round((decimal)c.ActiveAfterWeek4 / c.CohortSize, 4)
+                : (decimal?)null;
             return new CohortSnapshot(c.CohortWeekStart, c.CohortSize, r1, r4);
         }).ToList();
 
@@ -90,7 +97,7 @@ public class AnalyticsSnapshotBuilder : IAnalyticsSnapshotBuilder
             new PeriodInfo(from30, today),
             overall,
             scenarioMetrics,
-            problemSteps.OrderByDescending(p => p.DropOffRate).Take(5).ToList(),
+            problemSteps.OrderByDescending(p => p.FailsRate).Take(5).ToList(),
             cohortSnapshots);
     }
 }

@@ -7,7 +7,7 @@
     {
         var step = Steps[i];
         var isSelected = step.StepId == SelectedStepId;
-        var isClickable = step.Status is StepProgressStatus.Completed or StepProgressStatus.InProgress;
+        var isClickable = step.Status is StepProgressStatus.Completed or StepProgressStatus.InProgress or StepProgressStatus.Failed;
 
         <MudTooltip Text="@step.Title" Placement="Placement.Bottom" Arrow="true">
             <MudStack AlignItems="AlignItems.Center" Spacing="0">

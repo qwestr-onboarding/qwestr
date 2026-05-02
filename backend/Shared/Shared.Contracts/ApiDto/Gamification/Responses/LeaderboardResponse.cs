@@ -8,9 +8,12 @@ public record LeaderboardEntryResponse(
     string? TierTitle,
     string? TierColor,
     int TotalXp,
-    int PeriodXp);
+    int PeriodXp,
+    string? AvatarUrl,
+    string? AvatarFrameUrl);
 
 public record MyLeaderboardPositionResponse(
+    Guid UserId,
     int Position,
     int TotalXp,
     int PeriodXp,

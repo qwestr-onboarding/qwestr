@@ -11,5 +11,6 @@ public interface IStepCompletionFactRepository
     Task<IReadOnlyList<StepCompletionStats>> GetStepStatsAsync(Guid tenantId, Guid scenarioId, CancellationToken ct);
     Task<IReadOnlyList<DailyCompletionPoint>> GetCompletionTrendAsync(Guid tenantId, DateOnly from, DateOnly to, CancellationToken ct);
     Task<int> CountAtRiskEmployeesAsync(Guid tenantId, TimeSpan inactivityThreshold, CancellationToken ct);
+    Task DeleteByScenarioIdAsync(Guid tenantId, Guid scenarioId, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }

@@ -197,7 +197,7 @@ else
                                     </MudStack>
                                     <MudStack Row="true" Spacing="3" Style="flex-wrap:wrap;">
                                         <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                            Отток: <strong>@((int)(step.DropOffRate * 100))%</strong>
+                                            Не справились: <strong>@((int)(step.DropOffRate * 100))%</strong>
                                         </MudText>
                                         @if (step.FirstAttemptPassRate.HasValue)
                                         {

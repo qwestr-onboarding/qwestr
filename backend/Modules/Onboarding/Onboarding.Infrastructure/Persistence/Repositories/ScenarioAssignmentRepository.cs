@@ -103,6 +103,12 @@ public class ScenarioAssignmentRepository : IScenarioAssignmentRepository
             .Select(t => (int?)t.AttemptNumber)
             .MaxAsync(ct) ?? 0;
 
+    public async Task<List<TestAttempt>> GetCompletedTestAttemptsAsync(Guid stepProgressId, CancellationToken ct = default)
+        => await _context.TestAttempts
+            .Where(t => t.StepProgressId == stepProgressId && t.CompletedAt != null)
+            .OrderBy(t => t.AttemptNumber)
+            .ToListAsync(ct);
+
     public async Task<Guid?> GetLatestIncompleteAttemptIdAsync(Guid stepProgressId, CancellationToken ct = default)
         => await _context.TestAttempts
             .Where(t => t.StepProgressId == stepProgressId && t.CompletedAt == null)

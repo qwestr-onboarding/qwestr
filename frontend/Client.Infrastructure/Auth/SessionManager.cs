@@ -118,6 +118,8 @@ public class SessionManager
         _authState.NotifyAuthStateChanged();
     }
 
+    public string TenantTimezone => _tokenStorage.TenantTimezone;
+
     /// <summary>
     /// Читает claim из текущего access token.
     /// </summary>

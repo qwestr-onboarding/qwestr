@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Qwestr.Modules.Gamification.Application.Awards.Commands.CreateAutomaticAward;
 using Qwestr.Modules.Gamification.Application.Awards.Commands.CreateManualAward;
+using Qwestr.Modules.Gamification.Application.Awards.Commands.DeleteAward;
 using Qwestr.Modules.Gamification.Application.Awards.Commands.DeactivateAward;
 using Qwestr.Modules.Gamification.Application.Awards.Commands.IssueManualAward;
 using Qwestr.Modules.Gamification.Application.Awards.Commands.UpdateAward;
@@ -28,6 +29,7 @@ public static partial class GamificationEndpoints
         awards.MapPost("/manual", CreateManualAwardHandler).RequireAuthorization(HrPolicy);
         awards.MapPut("/{id:guid}", UpdateAwardHandler).RequireAuthorization(HrPolicy);
         awards.MapPost("/{id:guid}/deactivate", DeactivateAwardHandler).RequireAuthorization(HrPolicy);
+        awards.MapDelete("/{id:guid}", DeleteAwardHandler).RequireAuthorization(HrPolicy);
         awards.MapPost("/{id:guid}/issue", IssueManualAwardHandler).RequireAuthorization(HrPolicy);
 
         return gamification;
@@ -97,6 +99,15 @@ public static partial class GamificationEndpoints
         Guid id, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
     {
         var result = await sender.Send(new DeactivateAwardCommand(currentUser.TenantId, id), ct);
+        return result.IsSuccess
+            ? Results.NoContent()
+            : Results.BadRequest(new ErrorResponse(result.Error));
+    }
+
+    private static async Task<IResult> DeleteAwardHandler(
+        Guid id, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new DeleteAwardCommand(currentUser.TenantId, id), ct);
         return result.IsSuccess
             ? Results.NoContent()
             : Results.BadRequest(new ErrorResponse(result.Error));

@@ -10,6 +10,7 @@ public class AnalyticsLlmOptions
     public bool UseFake { get; set; } = false;
     public YandexGptOptions YandexGpt { get; set; } = new();
     public GeminiOptions Gemini { get; set; } = new();
+    public QwenOptions Qwen { get; set; } = new();
 }
 
 public class YandexGptOptions
@@ -28,6 +29,16 @@ public class GeminiOptions
     public string Model { get; set; } = "gemini-1.5-flash";
     public string Endpoint { get; set; } = string.Empty;
     public double Temperature { get; set; } = 0.2;
+}
+
+public class QwenOptions
+{
+    public string AccessToken { get; set; } = string.Empty;
+    public string BaseUrl { get; set; } = "https://qwen.aikit.club/v1";
+    public string Model { get; set; } = string.Empty;
+    public double Temperature { get; set; } = 0.7;
+    public int MaxTokens { get; set; } = 2000;
+    public int TimeoutSeconds { get; set; } = 120;
 }
 
 public class AnalyticsBackgroundJobsOptions

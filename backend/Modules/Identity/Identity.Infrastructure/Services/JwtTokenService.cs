@@ -17,7 +17,7 @@ public class JwtTokenService : ITokenService
         _settings = settings.Value;
     }
 
-    public (string Token, DateTime ExpiresAt) GenerateAccessToken(User user, string? subdomain = null)
+    public (string Token, DateTime ExpiresAt) GenerateAccessToken(User user, string? subdomain = null, string? timezone = null)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -35,6 +35,11 @@ public class JwtTokenService : ITokenService
         if (subdomain is not null)
         {
             claims.Add(new Claim("tenant_subdomain", subdomain));
+        }
+
+        if (!string.IsNullOrEmpty(timezone))
+        {
+            claims.Add(new Claim("tenant_timezone", timezone));
         }
 
         var token = new JwtSecurityToken(

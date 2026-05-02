@@ -9,5 +9,6 @@ public interface IScenarioMetadataCacheRepository
     Task UpdateAsync(ScenarioMetadataCache cache, CancellationToken ct);
     Task<IReadOnlyDictionary<Guid, string>> GetStepNamesAsync(Guid tenantId, IEnumerable<Guid> stepIds, CancellationToken ct);
     Task<IReadOnlyDictionary<Guid, string>> GetScenarioNamesAsync(Guid tenantId, IEnumerable<Guid> scenarioIds, CancellationToken ct);
+    Task DeleteByScenarioIdAsync(Guid tenantId, Guid scenarioId, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }

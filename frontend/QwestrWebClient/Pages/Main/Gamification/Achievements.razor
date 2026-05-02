@@ -62,7 +62,7 @@ else
                                                        Style="@($"background:{(earned ? "#fff9e6" : "#f5f5f5")};flex-shrink:0;")">
                                                 @if (!string.IsNullOrEmpty(a.IconUrl))
                                                 {
-                                                    @((MarkupString)$"<img src=\"{ProfileApi.ResolveAssetUrl(a.IconUrl) ?? a.IconUrl}\" style=\"width:28px;height:28px;object-fit:contain;{(!earned ? "filter:grayscale(1);" : "")}\" alt=\"\" />")
+                                                    @((MarkupString)$"<img src=\"{ProfileApi.ResolveAssetUrl(a.IconUrl) ?? a.IconUrl}\" style=\"width:40px;height:40px;object-fit:contain;{(!earned ? "filter:grayscale(1);" : "")}\" alt=\"\" />")
                                                 }
                                                 else
                                                 {
@@ -157,7 +157,7 @@ else
                                                        Style="@($"background:{(earned ? "#e8f5e9" : "#f5f5f5")};flex-shrink:0;")">
                                                 @if (!string.IsNullOrEmpty(b.IconUrl))
                                                 {
-                                                    @((MarkupString)$"<img src=\"{ProfileApi.ResolveAssetUrl(b.IconUrl) ?? b.IconUrl}\" style=\"width:28px;height:28px;object-fit:contain;{(!earned ? "filter:grayscale(1);" : "")}\" alt=\"\" />")
+                                                    @((MarkupString)$"<img src=\"{ProfileApi.ResolveAssetUrl(b.IconUrl) ?? b.IconUrl}\" style=\"width:32px;height:32px;object-fit:contain;{(!earned ? "filter:grayscale(1);" : "")}\" alt=\"\" />")
                                                 }
                                                 else
                                                 {

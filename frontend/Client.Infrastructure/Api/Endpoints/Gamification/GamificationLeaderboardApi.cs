@@ -20,4 +20,6 @@ public class GamificationLeaderboardApi(QwestrApiClient api)
         if (!string.IsNullOrEmpty(period)) url += $"?period={period}";
         return api.GetAsync<MyLeaderboardPositionResponse>(url, ct);
     }
+
+    public string? ResolveAssetUrl(string? path) => api.ResolveAssetUrl(path);
 }

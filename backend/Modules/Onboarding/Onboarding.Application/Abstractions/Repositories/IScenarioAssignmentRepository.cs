@@ -18,6 +18,7 @@ public interface IScenarioAssignmentRepository
     Task<TestAttempt?> GetTestAttemptWithAnswersAsync(Guid testAttemptId, CancellationToken ct = default);
     Task<int> CountTestAttemptsAsync(Guid stepProgressId, CancellationToken ct = default);
     Task<int> GetLastAttemptNumberAsync(Guid stepProgressId, CancellationToken ct = default);
+    Task<List<TestAttempt>> GetCompletedTestAttemptsAsync(Guid stepProgressId, CancellationToken ct = default);
     Task<Guid?> GetLatestIncompleteAttemptIdAsync(Guid stepProgressId, CancellationToken ct = default);
     Task<string?> GetTestAttemptDraftAsync(Guid attemptId, CancellationToken ct = default);
     Task SaveTestAttemptDraftAsync(Guid attemptId, string? draftJson, CancellationToken ct = default);

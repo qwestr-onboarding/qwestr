@@ -66,21 +66,21 @@ public class StepCompletedHandler : INotificationHandler<StepCompletedAnalyticsI
             await _accumulator.IncrementAsync(notification.TenantId, DailyMetricKind.ActiveUsers, 1, ct);
         }
 
+        var assignment = await _assignmentFactRepo.FindByAssignmentIdAsync(
+            notification.TenantId, notification.AssignmentId, ct);
+
+        if (assignment is not null && assignment.StartedAt is null)
+        {
+            var markResult = assignment.MarkStarted(notification.CompletedAt);
+            if (markResult.IsSuccess)
+            {
+                await _assignmentFactRepo.UpdateAsync(assignment, ct);
+                await _assignmentFactRepo.SaveChangesAsync(ct);
+            }
+        }
+
         if (notification.WasSuccessful)
         {
-            var assignment = await _assignmentFactRepo.FindByAssignmentIdAsync(
-                notification.TenantId, notification.AssignmentId, ct);
-
-            if (assignment is not null && assignment.StartedAt is null)
-            {
-                var markResult = assignment.MarkStarted(notification.CompletedAt);
-                if (markResult.IsSuccess)
-                {
-                    await _assignmentFactRepo.UpdateAsync(assignment, ct);
-                    await _assignmentFactRepo.SaveChangesAsync(ct);
-                }
-            }
-
             await _accumulator.IncrementAsync(notification.TenantId, DailyMetricKind.StepsCompleted, 1, ct);
         }
     }

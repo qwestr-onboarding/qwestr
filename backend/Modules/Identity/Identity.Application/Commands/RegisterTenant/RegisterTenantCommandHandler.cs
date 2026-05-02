@@ -49,7 +49,7 @@ public class RegisterTenantCommandHandler : IRequestHandler<RegisterTenantComman
         await _userRepository.AddAsync(owner, ct);
         await _tenantRepository.SaveChangesAsync(ct);
 
-        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(owner, tenant.Subdomain);
+        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(owner, tenant.Subdomain, tenant.Settings.Timezone);
 
         await _publisher.Publish(new TenantRegisteredEvent(tenant.Id, tenant.Name), ct);
         await _publisher.Publish(new UserRegisteredEvent(owner.Id, tenant.Id, owner.Email, $"{owner.FirstName} {owner.LastName}"), ct);

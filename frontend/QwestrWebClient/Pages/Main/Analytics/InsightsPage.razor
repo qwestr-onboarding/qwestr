@@ -3,6 +3,7 @@
 
 @using System.Net
 @using System.Security.Claims
+@using Client.Infrastructure.Api.Endpoints
 @using Client.Infrastructure.Api.Endpoints.Analytics
 @using Qwestr.Shared.Contracts.ApiDto.Analytics.Responses
 @using Qwestr.Shared.Kernel.Enums.Analytics
@@ -65,7 +66,7 @@ else
                         <MudStack Spacing="1">
                             <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
                             <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center">
-                                Идёт анализ данных... это может занять до минуты
+                                Идёт анализ данных... это может занять пару минут
                             </MudText>
                         </MudStack>
                     }
@@ -116,7 +117,7 @@ else
             @* Metadata *@
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Style="flex-wrap:wrap;">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">
-                    Сгенерировано @_insights.GeneratedAt.ToString("dd.MM.yyyy HH:mm")
+                    Сгенерировано @ToLocalTime(_insights.GeneratedAt, TenantTimezone).ToString("dd.MM.yyyy HH:mm")
                 </MudText>
                 <MudText Typo="Typo.caption" Color="Color.Secondary">·</MudText>
                 <MudChip T="string" Size="Size.Small" Color="Color.Default" Style="height:18px;">
@@ -200,12 +201,14 @@ else
     private LlmProvider _selectedProvider = LlmProvider.YandexGpt;
     private int _remainingSeconds;
     private System.Threading.Timer? _timer;
+    private string TenantTimezone => Session.TenantTimezone;
 
     private bool IsCooldownActive => _remainingSeconds > 0;
 
     private static readonly Dictionary<LlmProvider, string> _providers = new()
     {
         [LlmProvider.YandexGpt] = "Яндекс GPT",
+        [LlmProvider.Qwen]      = "Qwen",
         [LlmProvider.Gemini]    = "Google Gemini",
     };
 
@@ -322,4 +325,16 @@ else
         InsightTrigger.Manual    => "Вручную",
         _                        => t.ToString(),
     };
+
+    private static DateTime ToLocalTime(DateTime utcDt, string? tzId)
+    {
+        if (string.IsNullOrEmpty(tzId)) return utcDt;
+        try
+        {
+            var tz = TimeZoneInfo.FindSystemTimeZoneById(tzId);
+            var utc = utcDt.Kind == DateTimeKind.Utc ? utcDt : DateTime.SpecifyKind(utcDt, DateTimeKind.Utc);
+            return TimeZoneInfo.ConvertTimeFromUtc(utc, tz);
+        }
+        catch { return utcDt; }
+    }
 }

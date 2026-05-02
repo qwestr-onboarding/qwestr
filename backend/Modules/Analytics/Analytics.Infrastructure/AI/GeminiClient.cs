@@ -9,6 +9,7 @@ using Qwestr.Modules.Analytics.Infrastructure.Configuration;
 using Qwestr.Shared.Kernel.Entities;
 using Qwestr.Shared.Kernel.Enums.Analytics;
 using Serilog;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace Qwestr.Modules.Analytics.Infrastructure.AI;
@@ -18,6 +19,12 @@ public class GeminiClient : ILlmClient
     private readonly ILlmResponseParser _parser;
     private readonly GeminiOptions _options;
     private readonly ILogger _logger = Log.ForContext<GeminiClient>();
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = false,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
 
     public LlmProvider Provider => LlmProvider.Gemini;
 
@@ -30,7 +37,7 @@ public class GeminiClient : ILlmClient
     public async Task<ActionResult<LlmInsightResponse>> GenerateInsightsAsync(
         AnalyticsSnapshot snapshot, CancellationToken ct)
     {
-        var snapshotJson = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = false });
+        var snapshotJson = JsonSerializer.Serialize(snapshot, JsonOptions);
         var userContent = $"Данные:\n{snapshotJson}\n\nВерни JSON по схеме:\n{InsightSystemPrompt.ResponseSchema}";
 
         _logger.Debug("Gemini request: {Chars} chars", userContent.Length);

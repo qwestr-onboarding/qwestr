@@ -156,6 +156,7 @@
                 </MudSelect>
                 <MudNumericField @bind-Value="_bgBlur" Label="Размытие (px, 0 = нет)" Variant="Variant.Outlined"
                                  FullWidth="true" Min="0" Max="20" />
+                <MudCheckBox @bind-Value="_bgDark" Label="Тёмный фон — карточки профиля переключатся в тёмную тему" Dense="true" />
             }
             else if (_slot == "Pet")
             {
@@ -253,6 +254,7 @@
     private string _bgUrl = "";
     private string _bgFit = "cover";
     private int _bgBlur;
+    private bool _bgDark;
 
     // Pet
     private string _petPosition = "right";
@@ -331,6 +333,7 @@
             if (doc.TryGetValue("url",              out v))     _bgUrl               = v.GetString() ?? "";
             if (doc.TryGetValue("fit",              out v))     _bgFit               = v.GetString() ?? "cover";
             if (doc.TryGetValue("blur",             out v))     _bgBlur              = v.GetInt32();
+            if (doc.TryGetValue("isDark",           out v))     _bgDark              = v.GetBoolean();
             if (doc.TryGetValue("position",         out v))     _petPosition         = v.GetString() ?? "right";
             if (doc.TryGetValue("effect",           out v))     _consumableEffect    = v.GetString() ?? "xpBoost";
             if (doc.TryGetValue("multiplier",       out v))     _consumableMultiplier = v.GetDouble();
@@ -344,7 +347,7 @@
     {
         "ProfileColor" => JsonSerializer.Serialize(new { color = _profileColor }),
         "AvatarFrame"  => JsonSerializer.Serialize(new { scale = _scale, animated = _animated }),
-        "Background"   => JsonSerializer.Serialize(new { url = _bgUrl, fit = _bgFit, blur = _bgBlur }),
+        "Background"   => JsonSerializer.Serialize(new { url = _bgUrl, fit = _bgFit, blur = _bgBlur, isDark = _bgDark }),
         "Pet"          => JsonSerializer.Serialize(new { scale = _scale, animated = _animated, position = _petPosition }),
         "Weapon"       => JsonSerializer.Serialize(new { scale = _scale, flipX = _flipX }),
         "Consumable"   when _consumableEffect is "xpBoost" or "coinBoost"
