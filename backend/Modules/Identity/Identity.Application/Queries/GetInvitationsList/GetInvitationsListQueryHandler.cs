@@ -26,7 +26,8 @@ public class GetInvitationsListQueryHandler : IRequestHandler<GetInvitationsList
             i.Status,
             $"{i.InvitedByUser.FirstName} {i.InvitedByUser.LastName}",
             i.CreatedAt,
-            i.ExpiresAt)).ToList();
+            i.ExpiresAt,
+            i.Token)).ToList();
 
         return ActionResult<PagedList<InvitationResponse>>.Success(
             new PagedList<InvitationResponse>(items, request.Page, request.PageSize, totalCount));

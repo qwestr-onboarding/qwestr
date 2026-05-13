@@ -11,6 +11,7 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <PageTitle>Приглашения — Qwestr</PageTitle>
 
@@ -66,10 +67,15 @@
             <MudTd>
                 @if (context.Status == InvitationStatus.Pending)
                 {
-                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
-                                   Color="Color.Error" Size="Size.Small"
-                                   OnClick="() => DeleteAsync(context)" />
+                    <MudTooltip Text="Скопировать ссылку">
+                        <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
+                                       Size="Size.Small"
+                                       OnClick="() => CopyInviteLinkAsync(context)" />
+                    </MudTooltip>
                 }
+                <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                               Color="Color.Error" Size="Size.Small"
+                               OnClick="() => DeleteAsync(context)" />
             </MudTd>
         </RowTemplate>
         <NoRecordsContent>
@@ -90,13 +96,13 @@
     {
         var result = await InvitationsApi.GetInvitationsListAsync(
             state.Page + 1, state.PageSize, _statusFilter, ct);
-
+        
         if (!result.IsSuccess)
         {
             Snackbar.Add("Не удалось загрузить приглашения", Severity.Error);
             return new TableData<InvitationResponse> { Items = [], TotalItems = 0 };
         }
-
+        
         return new TableData<InvitationResponse>
         {
             Items = result.Data!.Items,
@@ -132,25 +138,32 @@
         }
     }
 
+    private async Task CopyInviteLinkAsync(InvitationResponse invitation)
+    {
+        var link = $"{Nav.BaseUri.TrimEnd('/')}/invitations/accept?token={invitation.ActivationToken}";
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", link);
+        Snackbar.Add("Ссылка скопирована", Severity.Success);
+    }
+
     private async Task DeleteAsync(InvitationResponse invitation)
     {
         var confirmed = await DialogService.ShowMessageBox(
-            "Отменить приглашение",
-            $"Отменить приглашение для {invitation.Email}?",
+            "Удалить приглашение",
+            $"Удалить приглашение для {invitation.Email}?",
             yesText: "Отменить", cancelText: "Нет");
 
         if (confirmed != true) return;
 
-        var result = await InvitationsApi.CancelInvitationAsync(invitation.Id);
+        var result = await InvitationsApi.DeleteInvitationAsync(invitation.Id);
 
         if (result.IsSuccess)
         {
-            Snackbar.Add("Приглашение отменено", Severity.Success);
+            Snackbar.Add("Приглашение удалено", Severity.Success);
             await _table.ReloadServerData();
         }
         else
         {
-            Snackbar.Add(result.Error ?? "Не удалось отменить приглашение", Severity.Error);
+            Snackbar.Add(result.Error ?? "Не удалось удалить приглашение", Severity.Error);
         }
     }
 

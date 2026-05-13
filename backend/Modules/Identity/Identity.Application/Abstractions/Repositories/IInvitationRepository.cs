@@ -11,6 +11,7 @@ public interface IInvitationRepository
     Task<List<Invitation>> GetByTenantAsync(Guid tenantId, int page, int pageSize, InvitationStatus? status = null, CancellationToken ct = default);
     Task<int> CountByTenantAsync(Guid tenantId, InvitationStatus? status = null, CancellationToken ct = default);
     Task<bool> ExistsPendingAsync(Guid tenantId, string email, CancellationToken ct = default);
+    Task RemoveAsync(Invitation invitation, CancellationToken ct = default);
     Task AddAsync(Invitation invitation, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

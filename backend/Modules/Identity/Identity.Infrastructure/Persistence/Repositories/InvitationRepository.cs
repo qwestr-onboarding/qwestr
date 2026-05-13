@@ -42,6 +42,12 @@ public class InvitationRepository : IInvitationRepository
         => await _context.Invitations.AnyAsync(
             i => i.TenantId == tenantId && i.Email == email && i.Status == InvitationStatus.Pending, ct);
 
+    public Task RemoveAsync(Invitation invitation, CancellationToken ct = default)
+    {
+        _context.Invitations.Remove(invitation);
+        return Task.CompletedTask;
+    }
+
     public async Task AddAsync(Invitation invitation, CancellationToken ct = default)
         => await _context.Invitations.AddAsync(invitation, ct);
 

@@ -31,6 +31,6 @@ public class InvitationsApi(QwestrApiClient api)
         => api.GetAsync<InvitationPreviewResponse>(
             $"/api/identity/invitations/validate?token={Uri.EscapeDataString(token)}&subdomain={Uri.EscapeDataString(subdomain)}", ct);
 
-    public Task<ApiResult> CancelInvitationAsync(Guid invitationId, CancellationToken ct = default)
+    public Task<ApiResult> DeleteInvitationAsync(Guid invitationId, CancellationToken ct = default)
         => api.DeleteAsync($"/api/identity/invitations/{invitationId}", ct);
 }

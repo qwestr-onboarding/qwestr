@@ -9,4 +9,5 @@ public record InvitationResponse(
     InvitationStatus Status,
     string InvitedByName,
     DateTime CreatedAt,
-    DateTime ExpiresAt);
+    DateTime ExpiresAt,
+    string ActivationToken);

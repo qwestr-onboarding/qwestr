@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Routing;
 using Qwestr.Modules.Identity.Application.Commands.AcceptInvitation;
 using Qwestr.Modules.Identity.Application.Commands.CancelInvitation;
 using Qwestr.Modules.Identity.Application.Commands.CreateInvitation;
+using Qwestr.Modules.Identity.Application.Commands.DeleteInvitation;
 using Qwestr.Modules.Identity.Application.Queries.GetInvitationsList;
 using Qwestr.Modules.Identity.Application.Queries.ValidateInvitation;
 using Qwestr.Shared.Contracts.ApiDto.Identity.Invitations.Requests;
@@ -31,7 +32,7 @@ public static partial class IdentityEndpoints
             .AllowAnonymous();
         invitations.MapPost("/accept", AcceptInvitationHandler)
             .AllowAnonymous();
-        invitations.MapDelete("/{id:guid}", CancelInvitationHandler)
+        invitations.MapDelete("/{id:guid}", DeleteInvitationHandler)
             .RequireAuthorization(p => p.RequireRole("Admin", "Owner", "Manager"));
 
         return identity;
@@ -81,10 +82,10 @@ public static partial class IdentityEndpoints
         return Results.Ok(new AcceptInvitationResponse(data.AccessToken, data.ExpiresAt));
     }
 
-    private static async Task<IResult> CancelInvitationHandler(
+    private static async Task<IResult> DeleteInvitationHandler(
         [FromRoute] Guid id, ICurrentUserService currentUser, ISender sender, CancellationToken ct)
     {
-        var result = await sender.Send(new CancelInvitationCommand(currentUser.TenantId, id), ct);
+        var result = await sender.Send(new DeleteInvitationCommand(currentUser.TenantId, id), ct);
         return result.IsSuccess
             ? Results.NoContent()
             : Results.BadRequest(new ErrorResponse(result.Error));
