@@ -32,6 +32,7 @@ services:
       - qwestr-network
     volumes:
       - ./backend/publish/apiServer:/app/publish
+      - uploads:/app/wwwroot/uploads
 
   qwestr-web:
     image: qwestrwebclient
@@ -76,3 +77,4 @@ networks:
 
 volumes:
   dbdata:
+  uploads:

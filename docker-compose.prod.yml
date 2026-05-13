@@ -55,6 +55,8 @@ services:
       - Analytics__Llm__Qwen__AccessToken=${QWEN_ACCESS_TOKEN}
     networks:
       - qwestr-network
+    volumes:
+      - uploads:/app/wwwroot/uploads
 
   qwestr-web:
     image: qwestrwebclient
@@ -97,3 +99,4 @@ networks:
 
 volumes:
   dbdata:
+  uploads:
