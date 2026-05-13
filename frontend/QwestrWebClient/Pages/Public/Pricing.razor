@@ -15,75 +15,106 @@
         </MudStack>
 
         <MudGrid Spacing="4" Justify="Justify.Center">
-            <MudItem xs="12" sm="6" md="4">
-                <MudPaper Outlined="true" Style="padding:40px 32px;border-radius:16px;height:100%;" Elevation="0">
-                    <MudStack Spacing="3">
-                        <MudText Typo="Typo.overline" Color="Color.Secondary">Старт</MudText>
-                        <MudStack Spacing="0">
-                            <MudText Typo="Typo.h3" Style="font-weight:800;">Бесплатно</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">навсегда</MudText>
-                        </MudStack>
-                        <MudDivider />
-                        <MudStack Spacing="2">
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                <MudIcon Icon="@Icons.Material.Outlined.Check" Color="Color.Success" Size="Size.Small" />
-                                <MudText Typo="Typo.body2">До 10 сотрудников</MudText>
+            @foreach (var plan in _plans)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudPaper Outlined="@(!plan.IsDark)"
+                              Elevation="@(plan.IsDark ? 2 : 0)"
+                              Style="@($"padding:40px 32px;border-radius:16px;height:100%;background:{plan.BgColor};")">
+                        <MudStack Spacing="3">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                @if (plan.IsDark)
+                                {
+                                    <MudText Typo="Typo.overline" Style="color:rgba(255,255,255,0.7);">@plan.Badge</MudText>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.overline" Color="Color.Secondary">@plan.Badge</MudText>
+                                }
+                                @if (plan.IsPopular)
+                                {
+                                    <MudChip T="string" Color="Color.Primary" Size="Size.Small" Style="height:22px;font-size:11px;">Популярный</MudChip>
+                                }
                             </MudStack>
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                <MudIcon Icon="@Icons.Material.Outlined.Check" Color="Color.Success" Size="Size.Small" />
-                                <MudText Typo="Typo.body2">3 сценария онбординга</MudText>
-                            </MudStack>
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                <MudIcon Icon="@Icons.Material.Outlined.Check" Color="Color.Success" Size="Size.Small" />
-                                <MudText Typo="Typo.body2">Базовая геймификация</MudText>
-                            </MudStack>
-                        </MudStack>
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
-                                   Href="/register" Style="border-radius:8px;margin-top:auto;">
-                            Начать бесплатно
-                        </MudButton>
-                    </MudStack>
-                </MudPaper>
-            </MudItem>
 
-            <MudItem xs="12" sm="6" md="4">
-                <MudPaper Style="padding:40px 32px;border-radius:16px;height:100%;background:#7c3aed;" Elevation="2">
-                    <MudStack Spacing="3">
-                        <MudText Typo="Typo.overline" Style="color:rgba(255,255,255,0.7);">Бизнес</MudText>
-                        <MudStack Spacing="0">
-                            <MudText Typo="Typo.h3" Style="font-weight:800;color:#fff;">990 ₽</MudText>
-                            <MudText Typo="Typo.body2" Style="color:rgba(255,255,255,0.7);">в месяц за сотрудника</MudText>
+                            <MudStack Spacing="0">
+                                @if (plan.IsDark)
+                                {
+                                    <MudText Typo="Typo.h3" Style="font-weight:800;color:#fff;">@plan.Price</MudText>
+                                    <MudText Typo="Typo.body2" Style="color:rgba(255,255,255,0.7);">@plan.Period</MudText>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.h3" Style="font-weight:800;">@plan.Price</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@plan.Period</MudText>
+                                }
+                            </MudStack>
+
+                            <MudDivider Style="@(plan.IsDark ? "border-color:rgba(255,255,255,0.2);" : "")" />
+
+                            <MudStack Spacing="2">
+                                @foreach (var feature in plan.Features)
+                                {
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        @if (plan.IsDark)
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Outlined.Check" Style="color:#93c5fd;" Size="Size.Small" />
+                                            <MudText Typo="Typo.body2" Style="color:#fff;">@feature</MudText>
+                                        }
+                                        else
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Outlined.Check" Color="Color.Success" Size="Size.Small" />
+                                            <MudText Typo="Typo.body2">@feature</MudText>
+                                        }
+                                    </MudStack>
+                                }
+                            </MudStack>
+
+                            @if (plan.IsDark)
+                            {
+                                <MudButton Variant="Variant.Filled" FullWidth="true" Href="/register"
+                                           Style="@($"border-radius:8px;margin-top:auto;background:#fff;color:{plan.BgColor};font-weight:600;")">
+                                    @plan.ButtonText
+                                </MudButton>
+                            }
+                            else if (plan.IsPopular)
+                            {
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                           Href="/register" Style="border-radius:8px;margin-top:auto;">
+                                    @plan.ButtonText
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                                           Href="/register" Style="border-radius:8px;margin-top:auto;">
+                                    @plan.ButtonText
+                                </MudButton>
+                            }
                         </MudStack>
-                        <MudDivider Style="border-color:rgba(255,255,255,0.2);" />
-                        <MudStack Spacing="2">
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                <MudIcon Icon="@Icons.Material.Outlined.Check" Style="color:#a78bfa;" Size="Size.Small" />
-                                <MudText Typo="Typo.body2" Style="color:#fff;">Неограниченно сотрудников</MudText>
-                            </MudStack>
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                <MudIcon Icon="@Icons.Material.Outlined.Check" Style="color:#a78bfa;" Size="Size.Small" />
-                                <MudText Typo="Typo.body2" Style="color:#fff;">Неограниченно сценариев</MudText>
-                            </MudStack>
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                <MudIcon Icon="@Icons.Material.Outlined.Check" Style="color:#a78bfa;" Size="Size.Small" />
-                                <MudText Typo="Typo.body2" Style="color:#fff;">Полная геймификация</MudText>
-                            </MudStack>
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                <MudIcon Icon="@Icons.Material.Outlined.Check" Style="color:#a78bfa;" Size="Size.Small" />
-                                <MudText Typo="Typo.body2" Style="color:#fff;">Аналитика HR</MudText>
-                            </MudStack>
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                <MudIcon Icon="@Icons.Material.Outlined.Check" Style="color:#a78bfa;" Size="Size.Small" />
-                                <MudText Typo="Typo.body2" Style="color:#fff;">Приоритетная поддержка</MudText>
-                            </MudStack>
-                        </MudStack>
-                        <MudButton Variant="Variant.Filled" FullWidth="true" Href="/register"
-                                   Style="border-radius:8px;margin-top:auto;background:#fff;color:#7c3aed;font-weight:600;">
-                            Попробовать 14 дней бесплатно
-                        </MudButton>
-                    </MudStack>
-                </MudPaper>
-            </MudItem>
+                    </MudPaper>
+                </MudItem>
+            }
         </MudGrid>
     </div>
 </section>
+
+@code {
+    record Plan(string Badge, string Price, string Period, bool IsDark, bool IsPopular, string BgColor, string[] Features, string ButtonText);
+
+    readonly Plan[] _plans =
+    [
+        new("Пробный", "Бесплатно", "навсегда", false, false, "#ffffff",
+            ["До 10 сотрудников", "3 сценария онбординга", "Базовая геймификация"],
+            "Начать бесплатно"),
+        new("Старт", "3 990 ₽", "в месяц", false, true, "#eef2ff",
+            ["До 50 сотрудников", "20 сценариев онбординга", "Продвинутая геймификация", "Аналитика для HR"],
+            "Выбрать"),
+        new("Расширенный", "9 990 ₽", "в месяц", true, false, "#1e3a8a",
+            ["До 100 сотрудников", "50 сценариев онбординга", "Полная геймификация", "Аналитика + ИИ", "Приоритетная поддержка"],
+            "Выбрать"),
+        new("Корпорация", "49 990 ₽", "в месяц", true, false, "#0f172a",
+            ["Неограниченное кол-во сотрудников", "Неограниченное кол-во сценариев онбординга", "Полная геймификация", "Аналитика + ИИ", "Приоритетная поддержка"],
+            "Выбрать"),
+    ];
+}
