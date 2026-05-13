@@ -1,0 +1,71 @@
+services:
+  qwestr-api:
+    image: qwestrapi-dev
+    build:
+      context: ./backend
+      dockerfile: QwestrAPI/Dockerfile-dev
+    restart: always
+    depends_on:
+      qwestr-db:
+        condition: service_healthy
+    environment:
+      - ConnectionStrings__Analytics=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
+      - ConnectionStrings__Gamification=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
+      - ConnectionStrings__Identity=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
+      - ConnectionStrings__Integration=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
+      - ConnectionStrings__Notifications=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
+      - ConnectionStrings__Onboarding=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
+      - ASPNETCORE_URLS=http://+:8080
+      - Jwt__Issuer=QwestrAPI
+      - Jwt__Audience=QwestrClient
+      - Jwt__Secret=super-secret-key-super-secret-key-super-secret-key-super-secret-key
+    ports:
+      - "8080:8080"
+    networks:
+      - qwestr-network
+    volumes:
+      - ./backend/publish/apiServer:/app/publish
+
+  qwestr-web:
+    image: qwestrwebclient
+    build:
+      context: .
+      dockerfile: frontend/QwestrWebClient/Dockerfile-root
+    restart: always
+    depends_on:
+      - qwestr-api
+    environment:
+      - QwestrApi__BaseUrl=http://qwestr-api:8080
+      - QwestrApi__PublicBaseUrl=http://localhost:8080
+      - App__BaseDomain=qwestr.ru
+      - ASPNETCORE_URLS=http://+:8080
+    ports:
+      - "5000:8080"
+    networks:
+      - qwestr-network
+
+  qwestr-db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: qwestr
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      - ./backend/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - qwestr-network
+
+networks:
+  qwestr-network:
+    driver: bridge
+
+volumes:
+  dbdata:

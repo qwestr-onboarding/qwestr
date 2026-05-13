@@ -1,0 +1,32 @@
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+USER $APP_UID
+WORKDIR /app
+EXPOSE 8080
+EXPOSE 8081
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+
+COPY ["frontend/QwestrWebClient/QwestrWebClient.csproj", "frontend/QwestrWebClient/"]
+COPY ["frontend/Client.Core/Client.Core.csproj", "frontend/Client.Core/"]
+COPY ["frontend/Client.Infrastructure/Client.Infrastructure.csproj", "frontend/Client.Infrastructure/"]
+COPY ["backend/Shared/Shared.Contracts/Shared.Contracts.csproj", "backend/Shared/Shared.Contracts/"]
+COPY ["backend/Shared/Shared.Kernel/Shared.Kernel.csproj", "backend/Shared/Shared.Kernel/"]
+
+RUN dotnet restore "frontend/QwestrWebClient/QwestrWebClient.csproj"
+
+COPY frontend/ frontend/
+COPY backend/Shared/ backend/Shared/
+
+WORKDIR "/src/frontend/QwestrWebClient"
+RUN dotnet build "QwestrWebClient.csproj" -c $BUILD_CONFIGURATION -o /app/build
+
+FROM build AS publish
+ARG BUILD_CONFIGURATION=Release
+RUN dotnet publish "QwestrWebClient.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "QwestrWebClient.dll"]

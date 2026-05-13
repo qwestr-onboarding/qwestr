@@ -1,14 +1,20 @@
 using System.Reflection;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Qwestr.Modules.Analytics.Api;
+using Qwestr.Modules.Analytics.Infrastructure;
 using Qwestr.Modules.Gamification.Api;
+using Qwestr.Modules.Gamification.Infrastructure;
 using Qwestr.Modules.Identity.Api;
+using Qwestr.Modules.Identity.Infrastructure;
 using Qwestr.Modules.Integration.Api;
 using Qwestr.Modules.Notifications.Api;
+using Qwestr.Modules.Notifications.Infrastructure;
 using Qwestr.Modules.Onboarding.Api;
+using Qwestr.Modules.Onboarding.Infrastructure;
 using Qwestr.Shared.Infrastructure;
 using Serilog;
 
@@ -92,6 +98,16 @@ builder.Services.AddOnboardingModule(builder.Configuration);
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider;
+    await db.GetRequiredService<AnalyticsDbContext>().Database.MigrateAsync();
+    await db.GetRequiredService<GamificationDbContext>().Database.MigrateAsync();
+    await db.GetRequiredService<IdentityDbContext>().Database.MigrateAsync();
+    await db.GetRequiredService<NotificationsDbContext>().Database.MigrateAsync();
+    await db.GetRequiredService<OnboardingDbContext>().Database.MigrateAsync();
+}
+
 app.UseExceptionHandler();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -117,7 +133,7 @@ app.UseStaticFiles();
 try
 {
     Log.Information("Starting QwestrAPI application");
-    app.Run();
+    await app.RunAsync();
 }
 finally
 {

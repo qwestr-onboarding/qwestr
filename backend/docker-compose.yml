@@ -8,7 +8,12 @@
     depends_on:
       - qwestr-db
     environment:
-      - ConnectionStrings__DefaultConnection=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
+      - ConnectionStrings__Analytics=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
+      - ConnectionStrings__Gamification=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
+      - ConnectionStrings__Identity=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
+      - ConnectionStrings__Integration=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
+      - ConnectionStrings__Notifications=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
+      - ConnectionStrings__Onboarding=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
       - ASPNETCORE_URLS=http://+:8080
       - Jwt__Issuer=QwestrAPI
       - Jwt__Audience=QwestrClient
