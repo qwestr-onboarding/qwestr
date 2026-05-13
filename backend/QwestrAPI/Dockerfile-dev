@@ -19,7 +19,6 @@ RUN dotnet publish "QwestrAPI.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-USER root
-RUN mkdir -p /app/wwwroot/uploads && chown -R app:app /app/wwwroot
-USER $APP_UID
-ENTRYPOINT ["dotnet", "QwestrAPI.dll"]
+COPY QwestrAPI/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
