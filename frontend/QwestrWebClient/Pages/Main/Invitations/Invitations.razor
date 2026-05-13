@@ -150,7 +150,7 @@
         var confirmed = await DialogService.ShowMessageBox(
             "Удалить приглашение",
             $"Удалить приглашение для {invitation.Email}?",
-            yesText: "Отменить", cancelText: "Нет");
+            yesText: "Удалить", cancelText: "Нет");
 
         if (confirmed != true) return;
 
