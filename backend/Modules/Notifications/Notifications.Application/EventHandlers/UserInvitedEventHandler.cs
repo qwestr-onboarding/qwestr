@@ -21,7 +21,8 @@ public sealed class UserInvitedEventHandler : INotificationHandler<UserInvitedIn
 
     public async Task Handle(UserInvitedIntegrationEvent notification, CancellationToken cancellationToken)
     {
-        var activationUrl = $"{notification.CompanySubdomain}.{_appUrlOptions.BaseUrl}/invitations/accept?token={notification.ActivationToken}";
+        var domain = "https://" + notification.CompanySubdomain + "." + _appUrlOptions.BaseUrl.Replace("https://", "").Replace("http://", "");
+        var activationUrl = $"{domain}/invitations/accept?token={notification.ActivationToken}";
 
         var context = new NotificationContext(
             TenantId: notification.TenantId,
