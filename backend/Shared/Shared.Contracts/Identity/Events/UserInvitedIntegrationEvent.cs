@@ -7,4 +7,5 @@ public record UserInvitedIntegrationEvent(
     string RecipientEmail,
     string InviterName,
     string CompanyName,
+    string CompanySubdomain,
     string ActivationToken) : INotification;

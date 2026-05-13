@@ -157,15 +157,17 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
+
+        var subdomain = TenantResolver.GetSubdomain();
         
-        if (string.IsNullOrEmpty(Token))
+        if (string.IsNullOrEmpty(subdomain) || string.IsNullOrEmpty(Token))
         {
             _validating = false;
             _invalidLink = true;
             StateHasChanged();
             return;
         }
-        var result = await InvitationsApi.ValidateAsync(Token);
+        var result = await InvitationsApi.ValidateAsync(Token, subdomain);
 
         _validating = false;
 

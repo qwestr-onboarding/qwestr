@@ -36,7 +36,6 @@ public class CreateInvitationCommandHandler : IRequestHandler<CreateInvitationCo
 
         var token = Guid.NewGuid().ToString("N");
         var expiresAt = DateTime.UtcNow.AddDays(7);
-
         var invitation = Invitation.Create(request.TenantId, request.Email, request.Role, request.InvitedByUserId, token, expiresAt);
 
         await _invitationRepository.AddAsync(invitation, ct);
@@ -46,7 +45,10 @@ public class CreateInvitationCommandHandler : IRequestHandler<CreateInvitationCo
 
         var inviter = await _userRepository.GetByIdAsync(request.InvitedByUserId, ct);
         var tenant = await _tenantRepository.GetByIdAsync(request.TenantId, ct);
-
+        if (tenant == null)
+        {
+            return ActionResult<Guid>.Failure("Tenant not found");
+        }
         var inviterName = inviter is not null
             ? $"{inviter.FirstName} {inviter.LastName}".Trim()
             : string.Empty;
@@ -57,6 +59,7 @@ public class CreateInvitationCommandHandler : IRequestHandler<CreateInvitationCo
             invitation.Email,
             inviterName,
             companyName,
+            tenant!.Subdomain!,
             invitation.Token), ct);
 
         return ActionResult<Guid>.Success(invitation.Id);
