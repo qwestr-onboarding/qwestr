@@ -157,7 +157,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
-
+        
         if (string.IsNullOrEmpty(Token))
         {
             _validating = false;
@@ -165,9 +165,7 @@
             StateHasChanged();
             return;
         }
-
-        var subdomain = TenantResolver.GetSubdomain()!;
-        var result = await InvitationsApi.ValidateAsync(Token, subdomain);
+        var result = await InvitationsApi.ValidateAsync(Token);
 
         _validating = false;
 

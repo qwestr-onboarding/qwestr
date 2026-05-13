@@ -26,11 +26,6 @@ public class ValidateInvitationQueryHandler
             return ActionResult<InvitationPreviewResponse>.Failure("Invitation not found.");
         }
 
-        if (invitation.Tenant.Subdomain != request.Subdomain)
-        {
-            return ActionResult<InvitationPreviewResponse>.Failure("Invitation not found.");
-        }
-
         if (invitation.Status != InvitationStatus.Pending)
         {
             return ActionResult<InvitationPreviewResponse>.Failure("Invitation is no longer valid.");

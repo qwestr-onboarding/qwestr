@@ -59,10 +59,9 @@ public static partial class IdentityEndpoints
     }
 
     private static async Task<IResult> ValidateInvitationHandler(
-        [FromQuery] string token, [FromQuery] string subdomain,
-        ISender sender, CancellationToken ct)
+        [FromQuery] string token, ISender sender, CancellationToken ct)
     {
-        var result = await sender.Send(new ValidateInvitationQuery(token, subdomain), ct);
+        var result = await sender.Send(new ValidateInvitationQuery(token), ct);
         return result.IsSuccess
             ? Results.Ok(result.Value)
             : Results.NotFound(new ErrorResponse(result.Error));

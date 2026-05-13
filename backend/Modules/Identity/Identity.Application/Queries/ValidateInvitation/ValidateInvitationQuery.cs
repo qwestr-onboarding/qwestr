@@ -4,4 +4,4 @@ using Qwestr.Shared.Kernel.Entities;
 
 namespace Qwestr.Modules.Identity.Application.Queries.ValidateInvitation;
 
-public record ValidateInvitationQuery(string Token, string Subdomain) : IRequest<ActionResult<InvitationPreviewResponse>>;
+public record ValidateInvitationQuery(string Token) : IRequest<ActionResult<InvitationPreviewResponse>>;
