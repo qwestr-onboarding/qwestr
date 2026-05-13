@@ -4,16 +4,30 @@ namespace Qwestr.Modules.Gamification.Infrastructure.Services;
 
 public class LevelCalculator : ILevelCalculator
 {
+    // Необходимое кол-во 
     public int CalculateLevel(int totalXp)
     {
-        var raw = (int)Math.Floor(Math.Sqrt(totalXp / 100.0));
-        return Math.Max(1, raw);
+        var level = 1;
+        var accumulated = 0;
+        var threshold = level * (level + 1) / 2 * 100;
+    
+        while (accumulated + threshold <= totalXp)
+        {
+            accumulated += threshold;
+            level++;
+            threshold = level * (level + 1) / 2 * 100;
+        }
+    
+        return level;
     }
-
+    
     public int XpRequiredForNextLevel(int totalXp)
     {
-        var current = CalculateLevel(totalXp);
-        var nextLevelThreshold = (current + 1) * (current + 1) * 100;
-        return nextLevelThreshold - totalXp;
+        var level = CalculateLevel(totalXp);
+        var accumulated = Enumerable.Range(1, level - 1)
+            .Sum(n => n * (n + 1) / 2 * 100);
+        var nextThreshold = level * (level + 1) / 2 * 100;
+    
+        return accumulated + nextThreshold - totalXp;
     }
 }
