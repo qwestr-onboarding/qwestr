@@ -1,0 +1,99 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certbot/conf:/etc/letsencrypt:ro
+      - ./nginx/certbot/www:/var/www/certbot:ro
+    depends_on:
+      - qwestr-api
+      - qwestr-web
+    restart: always
+    networks:
+      - qwestr-network
+
+  # certbot запускается вручную для получения/обновления wildcard-сертификата
+  # Wildcard требует DNS-01 challenge — см. инструкцию по деплою
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+    profiles:
+      - certbot
+
+  qwestr-api:
+    image: qwestrapi
+    build:
+      context: ./backend
+      dockerfile: QwestrAPI/Dockerfile-dev
+    restart: always
+    depends_on:
+      qwestr-db:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
+      - ConnectionStrings__Analytics=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=${POSTGRES_PASSWORD}
+      - ConnectionStrings__Gamification=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=${POSTGRES_PASSWORD}
+      - ConnectionStrings__Identity=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=${POSTGRES_PASSWORD}
+      - ConnectionStrings__Integration=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=${POSTGRES_PASSWORD}
+      - ConnectionStrings__Notifications=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=${POSTGRES_PASSWORD}
+      - ConnectionStrings__Onboarding=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=${POSTGRES_PASSWORD}
+      - Jwt__Issuer=QwestrAPI
+      - Jwt__Audience=QwestrClient
+      - Jwt__Secret=${JWT_SECRET}
+      - Email__Smtp__Password=${EMAIL_SMTP_PASSWORD}
+      - Analytics__Llm__YandexGpt__FolderId=${YANDEX_GPT_FOLDER_ID}
+      - Analytics__Llm__YandexGpt__ModelUri=${YANDEX_GPT_MODEL_URI}
+      - Analytics__Llm__YandexGpt__ApiKey=${YANDEX_GPT_API_KEY}
+      - Analytics__Llm__Gemini__ApiKey=${GEMINI_API_KEY}
+      - Analytics__Llm__Qwen__AccessToken=${QWEN_ACCESS_TOKEN}
+    networks:
+      - qwestr-network
+
+  qwestr-web:
+    image: qwestrwebclient
+    build:
+      context: .
+      dockerfile: frontend/QwestrWebClient/Dockerfile-root
+    restart: always
+    depends_on:
+      - qwestr-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
+      - QwestrApi__BaseUrl=http://qwestr-api:8080
+      - QwestrApi__PublicBaseUrl=https://api.qwestr.ru
+      - App__BaseDomain=qwestr.ru
+    networks:
+      - qwestr-network
+
+  qwestr-db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: qwestr
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      - ./backend/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - qwestr-network
+
+networks:
+  qwestr-network:
+    driver: bridge
+
+volumes:
+  dbdata:

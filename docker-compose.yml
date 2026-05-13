@@ -16,9 +16,16 @@ services:
       - ConnectionStrings__Notifications=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
       - ConnectionStrings__Onboarding=Host=qwestr-db;Port=5432;Database=qwestr;Username=postgres;Password=postgres
       - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_ENVIRONMENT=Development
       - Jwt__Issuer=QwestrAPI
       - Jwt__Audience=QwestrClient
       - Jwt__Secret=super-secret-key-super-secret-key-super-secret-key-super-secret-key
+      - Email__Smtp__Password=${EMAIL_SMTP_PASSWORD}
+      - Analytics__Llm__YandexGpt__FolderId=${YANDEX_GPT_FOLDER_ID}
+      - Analytics__Llm__YandexGpt__ModelUri=${YANDEX_GPT_MODEL_URI}
+      - Analytics__Llm__YandexGpt__ApiKey=${YANDEX_GPT_API_KEY}
+      - Analytics__Llm__Gemini__ApiKey=${GEMINI_API_KEY}
+      - Analytics__Llm__Qwen__AccessToken=${QWEN_ACCESS_TOKEN}
     ports:
       - "8080:8080"
     networks:
