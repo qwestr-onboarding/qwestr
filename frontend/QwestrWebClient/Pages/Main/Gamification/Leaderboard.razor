@@ -49,7 +49,7 @@
                     var medalColor = pos == 0 ? "#FFD700" : pos == 1 ? "#C0C0C0" : "#CD7F32";
                     <MudItem xs="4">
                         <MudCard Elevation="2" Style="border-radius:14px;text-align:center;cursor:pointer;"
-                                 @onclick="@(() => Nav.NavigateTo($"/gamification/{e.UserId}"))">
+                                 @onclick="@(() => Nav.NavigateTo($"/profile/{e.UserId}"))">
                             <MudCardContent Class="pa-3">
                                 <MudStack AlignItems="AlignItems.Center" Spacing="1">
                                     <MudIcon Icon="@QwestrIcons.Navigation.Trophy" Style="@($"color:{medalColor};font-size:2rem;")" />
