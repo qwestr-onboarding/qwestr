@@ -48,11 +48,11 @@ services:
       - Jwt__Audience=QwestrClient
       - Jwt__Secret=${JWT_SECRET}
       - Email__Smtp__Password=${EMAIL_SMTP_PASSWORD}
-      - Analytics__Llm__YandexGpt__FolderId=${YANDEX_GPT_FOLDER_ID}
-      - Analytics__Llm__YandexGpt__ModelUri=${YANDEX_GPT_MODEL_URI}
-      - Analytics__Llm__YandexGpt__ApiKey=${YANDEX_GPT_API_KEY}
-      - Analytics__Llm__Gemini__ApiKey=${GEMINI_API_KEY}
-      - Analytics__Llm__Qwen__AccessToken=${QWEN_ACCESS_TOKEN}
+      - Llm__YandexGpt__FolderId=${YANDEX_GPT_FOLDER_ID}
+      - Llm__YandexGpt__ModelUri=${YANDEX_GPT_MODEL_URI}
+      - Llm__YandexGpt__ApiKey=${YANDEX_GPT_API_KEY}
+      - Llm__Gemini__ApiKey=${GEMINI_API_KEY}
+      - Llm__Qwen__ApiKey=${QWEN_API_KEY}
     networks:
       - qwestr-network
     volumes:
