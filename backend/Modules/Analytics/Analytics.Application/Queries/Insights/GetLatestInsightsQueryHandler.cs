@@ -2,6 +2,7 @@ using MediatR;
 using Qwestr.Modules.Analytics.Application.Abstractions.Persistence;
 using Qwestr.Shared.Contracts.ApiDto.Analytics.Responses;
 using Qwestr.Shared.Kernel.Entities;
+using Qwestr.Shared.Kernel.Enums.Analytics;
 
 namespace Qwestr.Modules.Analytics.Application.Queries.Insights;
 
@@ -20,7 +21,8 @@ public class GetLatestInsightsQueryHandler : IRequestHandler<GetLatestInsightsQu
         var set = await _repo.GetLatestAsync(request.TenantId, ct);
         if (set is null)
         {
-            return ActionResult<AnalyticsInsightSetResponse?>.Success(null);
+            return ActionResult<AnalyticsInsightSetResponse?>.Success(
+                new AnalyticsInsightSetResponse(Guid.Empty, DateTime.MinValue, LlmProvider.YandexGpt, InsightTrigger.Manual, [], []));
         }
 
         var response = new AnalyticsInsightSetResponse(
