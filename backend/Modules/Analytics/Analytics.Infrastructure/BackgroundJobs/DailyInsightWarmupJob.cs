@@ -6,6 +6,7 @@ using Qwestr.Modules.Analytics.Application.AI.Abstractions;
 using Qwestr.Modules.Analytics.Domain.Entities.Insights;
 using Qwestr.Modules.Analytics.Infrastructure.Configuration;
 using Qwestr.Shared.Kernel.Enums.Analytics;
+using Qwestr.Shared.Llm.Options;
 using Serilog;
 
 namespace Qwestr.Modules.Analytics.Infrastructure.BackgroundJobs;
@@ -14,14 +15,14 @@ public class DailyInsightWarmupJob : BackgroundService
 {
     private readonly IServiceProvider _sp;
     private readonly AnalyticsBackgroundJobsOptions _jobOptions;
-    private readonly AnalyticsLlmOptions _llmOptions;
+    private readonly LlmSharedOptions _llmOptions;
     private readonly ILogger _logger = Log.ForContext<DailyInsightWarmupJob>();
     private DateOnly _lastRunDate = DateOnly.MinValue;
 
     public DailyInsightWarmupJob(
         IServiceProvider sp,
         IOptions<AnalyticsBackgroundJobsOptions> jobOptions,
-        IOptions<AnalyticsLlmOptions> llmOptions)
+        IOptions<LlmSharedOptions> llmOptions)
     {
         _sp = sp;
         _jobOptions = jobOptions.Value;

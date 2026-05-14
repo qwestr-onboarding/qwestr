@@ -26,12 +26,38 @@ else
 
         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
             <MudText Typo="Typo.h6">Сценарии онбординга</MudText>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                       StartIcon="@Icons.Material.Outlined.Add"
-                       OnClick="OpenCreateDialog">
-                Создать
-            </MudButton>
+            <MudStack Row="true" Spacing="2">
+                @if (_aiStatus is not null)
+                {
+                    <MudTooltip Text="@AiButtonTooltip()" Disabled="@(_aiStatus.CanGenerate && !_generating)">
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="@(_aiStatus.CanGenerate ? Color.Secondary : Color.Default)"
+                                   StartIcon="@Icons.Material.Outlined.AutoAwesome"
+                                   OnClick="OpenGenerateDialog"
+                                   Disabled="@(!_aiStatus.CanGenerate || _generating)">
+                            @AiButtonLabel()
+                        </MudButton>
+                    </MudTooltip>
+                }
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.Add"
+                           OnClick="OpenCreateDialog"
+                           Disabled="_generating">
+                    Создать
+                </MudButton>
+            </MudStack>
         </MudStack>
+
+        @if (_generating)
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="pa-8" Spacing="3">
+                <MudProgressCircular Indeterminate="true" Color="Color.Secondary" Size="Size.Large" />
+                <MudText Typo="Typo.body1">ИИ генерирует сценарий онбординга…</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Обычно занимает 30–60 секунд</MudText>
+            </MudStack>
+        }
+        else
+        {
 
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap" Justify="Justify.FlexStart">
             <MudTextField @bind-Value="_search"
@@ -119,6 +145,8 @@ else
             </NoRecordsContent>
         </MudTable>
 
+        } @* end else (_generating) *@
+
     </MudStack>
 }
 
@@ -127,13 +155,28 @@ else
     private List<ScenarioListItemResponse> _scenarios = [];
     private string _search = "";
     private bool? _publishedFilter;
+    private AiGenerationStatusResponse? _aiStatus;
+    private bool _generating;
 
     private IEnumerable<ScenarioListItemResponse> FilteredScenarios => _scenarios
         .Where(s => string.IsNullOrEmpty(_search) ||
                     s.Title.Contains(_search, StringComparison.OrdinalIgnoreCase))
         .Where(s => _publishedFilter is null || s.IsPublished == _publishedFilter);
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        var listTask = ScenariosApi.GetListAsync(1, 100);
+        var statusTask = ScenariosApi.GetAiStatusAsync();
+        await Task.WhenAll(listTask, statusTask);
+        if (listTask.Result.IsSuccess)
+            _scenarios = [.. listTask.Result.Data!.Items];
+        else
+            Snackbar.Add("Не удалось загрузить сценарии", Severity.Error);
+        if (statusTask.Result.IsSuccess)
+            _aiStatus = statusTask.Result.Data;
+        _loading = false;
+    }
 
     private async Task LoadAsync()
     {
@@ -152,6 +195,61 @@ else
     {
         if (args.Item is not null)
             Nav.NavigateTo($"/onboarding/scenarios/{args.Item.Id}");
+    }
+
+    private string AiButtonLabel() => _generating
+        ? "Генерация…"
+        : _aiStatus?.CanGenerate == true ? "Сгенерировать с ИИ" : "ИИ недоступна";
+
+    private string AiButtonTooltip()
+    {
+        if (_aiStatus is null || _aiStatus.CanGenerate) return "";
+        var cooldown = AiCooldownLabel();
+        return $"Лимит исчерпан ({_aiStatus.UsedToday}/{_aiStatus.MaxPerDay}). Следующая — {cooldown}";
+    }
+
+    private string AiCooldownLabel()
+    {
+        if (_aiStatus?.NextAvailableAt is null) return "завтра";
+        var remaining = _aiStatus.NextAvailableAt.Value - DateTime.UtcNow;
+        if (remaining <= TimeSpan.Zero) return "скоро";
+        return remaining.TotalHours >= 1
+            ? $"через {(int)remaining.TotalHours} ч {remaining.Minutes} мин"
+            : $"через {remaining.Minutes} мин";
+    }
+
+    private async Task OpenGenerateDialog()
+    {
+        var dialog = await DialogService.ShowAsync<GenerateScenarioDialog>(
+            "Генерация сценария с ИИ",
+            new DialogParameters(),
+            new DialogOptions { MaxWidth = MaxWidth.Medium });
+        var result = await dialog.Result;
+
+        if (result is not { Canceled: false, Data: GenerateScenarioDialog.GenerateResult r })
+            return;
+
+        _generating = true;
+        var apiResult = await ScenariosApi.GenerateScenarioAsync(
+            new GenerateOnboardingScenarioRequest(
+                r.Query, r.Documents, r.StageCount, r.StepsPerStage,
+                r.TextStyle, r.AdditionalInfo, r.TargetAudience,
+                r.IncludeFinalTest, r.TotalPoints, r.Provider));
+
+        if (apiResult.IsSuccess)
+        {
+            Snackbar.Add(apiResult.Data!.AiComment, Severity.Info, options =>
+            {
+                options.VisibleStateDuration = 15000;
+                options.Icon = Icons.Material.Outlined.AutoAwesome;
+            });
+            Nav.NavigateTo($"/onboarding/scenarios/{apiResult.Data.ScenarioId}");
+        }
+        else
+        {
+            Snackbar.Add(apiResult.Error ?? "Ошибка генерации", Severity.Error);
+            _generating = false;
+        }
     }
 
     private async Task OpenCreateDialog()

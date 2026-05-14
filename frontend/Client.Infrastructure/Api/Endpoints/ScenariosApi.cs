@@ -39,4 +39,11 @@ public class ScenariosApi(QwestrApiClient api)
 
     public Task<ApiResult<IdResponse>> DuplicateAsync(Guid id, CancellationToken ct = default)
         => api.PostAsync<IdResponse>($"/api/onboarding/scenarios/{id}/duplicate", new { }, ct);
+
+    public Task<ApiResult<AiGenerationStatusResponse>> GetAiStatusAsync(CancellationToken ct = default)
+        => api.GetAsync<AiGenerationStatusResponse>("/api/onboarding/ai/status", ct);
+
+    public Task<ApiResult<GenerateOnboardingScenarioResponse>> GenerateScenarioAsync(
+        GenerateOnboardingScenarioRequest request, CancellationToken ct = default)
+        => api.PostAsync<GenerateOnboardingScenarioResponse>("/api/onboarding/scenarios/generate", request, ct);
 }

@@ -41,6 +41,7 @@ public class GetMyEarnedAwardsQueryHandler : IRequestHandler<GetMyEarnedAwardsQu
                     e.AwardId,
                     award.Code,
                     award.Title,
+                    award.Description,
                     award.IconUrl,
                     e.EarnedAt,
                     award.IssuanceType == AwardIssuanceType.Manual);

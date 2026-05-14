@@ -10,7 +10,6 @@
 
     <ItemGroup>
       <PackageReference Include="EFCore.NamingConventions" Version="8.0.3" />
-      <PackageReference Include="Google.GenAI" Version="1.6.1" />
       <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.24" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.24">
         <PrivateAssets>all</PrivateAssets>
@@ -22,6 +21,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\..\Shared\Shared.Infrastructure\Shared.Infrastructure.csproj" />
+      <ProjectReference Include="..\..\..\Shared\Shared.Llm\Shared.Llm.csproj" />
       <ProjectReference Include="..\Analytics.Application\Analytics.Application.csproj" />
     </ItemGroup>
 

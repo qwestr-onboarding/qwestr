@@ -1,11 +1,12 @@
+@using System.Text.Encodings.Web
 @using System.Text.Json
 @using System.Text.Json.Serialization
 
 <MudStack Spacing="3">
     <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Задание</MudText>
 
-    <MudTextField Value="Content"
-                  ValueChanged="@((string? v) => ContentChanged.InvokeAsync(v))"
+    <MudTextField T="string" Value="_contentObj.Text"
+                  ValueChanged="@((string? v) => ContentChangedInp(v))"
                   Label="Описание задания"
                   Variant="Variant.Outlined"
                   FullWidth="true"
@@ -34,11 +35,17 @@
 
 @code {
     [Parameter] public string? Content { get; set; }
+    private TaskContent _contentObj = new TaskContent("");
     [Parameter] public EventCallback<string?> ContentChanged { get; set; }
     [Parameter] public string? Settings { get; set; }
     [Parameter] public EventCallback<string?> SettingsChanged { get; set; }
     [Parameter] public bool IsReadOnly { get; set; }
 
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+    
     private bool _requiresReview;
     private string? _reviewerInstructions;
 
@@ -53,6 +60,20 @@
                 {
                     _requiresReview = s.RequiresReview;
                     _reviewerInstructions = s.ReviewerInstructions;
+                }
+                
+            }
+            catch { }
+        }
+
+        if (!string.IsNullOrWhiteSpace(Content))
+        {
+            try
+            {
+                var c = JsonSerializer.Deserialize<TaskContent>(Content, JsonOptions);
+                if (c is not null)
+                {
+                    _contentObj = c;
                 }
             }
             catch { }
@@ -70,10 +91,20 @@
     {
         var json = JsonSerializer.Serialize(
             new TaskSettings(_requiresReview, _reviewerInstructions));
-        SettingsChanged.InvokeAsync(json);
+        _ = SettingsChanged.InvokeAsync(json);
     }
 
     private record TaskSettings(
         [property: JsonPropertyName("requiresReview")] bool RequiresReview,
         [property: JsonPropertyName("reviewerInstructions")] string? ReviewerInstructions);
+    
+    
+    private record TaskContent([property: JsonPropertyName("text")] string Text);
+
+    private Task ContentChangedInp(string? v)
+    {
+        _contentObj = new TaskContent(v ?? "");
+        var json = JsonSerializer.Serialize(_contentObj, JsonOptions);
+        return ContentChanged.InvokeAsync(json);
+    }
 }

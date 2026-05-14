@@ -1,3 +1,5 @@
+@using System.Text.Json
+@using System.Text.Json.Serialization
 @using Client.Infrastructure.Api.Endpoints
 @using Qwestr.Shared.Contracts.ApiDto.Onboarding.Responses
 @using Qwestr.Shared.Kernel.Enums.Onboarding
@@ -12,7 +14,7 @@
         <MudPaper Elevation="0" Class="pa-4"
                   Style="background:var(--mud-palette-background-grey); border-radius:8px;">
             <MudText Typo="Typo.body1" Style="white-space:pre-wrap; line-height:1.7;">
-                @Step.Content
+                @_taskContent.Text
             </MudText>
         </MudPaper>
     }
@@ -48,8 +50,22 @@
 @code {
     [Parameter, EditorRequired] public StepContentResponse Step { get; set; } = default!;
     [Parameter] public EventCallback OnCompleted { get; set; }
-
+    private TaskContent _taskContent = new("");
     private bool _completing;
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrWhiteSpace(Step.Content)) return;
+        try
+        {
+            _taskContent = JsonSerializer.Deserialize<TaskContent>(Step.Content) ?? new TaskContent("");
+        }
+        catch
+        {
+            // Legacy: content was stored as plain text before JSON migration
+            _taskContent = new TaskContent(Step.Content);
+        }
+    }
 
     private async Task CompleteAsync()
     {
@@ -61,4 +77,6 @@
             Snackbar.Add(result.Error ?? "Ошибка", Severity.Error);
         _completing = false;
     }
+
+    private record TaskContent([property: JsonPropertyName("text")] string Text);
 }

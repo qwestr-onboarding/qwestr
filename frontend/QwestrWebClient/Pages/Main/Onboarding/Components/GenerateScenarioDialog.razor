@@ -1,0 +1,225 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using Qwestr.Shared.Contracts.ApiDto.Onboarding.Requests
+@using Qwestr.Shared.Kernel.Enums.Analytics
+
+<MudDialog Style="min-width:520px; max-width:680px;">
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
+
+            <MudTextField @bind-Value="_query"
+                          Label="Что должен охватывать онбординг"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Lines="4"
+                          MaxLength="3000"
+                          Required="true"
+                          Placeholder="Например: онбординг для новых менеджеров по продажам — продукт, CRM, скрипты продаж, внутренние процессы…" />
+
+            <MudTextField @bind-Value="_targetAudience"
+                          Label="Целевая аудитория"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Placeholder="Например: новые менеджеры отдела продаж" />
+
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudNumericField @bind-Value="_stageCount"
+                                     T="int"
+                                     Label="Количество этапов"
+                                     Variant="Variant.Outlined"
+                                     Min="1" Max="5" FullWidth="true" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudNumericField @bind-Value="_stepsPerStage"
+                                     T="int"
+                                     Label="Шагов в этапе"
+                                     Variant="Variant.Outlined"
+                                     Min="1" Max="10" FullWidth="true" />
+                </MudItem>
+            </MudGrid>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="4">
+                    <MudSelect @bind-Value="_textStyle"
+                               T="string"
+                               Label="Стиль текста"
+                               Variant="Variant.Outlined"
+                               FullWidth="true">
+                        <MudSelectItem Value="@("friendly")">Дружелюбный</MudSelectItem>
+                        <MudSelectItem Value="@("strict")">Деловой</MudSelectItem>
+                        <MudSelectItem Value="@("simple")">Простой</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudSelect @bind-Value="_language"
+                               T="string"
+                               Label="Язык генерации"
+                               Variant="Variant.Outlined"
+                               FullWidth="true">
+                        <MudSelectItem Value="@("auto")">Авто (по запросу)</MudSelectItem>
+                        <MudSelectItem Value="@("ru")">Русский</MudSelectItem>
+                        <MudSelectItem Value="@("en")">English</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudSelect @bind-Value="_provider"
+                               T="LlmProvider?"
+                               Label="Модель ИИ"
+                               Variant="Variant.Outlined"
+                               FullWidth="true">
+                        <MudSelectItem T="LlmProvider?" Value="@((LlmProvider?)null)">По умолчанию</MudSelectItem>
+                        <MudSelectItem T="LlmProvider?" Value="@((LlmProvider?)LlmProvider.YandexGpt)">YandexGPT</MudSelectItem>
+                        <MudSelectItem T="LlmProvider?" Value="@((LlmProvider?)LlmProvider.Gemini)">Gemini</MudSelectItem>
+                        <MudSelectItem T="LlmProvider?" Value="@((LlmProvider?)LlmProvider.Qwen)">Qwen</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudNumericField @bind-Value="_totalPoints"
+                                     T="int?"
+                                     Label="Баллов за онбординг"
+                                     HelperText="ИИ распределит между шагами"
+                                     Variant="Variant.Outlined"
+                                     Min="1" FullWidth="true" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudStack Justify="Justify.Center" Style="height:100%; padding-top:12px;">
+                        <MudSwitch @bind-Value="_includeFinalTest"
+                                   Color="Color.Primary"
+                                   Label="Тест-шаг в конце этапа" />
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField @bind-Value="_additionalInfo"
+                          Label="Дополнительные сведения"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Lines="2"
+                          MaxLength="1000"
+                          Placeholder="Специальные требования, запрещённые темы, корпоративные термины…" />
+
+            <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                           @bind-Files="_files"
+                           Accept=".pdf,.docx,.txt"
+                           MaxFileSize="@(5 * 1024 * 1024)">
+                <ActivatorContent>
+                    <MudButton Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Outlined.AttachFile"
+                               Size="Size.Small">
+                        @(_files is { Count: > 0 }
+                            ? $"Прикреплено: {_files.Count}"
+                            : "Прикрепить документы (PDF, DOCX, TXT)")
+                    </MudButton>
+                </ActivatorContent>
+            </MudFileUpload>
+            @if (_files is { Count: > 0 })
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    @string.Join(", ", _files.Select(f => f.Name))
+                </MudText>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_busy">Отмена</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   StartIcon="@Icons.Material.Outlined.AutoAwesome"
+                   OnClick="Submit" Disabled="_busy">
+            @(_busy ? "Подготовка…" : "Сгенерировать")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _query = "";
+    private string _targetAudience = "";
+    private int _stageCount = 3;
+    private int _stepsPerStage = 4;
+    private string _textStyle = "friendly";
+    private string _language = "auto";
+    private LlmProvider? _provider;
+    private bool _includeFinalTest;
+    private int? _totalPoints;
+    private string _additionalInfo = "";
+    private IReadOnlyList<IBrowserFile>? _files;
+    private string? _error;
+    private bool _busy;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_query))
+        {
+            _error = "Введите описание онбординга.";
+            return;
+        }
+
+        _busy = true;
+
+        List<AttachedDocumentDto>? docs = null;
+        if (_files is { Count: > 0 })
+        {
+            docs = [];
+            foreach (var file in _files)
+            {
+                try
+                {
+                    using var ms = new MemoryStream();
+                    await file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).CopyToAsync(ms);
+                    docs.Add(new AttachedDocumentDto(file.Name, Convert.ToBase64String(ms.ToArray()), file.ContentType));
+                }
+                catch (IOException)
+                {
+                    _error = $"Файл «{file.Name}» слишком большой (максимум 5 МБ).";
+                    _busy = false;
+                    return;
+                }
+            }
+        }
+
+        var additionalInfo = BuildAdditionalInfo();
+
+        MudDialog.Close(DialogResult.Ok(new GenerateResult(
+            _query.Trim(),
+            docs,
+            _stageCount,
+            _stepsPerStage,
+            _textStyle,
+            string.IsNullOrWhiteSpace(additionalInfo) ? null : additionalInfo,
+            string.IsNullOrWhiteSpace(_targetAudience) ? null : _targetAudience.Trim(),
+            _includeFinalTest,
+            _totalPoints > 0 ? _totalPoints : null,
+            _provider)));
+    }
+
+    private string? BuildAdditionalInfo()
+    {
+        var parts = new List<string>();
+        if (_language == "ru") parts.Add("Генерируй весь контент на русском языке.");
+        else if (_language == "en") parts.Add("Generate all content in English.");
+        if (!string.IsNullOrWhiteSpace(_additionalInfo)) parts.Add(_additionalInfo.Trim());
+        return parts.Count > 0 ? string.Join(" ", parts) : null;
+    }
+
+    public record GenerateResult(
+        string Query,
+        List<AttachedDocumentDto>? Documents,
+        int StageCount,
+        int StepsPerStage,
+        string TextStyle,
+        string? AdditionalInfo,
+        string? TargetAudience,
+        bool IncludeFinalTest,
+        int? TotalPoints,
+        LlmProvider? Provider);
+}

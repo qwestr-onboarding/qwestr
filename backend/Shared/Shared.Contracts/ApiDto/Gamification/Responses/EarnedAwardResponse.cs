@@ -5,6 +5,7 @@ public record EarnedAwardResponse(
     Guid AwardId,
     string Code,
     string Title,
+    string Description,
     string IconUrl,
     DateTime EarnedAt,
     bool IsManual);

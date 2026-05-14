@@ -17,6 +17,7 @@ public static partial class OnboardingEndpoints
         onboarding.MapOptionsEndpoints();
         onboarding.MapAssignmentsEndpoints();
         onboarding.MapProgressEndpoints();
+        onboarding.MapAiEndpoints();
         return app;
     }
 }

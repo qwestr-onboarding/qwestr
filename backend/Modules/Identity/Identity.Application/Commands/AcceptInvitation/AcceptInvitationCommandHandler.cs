@@ -39,10 +39,12 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
     {
         var invitation = await _invitationRepository.GetByTokenAsync(request.Token, ct);
 
+        
         if (invitation is null || invitation.Status != InvitationStatus.Pending)
         {
             return ActionResult<TokenResponse>.Failure("Invitation is invalid or has already been used.");
         }
+        
 
         if (invitation.ExpiresAt < DateTime.UtcNow)
         {
@@ -58,19 +60,24 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
         var passwordHash = _passwordHasher.Hash(request.Password);
         var user = User.Create(invitation.TenantId, invitation.Email, passwordHash, request.FirstName, request.LastName, invitation.Role);
 
+        var tenant = await _tenantRepository.GetWithSettingsAsync(user.TenantId, ct);
+        if (tenant is null)
+        {
+            return ActionResult<TokenResponse>.Failure("Tenant not found.");
+        }
+        
         await _userRepository.AddAsync(user, ct);
 
         invitation.Accept();
         await _invitationRepository.SaveChangesAsync(ct);
 
-        var tenant = await _tenantRepository.GetWithSettingsAsync(user.TenantId, ct);
-        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user, tenant?.Subdomain, tenant?.Settings?.Timezone);
+        var (accessToken, expiresAt) = _tokenService.GenerateAccessToken(user, tenant.Subdomain, tenant.Settings?.Timezone);
 
         await _publisher.Publish(new UserRegisteredEvent(user.Id, user.TenantId, user.Email, $"{user.FirstName} {user.LastName}"), ct);
         await _publisher.Publish(new UserRegisteredIntegrationEvent(
             user.Id, user.TenantId, user.Email, user.FirstName, user.LastName, null, user.Role), ct);
         await _publisher.Publish(new UserActivatedIntegrationEvent(
-            user.TenantId, user.Id, user.Email, user.FirstName, user.LastName, tenant?.Name ?? string.Empty), ct);
+            user.TenantId, tenant.Subdomain!, user.Id, user.Email, user.FirstName, user.LastName, tenant.Name ?? string.Empty), ct);
 
         return ActionResult<TokenResponse>.Success(new TokenResponse(accessToken, expiresAt));
     }

@@ -38,6 +38,7 @@ public static class IdentityStartup
         services.AddSingleton<ITotpService, TotpService>();
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
         services.AddScoped<IUserProvider, UserProvider>();
+        services.AddScoped<ITenantProvider, TenantProvider>();
 
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(LoginCommand).Assembly));
         services.AddValidatorsFromAssembly(typeof(LoginCommand).Assembly);

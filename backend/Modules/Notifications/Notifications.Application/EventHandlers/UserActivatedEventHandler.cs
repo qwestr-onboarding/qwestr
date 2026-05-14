@@ -23,6 +23,8 @@ public sealed class UserActivatedEventHandler : INotificationHandler<UserActivat
     {
         var displayName = $"{notification.FirstName} {notification.LastName}".Trim();
 
+        var domain = "https://" + notification.TenantSubdomain + "." + _appUrlOptions.BaseUrl.Replace("https://", "").Replace("http://", "");
+        var appUrl = $"{domain}/dashboard";
         var context = new NotificationContext(
             TenantId: notification.TenantId,
             RecipientUserId: notification.UserId,
@@ -36,9 +38,9 @@ public sealed class UserActivatedEventHandler : INotificationHandler<UserActivat
             {
                 UserName = displayName,
                 CompanyName = notification.CompanyName,
-                AppUrl = _appUrlOptions.BaseUrl
+                AppUrl = appUrl
             },
-            ActionUrl: _appUrlOptions.BaseUrl);
+            ActionUrl: appUrl);
 
         await _dispatcher.DispatchAsync(context, cancellationToken);
     }

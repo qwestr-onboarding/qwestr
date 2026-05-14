@@ -21,6 +21,7 @@ public class OnboardingDbContext : DbContext
     public DbSet<StepProgress> StepProgresses => Set<StepProgress>();
     public DbSet<TestAttempt> TestAttempts => Set<TestAttempt>();
     public DbSet<QuestionAnswer> QuestionAnswers => Set<QuestionAnswer>();
+    public DbSet<AiGenerationQuota> AiGenerationQuotas => Set<AiGenerationQuota>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -52,7 +52,8 @@ else
                         </MudAvatar>
                     }
                     <MudStack Spacing="1">
-                        <MudFileUpload T="IBrowserFile" FilesChanged="OnAvatarSelected" Accept="image/jpeg,image/png,image/webp">
+                        <MudFileUpload T="IBrowserFile" FilesChanged="OnAvatarSelected" Accept="image/jpeg,image/png,image/webp"
+                                       MaxFileSize="@(5 * 1024 * 1024)">
                             <ActivatorContent>
                                 <MudButton Variant="Variant.Outlined"
                                            StartIcon="@Icons.Material.Outlined.Upload"

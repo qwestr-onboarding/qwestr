@@ -24,6 +24,35 @@ namespace Qwestr.Modules.Onboarding.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Qwestr.Modules.Onboarding.Domain.Entities.AiGenerationQuota", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<int>("GenerationCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("generation_count");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_generation_quotas");
+
+                    b.HasIndex("TenantId", "Date")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ai_generation_quotas_tenant_id_date");
+
+                    b.ToTable("ai_generation_quotas", "onboarding");
+                });
+
             modelBuilder.Entity("Qwestr.Modules.Onboarding.Domain.Entities.Question", b =>
                 {
                     b.Property<Guid>("Id")

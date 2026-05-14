@@ -79,7 +79,7 @@ public sealed class HtmlEmailTemplateRenderer : IEmailTemplateRenderer
             "ScenarioAssigned" =>
                 "<p>Привет, <strong>" + v.GetValueOrDefault("UserName") + "</strong>!</p>" +
                 "<p>Вам назначен новый сценарий адаптации: <strong>" + v.GetValueOrDefault("ScenarioName") + "</strong>.</p>" +
-                "<p><a href=\"" + v.GetValueOrDefault("ScenarioUrl") + "\" class=\"cta\">Начать сценарий</a></p>",
+                "<p><a href=\"" + v.GetValueOrDefault("ScenarioUrl") + "\" class=\"cta\">Перейти к онбордингу</a></p>",
 
             "ScenarioCompleted" =>
                 "<p>Отличная работа, <strong>" + v.GetValueOrDefault("UserName") + "</strong>!</p>" +

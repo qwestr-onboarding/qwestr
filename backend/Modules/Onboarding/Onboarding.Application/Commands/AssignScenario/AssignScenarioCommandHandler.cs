@@ -29,7 +29,6 @@ public class AssignScenarioCommandHandler : IRequestHandler<AssignScenarioComman
         {
             return ActionResult<Guid>.Failure("Scenario not found.");
         }
-
         if (!scenario.IsPublished)
         {
             return ActionResult<Guid>.Failure("Cannot assign an unpublished scenario.");
@@ -58,6 +57,7 @@ public class AssignScenarioCommandHandler : IRequestHandler<AssignScenarioComman
         await _publisher.Publish(new OnboardingScenarioAssignedIntegrationEvent(
             request.UserId,
             request.TenantId,
+            
             assignment.Id,
             request.ScenarioId,
             scenario.Title,

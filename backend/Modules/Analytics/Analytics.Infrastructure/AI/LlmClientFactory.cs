@@ -1,39 +1,35 @@
+using Microsoft.Extensions.Options;
 using Qwestr.Modules.Analytics.Application.AI.Abstractions;
+using Qwestr.Modules.Analytics.Application.AI.Parsing;
 using Qwestr.Modules.Analytics.Infrastructure.Configuration;
 using Qwestr.Shared.Kernel.Enums.Analytics;
-using Microsoft.Extensions.Options;
+using Qwestr.Shared.Llm;
+using Qwestr.Shared.Llm.Options;
 
 namespace Qwestr.Modules.Analytics.Infrastructure.AI;
 
 public class LlmClientFactory : ILlmClientFactory
 {
-    private readonly IServiceProvider _sp;
-    private readonly AnalyticsLlmOptions _options;
+    private readonly IGenericLlmClientFactory _genericFactory;
+    private readonly ILlmResponseParser _parser;
+    private readonly LlmSharedOptions _sharedOptions;
 
-    public LlmClientFactory(IServiceProvider sp, IOptions<AnalyticsLlmOptions> options)
+    public LlmClientFactory(
+        IGenericLlmClientFactory genericFactory,
+        ILlmResponseParser parser,
+        IOptions<LlmSharedOptions> sharedOptions)
     {
-        _sp = sp;
-        _options = options.Value;
+        _genericFactory = genericFactory;
+        _parser = parser;
+        _sharedOptions = sharedOptions.Value;
     }
 
     public ILlmClient Create(LlmProvider provider)
     {
-        if (_options.UseFake)
-        {
-            return (ILlmClient)_sp.GetService(typeof(FakeLlmClient))!;
-        }
-
-        return provider switch
-        {
-            LlmProvider.YandexGpt => (ILlmClient)_sp.GetService(typeof(YandexGptClient))!,
-            LlmProvider.Gemini => (ILlmClient)_sp.GetService(typeof(GeminiClient))!,
-            LlmProvider.Qwen => (ILlmClient)_sp.GetService(typeof(QwenClient))!,
-            _ => throw new InvalidOperationException($"Unknown LLM provider: {provider}")
-        };
+        var generic = _genericFactory.Create(provider);
+        return new AnalyticsLlmClientAdapter(generic, _parser);
     }
 
     public IReadOnlyList<LlmProvider> GetAvailableProviders()
-    {
-        return Enum.GetValues<LlmProvider>().ToList();
-    }
+        => _genericFactory.GetAvailableProviders();
 }

@@ -235,6 +235,7 @@ else
                                         }
                                     </MudAvatar>
                                     <MudText Typo="Typo.caption" Style="@($"font-weight:600;line-height:1.3;{CardTextStyle}")">@a.Title</MudText>
+                                    <MudText Typo="Typo.caption" Style="@($"font-size:0.65rem;{SubTextStyle}")">@a.Description</MudText>
                                     <MudText Typo="Typo.caption" Style="@($"font-size:0.65rem;{SubTextStyle}")">@a.EarnedAt.ToString("dd.MM.yy")</MudText>
                                 </MudStack>
                             </MudPaper>
@@ -284,6 +285,7 @@ else
                                             </MudAvatar>
                                             <MudStack Spacing="0" Style="flex:1;min-width:0;">
                                                 <MudText Typo="Typo.body2" Style="@($"font-weight:600;{CardTextStyle}")">@b.Title</MudText>
+                                                <MudText Typo="Typo.caption" Style="@($"font-size:0.65rem;{SubTextStyle}")">@b.Description</MudText>
                                                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                                                     <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Small"
                                                              Style="@($"font-size:0.85rem;{SubTextStyle}")" />

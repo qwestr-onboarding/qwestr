@@ -11,6 +11,7 @@ using Qwestr.Modules.Analytics.Infrastructure.BackgroundJobs;
 using Qwestr.Modules.Analytics.Infrastructure.Configuration;
 using Qwestr.Modules.Analytics.Infrastructure.Persistence.Repositories;
 using Qwestr.Modules.Analytics.Infrastructure.Services;
+using Qwestr.Shared.Llm;
 
 namespace Qwestr.Modules.Analytics.Infrastructure;
 
@@ -39,11 +40,9 @@ public static class AnalyticsInfrastructureExtensions
         services.Configure<AnalyticsBackgroundJobsOptions>(
             configuration.GetSection(AnalyticsBackgroundJobsOptions.SectionName));
 
+        services.AddSharedLlm(configuration);
+
         services.AddSingleton<ILlmResponseParser, LlmResponseParser>();
-        services.AddScoped<FakeLlmClient>();
-        services.AddHttpClient<YandexGptClient>();
-        services.AddScoped<GeminiClient>();
-        services.AddHttpClient<QwenClient>();
         services.AddScoped<ILlmClientFactory, LlmClientFactory>();
 
         services.AddScoped<IAnalyticsSnapshotBuilder, AnalyticsSnapshotBuilder>();
